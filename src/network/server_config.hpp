@@ -211,6 +211,30 @@ namespace ServerConfig
         "android players from joining this server, because STK android apk "
         "has some official tracks removed."));
 
+    SERVER_CFG_PREFIX IntServerConfigParam m_addon_karts_threshold
+        SERVER_CFG_DEFAULT(IntServerConfigParam(0,
+        "addon_karts_threshold",
+        "Clients below this value will be rejected from joining this server. "
+        "It's determined by number of addon karts in client"));
+
+    SERVER_CFG_PREFIX IntServerConfigParam m_addon_tracks_threshold
+        SERVER_CFG_DEFAULT(IntServerConfigParam(0,
+        "addon_tracks_threshold",
+        "Clients below this value will be rejected from joining this server. "
+        "It's determined by number of addon tracks in client"));
+
+    SERVER_CFG_PREFIX IntServerConfigParam m_addon_arenas_threshold
+        SERVER_CFG_DEFAULT(IntServerConfigParam(0,
+        "addon_arenas_threshold",
+        "Clients below this value will be rejected from joining this server. "
+        "It's determined by number of addon arenas in client"));
+
+    SERVER_CFG_PREFIX IntServerConfigParam m_addon_soccers_threshold
+        SERVER_CFG_DEFAULT(IntServerConfigParam(0,
+        "addon_soccers_threshold",
+        "Clients below this value will be rejected from joining this server. "
+        "It's determined by number of addon soccer fields in client"));
+
     SERVER_CFG_PREFIX IntServerConfigParam m_min_start_game_players
         SERVER_CFG_DEFAULT(IntServerConfigParam(2, "min-start-game-players",
         "Only auto start kart selection when number of "

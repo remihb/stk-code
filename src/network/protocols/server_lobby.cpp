@@ -152,6 +152,15 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         track_manager->getArenasInGroup("standard", false);
     std::vector<int> all_soccers =
         track_manager->getArenasInGroup("standard", true);
+    std::vector<int> addon_karts =
+        kart_properties_manager->getKartsInGroup("Add-Ons");
+    std::vector<int> addon_tracks =
+        track_manager->getTracksInGroup("Add-Ons");
+    std::vector<int> addon_arenas =
+        track_manager->getArenasInGroup("Add-Ons", false);
+    std::vector<int> addon_soccers =
+        track_manager->getArenasInGroup("Add-Ons", true);
+    std::vector<int> all_tracks = all_t;
     all_t.insert(all_t.end(), all_arenas.begin(), all_arenas.end());
     all_t.insert(all_t.end(), all_soccers.begin(), all_soccers.end());
 
@@ -166,6 +175,31 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         Track* t = track_manager->getTrack(track);
         if (!t->isAddon())
             m_official_kts.second.insert(t->getIdent());
+    }
+
+    for (int kart : addon_karts)
+    {
+        const KartProperties* kp = kart_properties_manager->getKartById(kart);
+        if (!kp->isAddon())
+            m_addon_kts.first.insert(kp->getIdent());
+    }
+    for (int track : addon_tracks)
+    {
+        Track* t = track_manager->getTrack(track);
+        if (!t->isAddon())
+            m_addon_kts.second.insert(t->getIdent());
+    }
+    for (int arena : addon_arenas)
+    {
+        Track* t = track_manager->getTrack(arena);
+        if (!t->isAddon())
+            m_addon_arenas.insert(t->getIdent());
+    }
+    for (int soccer : addon_soccers)
+    {
+        Track* t = track_manager->getTrack(soccer);
+        if (!t->isAddon())
+            m_addon_soccers.insert(t->getIdent());
     }
 
     m_rs_state.store(RS_NONE);
@@ -283,7 +317,11 @@ void ServerLobby::initServerStatsTable()
         "    version TEXT NOT NULL, -- SuperTuxKart version of the host (with OS info)\n"
         "    connected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when connected\n"
         "    disconnected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when disconnected (saved when disconnected)\n"
-        "    ping INTEGER UNSIGNED NOT NULL DEFAULT 0 -- Ping of the host\n"
+        "    ping INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Ping of the host\n"
+        "    addon_karts_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon karts of the host\n"
+        "    addon_tracks_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon tracks of the host\n"
+        "    addon_arenas_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon arenas of the host\n"
+        "    addon_soccers_count INTEGER UNSIGNED NOT NULL DEFAULT 0 -- Number of addon soccers of the host\n"
         ") WITHOUT ROWID;";
     std::string query = oss.str();
     sqlite3_stmt* stmt = NULL;
@@ -337,7 +375,9 @@ void ServerLobby::initServerStatsTable()
     oss << "    port, online_id, username, player_num,\n"
         << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version,\n"
         << "    ROUND((STRFTIME(\"%s\", disconnected_time) - STRFTIME(\"%s\", connected_time)) / 60.0, 2) AS time_played,\n"
-        << "    connected_time, disconnected_time, ping FROM " << m_server_stats_table << "\n"
+        << "    connected_time, disconnected_time, ping,\n"
+        << "    addon_karts_count, addon_tracks_count, addon_arenas_count,\n"
+        << "    addon_soccers_count FROM " << m_server_stats_table << "\n"
         << "    LEFT JOIN " << country_table_name << " ON "
         <<      country_table_name << ".country_code = " << m_server_stats_table << ".country_code\n"
         << "    ORDER BY connected_time DESC;";
@@ -360,7 +400,9 @@ void ServerLobby::initServerStatsTable()
     oss << "    port, online_id, username, player_num,\n"
         << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version,\n"
         << "    ROUND((STRFTIME(\"%s\", 'now') - STRFTIME(\"%s\", connected_time)) / 60.0, 2) AS time_played,\n"
-        << "    connected_time, ping FROM " << m_server_stats_table << "\n"
+        << "    connected_time, ping, "
+        << "    addon_karts_count, addon_tracks_count, addon_arenas_count,\n"
+        << "    addon_soccers_count FROM " << m_server_stats_table << "\n"
         << "    LEFT JOIN " << country_table_name << " ON "
         <<      country_table_name << ".country_code = " << m_server_stats_table << ".country_code\n"
         << "    WHERE connected_time = disconnected_time;";
@@ -2981,11 +3023,18 @@ void ServerLobby::connectionRequested(Event* event)
     // as server
     float okt = 0.0f;
     float ott = 0.0f;
+    int addon_karts = 0;
+    int addon_tracks = 0;
+    int addon_arenas = 0;
+    int addon_soccers = 0;
     for (auto& client_kart : client_karts)
     {
         if (m_official_kts.first.find(client_kart) !=
             m_official_kts.first.end())
             okt += 1.0f;
+        if (m_addon_kts.first.find(client_kart) !=
+            m_addon_kts.first.end())
+            ++addon_karts;
     }
     okt = okt / (float)m_official_kts.first.size();
     for (auto& client_track : client_tracks)
@@ -2993,6 +3042,15 @@ void ServerLobby::connectionRequested(Event* event)
         if (m_official_kts.second.find(client_track) !=
             m_official_kts.second.end())
             ott += 1.0f;
+        if (m_addon_kts.second.find(client_track) !=
+            m_addon_kts.second.end())
+            ++addon_tracks;
+        if (m_addon_arenas.find(client_track) !=
+            m_addon_arenas.end())
+            ++addon_arenas;
+        if (m_addon_soccers.find(client_track) !=
+            m_addon_soccers.end())
+            ++addon_soccers;
     }
     ott = ott / (float)m_official_kts.second.size();
 
@@ -3012,10 +3070,26 @@ void ServerLobby::connectionRequested(Event* event)
         }
     }
 
+    Log::info("ServerLobby", "Player has the following addons: %d/%d karts,"
+        " %d/%d tracks, %d/%d arenas, %d/%d soccer fields.", addon_karts,
+	ServerConfig::m_addon_karts_threshold, addon_tracks,
+        ServerConfig::m_addon_tracks_threshold, addon_arenas,
+        ServerConfig::m_addon_arenas_threshold, addon_soccers,
+        ServerConfig::m_addon_soccers_threshold);
+
+    peer->addon_karts_count = addon_karts;
+    peer->addon_tracks_count = addon_tracks;
+    peer->addon_arenas_count = addon_arenas;
+    peer->addon_soccers_count = addon_soccers;
+
     if (karts_erase.size() == m_available_kts.first.size() ||
         tracks_erase.size() == m_available_kts.second.size() ||
         okt < ServerConfig::m_official_karts_threshold ||
-        ott < ServerConfig::m_official_tracks_threshold)
+        ott < ServerConfig::m_official_tracks_threshold ||
+        addon_karts < ServerConfig::m_addon_karts_threshold ||
+        addon_tracks < ServerConfig::m_addon_tracks_threshold ||
+        addon_arenas < ServerConfig::m_addon_arenas_threshold ||
+        addon_soccers < ServerConfig::m_addon_soccers_threshold)
     {
         NetworkString *message = getNetworkString(2);
         message->setSynchronous(true);
@@ -3299,22 +3373,28 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
         query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(host_id, ip, ipv6 ,port, online_id, username, player_num, "
-            "country_code, version, ping) "
-            "VALUES (%u, 0, \"%s\" ,%u, %u, ?, %u, ?, ?, %u);",
+            "country_code, version, ping, addon_karts_count, addon_tracks_count, "
+            "addon_arenas_count, addon_soccers_count) "
+            "VALUES (%u, 0, \"%s\" ,%u, %u, ?, %u, ?, ?, %u, %d, %d, %d, %d);",
             m_server_stats_table.c_str(), peer->getHostId(),
             peer->getIPV6Address(), peer->getAddress().getPort(), online_id,
-            player_count, peer->getAveragePing());
+            player_count, peer->getAveragePing(), peer->addon_karts_count,
+            peer->addon_tracks_count, peer->addon_arenas_count,
+            peer->addon_soccers_count);
     }
     else
     {
         query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(host_id, ip, port, online_id, username, player_num, "
-            "country_code, version, ping) "
-            "VALUES (%u, %u, %u, %u, ?, %u, ?, ?, %u);",
+            "country_code, version, ping, addon_karts_count, addon_tracks_count, "
+            "addon_arenas_count, addon_soccers_count) "
+            "VALUES (%u, %u, %u, %u, ?, %u, ?, ?, %u, %d, %d, %d, %d);",
             m_server_stats_table.c_str(), peer->getHostId(),
             peer->getAddress().getIP(), peer->getAddress().getPort(),
-            online_id, player_count, peer->getAveragePing());
+            online_id, player_count, peer->getAveragePing(), peer->addon_karts_count,
+            peer->addon_tracks_count, peer->addon_arenas_count,
+            peer->addon_soccers_count);
     }
     easySQLQuery(query, [peer, country_code](sqlite3_stmt* stmt)
         {
