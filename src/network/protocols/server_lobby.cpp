@@ -180,25 +180,25 @@ ServerLobby::ServerLobby() : LobbyProtocol()
     for (int kart : addon_karts)
     {
         const KartProperties* kp = kart_properties_manager->getKartById(kart);
-        if (!kp->isAddon())
+        if (kp->isAddon())
             m_addon_kts.first.insert(kp->getIdent());
     }
     for (int track : addon_tracks)
     {
         Track* t = track_manager->getTrack(track);
-        if (!t->isAddon())
+        if (t->isAddon())
             m_addon_kts.second.insert(t->getIdent());
     }
     for (int arena : addon_arenas)
     {
         Track* t = track_manager->getTrack(arena);
-        if (!t->isAddon())
+        if (t->isAddon())
             m_addon_arenas.insert(t->getIdent());
     }
     for (int soccer : addon_soccers)
     {
         Track* t = track_manager->getTrack(soccer);
-        if (!t->isAddon())
+        if (t->isAddon())
             m_addon_soccers.insert(t->getIdent());
     }
 
@@ -3072,10 +3072,10 @@ void ServerLobby::connectionRequested(Event* event)
 
     Log::info("ServerLobby", "Player has the following addons: %d/%d karts,"
         " %d/%d tracks, %d/%d arenas, %d/%d soccer fields.", addon_karts,
-	ServerConfig::m_addon_karts_threshold, addon_tracks,
-        ServerConfig::m_addon_tracks_threshold, addon_arenas,
-        ServerConfig::m_addon_arenas_threshold, addon_soccers,
-        ServerConfig::m_addon_soccers_threshold);
+        (int)ServerConfig::m_addon_karts_threshold, addon_tracks,
+        (int)ServerConfig::m_addon_tracks_threshold, addon_arenas,
+        (int)ServerConfig::m_addon_arenas_threshold, addon_soccers,
+        (int)ServerConfig::m_addon_soccers_threshold);
 
     peer->addon_karts_count = addon_karts;
     peer->addon_tracks_count = addon_tracks;
@@ -3086,10 +3086,10 @@ void ServerLobby::connectionRequested(Event* event)
         tracks_erase.size() == m_available_kts.second.size() ||
         okt < ServerConfig::m_official_karts_threshold ||
         ott < ServerConfig::m_official_tracks_threshold ||
-        addon_karts < ServerConfig::m_addon_karts_threshold ||
-        addon_tracks < ServerConfig::m_addon_tracks_threshold ||
-        addon_arenas < ServerConfig::m_addon_arenas_threshold ||
-        addon_soccers < ServerConfig::m_addon_soccers_threshold)
+        addon_karts < (int)ServerConfig::m_addon_karts_threshold ||
+        addon_tracks < (int)ServerConfig::m_addon_tracks_threshold ||
+        addon_arenas < (int)ServerConfig::m_addon_arenas_threshold ||
+        addon_soccers < (int)ServerConfig::m_addon_soccers_threshold)
     {
         NetworkString *message = getNetworkString(2);
         message->setSynchronous(true);
