@@ -96,6 +96,8 @@ protected:
 
     std::atomic<uint32_t> m_average_ping;
 
+    std::atomic<int> m_packet_loss;
+
     std::set<unsigned> m_available_kart_ids;
 
     std::string m_user_version;
@@ -251,6 +253,10 @@ public:
     // ------------------------------------------------------------------------
     bool isAIPeer() const                    { return m_user_version == "AI"; }
     // ------------------------------------------------------------------------
+    void setPacketLoss(int loss)                 { m_packet_loss.store(loss); }
+    // ------------------------------------------------------------------------
+    int getPacketLoss() const                  { return m_packet_loss.load(); }
+    // ------------------------------------------------------------------------
     int addon_karts_count = 0;
     // ------------------------------------------------------------------------
     int addon_tracks_count = 0;
@@ -258,6 +264,7 @@ public:
     int addon_arenas_count = 0;
     // ------------------------------------------------------------------------
     int addon_soccers_count = 0;
+    // ------------------------------------------------------------------------
 };   // STKPeer
 
 #endif // STK_PEER_HPP
