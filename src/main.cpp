@@ -2071,6 +2071,9 @@ int main(int argc, char *argv[])
 
         if (!ProfileWorld::isNoGraphics())
             profiler.init();
+        // Create the story mode timer with empty setting first, it will
+        // be reset later after story mode status and player manager is loaded
+        story_mode_timer = new StoryModeTimer();
         initRest();
 
 #ifdef ENABLE_WIIUSE
@@ -2323,6 +2326,11 @@ int main(int argc, char *argv[])
         }
 #endif
 
+        // Reset the story mode timer before going in the main loop
+        // as it needs to be able to run continuously
+        // Now the story mode status and player manager is loaded
+        story_mode_timer->reset();
+
         // Replay a race
         // =============
         if(history->replayHistory())
@@ -2361,10 +2369,6 @@ int main(int argc, char *argv[])
             race_manager->setupPlayerKartInfo();
             race_manager->startNew(false);
         }
-
-        // Create the story mode timer before going in the main loop
-        // as it needs to be able to run continuously
-        story_mode_timer = new StoryModeTimer();
 
         main_loop->run();
 
