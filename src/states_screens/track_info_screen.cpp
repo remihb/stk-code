@@ -328,7 +328,10 @@ void TrackInfoScreen::init()
     {
         m_record_race->setActive(true);
         m_record_race->setState(false);
+        m_ai_kart_spinner->setActive(true);
     }
+    else
+        m_ai_kart_spinner->setActive(true);
 
     // ---- High Scores
     m_highscore_label->setVisible(has_highscores);
@@ -451,6 +454,8 @@ TrackInfoScreen::~TrackInfoScreen()
 // ----------------------------------------------------------------------------
 void TrackInfoScreen::tearDown()
 {
+    // This will save number of ai karts per game mode
+    user_config->saveConfig();
     m_highscore_entries->setIcons(NULL);
 }
 

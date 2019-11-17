@@ -874,7 +874,7 @@ void ClientLobby::handleChat(Event* event)
     {
         if (GUIEngine::getCurrentScreen() == NetworkingLobby::getInstance())
             NetworkingLobby::getInstance()->addMoreServerInfo(message);
-        else
+        else if (UserConfigParams::m_race_chat)
             MessageQueue::add(MessageQueue::MT_GENERIC, message);
     }
 }   // handleChat
@@ -970,9 +970,9 @@ void ClientLobby::startGame(Event* event)
                 return;
             }
             int sleep_time = (int)(start_time - cur_time);
-            Log::info("ClientLobby", "Start game after %dms", sleep_time);
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            Log::info("ClientLobby", "Started at %lf", StkTime::getRealTime());
+            //Log::info("ClientLobby", "Start game after %dms", sleep_time);
+            StkTime::sleep(sleep_time);
+            //Log::info("ClientLobby", "Started at %lf", StkTime::getRealTime());
             m_state.store(RACING);
         });
 }   // startGame

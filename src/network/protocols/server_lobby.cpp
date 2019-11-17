@@ -314,7 +314,8 @@ void ServerLobby::initServerStatsTable()
         "    username TEXT NOT NULL, -- First player name in the host (if the host has splitscreen player)\n"
         "    player_num INTEGER UNSIGNED NOT NULL, -- Number of player(s) from the host, more than 1 if it has splitscreen player\n"
         "    country_code TEXT NULL DEFAULT NULL, -- 2-letter country code of the host\n"
-        "    version TEXT NOT NULL, -- SuperTuxKart version of the host (with OS info)\n"
+        "    version TEXT NOT NULL, -- SuperTuxKart version of the host\n"
+        "    os TEXT NOT NULL, -- Operating system of the host\n"
         "    connected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when connected\n"
         "    disconnected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when disconnected (saved when disconnected)\n"
         "    ping INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Ping of the host\n"
@@ -374,7 +375,7 @@ void ServerLobby::initServerStatsTable()
     if (ServerConfig::m_ipv6_server)
         oss << "    ipv6,";
     oss << "    port, online_id, username, player_num,\n"
-        << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version,\n"
+        << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version, os,\n"
         << "    ROUND((STRFTIME(\"%s\", disconnected_time) - STRFTIME(\"%s\", connected_time)) / 60.0, 2) AS time_played,\n"
         << "    connected_time, disconnected_time, ping, packet_loss, \n"
         << "    addon_karts_count, addon_tracks_count, addon_arenas_count,\n"
@@ -399,7 +400,7 @@ void ServerLobby::initServerStatsTable()
     if (ServerConfig::m_ipv6_server)
         oss << "    ipv6,";
     oss << "    port, online_id, username, player_num,\n"
-        << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version,\n"
+        << "    " << m_server_stats_table << ".country_code AS country_code, country_flag, country_name, version, os,\n"
         << "    ROUND((STRFTIME(\"%s\", 'now') - STRFTIME(\"%s\", connected_time)) / 60.0, 2) AS time_played,\n"
         << "    connected_time, ping, "
         << "    addon_karts_count, addon_tracks_count, addon_arenas_count,\n"
@@ -439,7 +440,7 @@ void ServerLobby::initServerStatsTable()
         if (ServerConfig::m_ipv6_server)
             oss << "    a.ipv6,";
         oss << "    a.port, a.player_num,\n"
-            << "    a.country_code, a.country_flag, a.country_name, a.version, a.ping, a.packet_loss,\n"
+            << "    a.country_code, a.country_flag, a.country_name, a.version, a.os, a.ping, a.packet_loss,\n"
             << "    b.num_connections, b.first_connected_time, b.first_disconnected_time,\n"
             << "    a.connected_time AS last_connected_time, a.disconnected_time AS last_disconnected_time,\n"
             << "    a.time_played AS last_time_played, b.total_time_played, b.average_time_played,\n"
@@ -703,7 +704,7 @@ void ServerLobby::handleChat(Event* event)
     event->getPeer()->updateLastActivity();
     const bool sender_in_game = event->getPeer()->isWaitingForGame();
     core::stringw message;
-    event->data().decodeString16(&message, 1000/*max_len*/);
+    event->data().decodeString16(&message, 360/*max_len*/);
     if (message.size() > 0)
     {
         NetworkString* chat = getNetworkString();
@@ -3376,9 +3377,9 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
         query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(host_id, ip, ipv6 ,port, online_id, username, player_num, "
-            "country_code, version, ping, addon_karts_count, addon_tracks_count, "
+            "country_code, version, os, ping, addon_karts_count, addon_tracks_count, "
             "addon_arenas_count, addon_soccers_count) "
-            "VALUES (%u, 0, \"%s\" ,%u, %u, ?, %u, ?, ?, %u, %d, %d, %d, %d);",
+            "VALUES (%u, 0, \"%s\" ,%u, %u, ?, %u, ?, ?, ?, %u, %d, %d, %d, %d);",
             m_server_stats_table.c_str(), peer->getHostId(),
             peer->getIPV6Address(), peer->getAddress().getPort(), online_id,
             player_count, peer->getAveragePing(), peer->addon_karts_count,
@@ -3390,9 +3391,9 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
         query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(host_id, ip, port, online_id, username, player_num, "
-            "country_code, version, ping, addon_karts_count, addon_tracks_count, "
+            "country_code, version, os, ping, addon_karts_count, addon_tracks_count, "
             "addon_arenas_count, addon_soccers_count) "
-            "VALUES (%u, %u, %u, %u, ?, %u, ?, ?, %u, %d, %d, %d, %d);",
+            "VALUES (%u, %u, %u, %u, ?, %u, ?, ?, ?, %u, %d, %d, %d, %d);",
             m_server_stats_table.c_str(), peer->getHostId(),
             peer->getAddress().getIP(), peer->getAddress().getPort(),
             online_id, player_count, peer->getAveragePing(), peer->addon_karts_count,
@@ -3426,11 +3427,19 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
                         country_code.c_str());
                 }
             }
-            if (sqlite3_bind_text(stmt, 3, peer->getUserVersion().c_str(),
+            auto version_os =
+                StringUtils::extractVersionOS(peer->getUserVersion());
+            if (sqlite3_bind_text(stmt, 3, version_os.first.c_str(),
                 -1, SQLITE_TRANSIENT) != SQLITE_OK)
             {
                 Log::error("easySQLQuery", "Failed to bind %s.",
-                    peer->getUserVersion().c_str());
+                    version_os.first.c_str());
+            }
+            if (sqlite3_bind_text(stmt, 4, version_os.second.c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    version_os.second.c_str());
             }
         }
     );
@@ -4166,9 +4175,9 @@ void ServerLobby::configPeersStartTime()
             const uint64_t cur_time = STKHost::get()->getNetworkTimer();
             assert(start_time > cur_time);
             int sleep_time = (int)(start_time - cur_time);
-            Log::info("ServerLobby", "Start game after %dms", sleep_time);
-            std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
-            Log::info("ServerLobby", "Started at %lf", StkTime::getRealTime());
+            //Log::info("ServerLobby", "Start game after %dms", sleep_time);
+            StkTime::sleep(sleep_time);
+            //Log::info("ServerLobby", "Started at %lf", StkTime::getRealTime());
             m_state.store(RACING);
         });
 }   // configPeersStartTime

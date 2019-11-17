@@ -1082,11 +1082,17 @@ void Skin::drawRibbonChild(const core::recti &rect, Widget* widget,
         else
             params = &SkinConfig::m_render_params["tab::neutral"];
 
+        RibbonFlip flip = parentRibbon->getRibbonFlip();
 
         // automatically guess from position on-screen if tabs go up or down
-        const bool vertical_flip =
+        bool vertical_flip =
             (unsigned int)rect.UpperLeftCorner.Y <
                 irr_driver->getActualScreenSize().Height / 2;
+        // force flip direction when the direction is pointed out
+        if(flip == FLIP_UP_LEFT)
+            vertical_flip = true;
+        else if(flip == FLIP_DOWN_RIGHT)
+            vertical_flip = false;
         params->m_vertical_flip = vertical_flip;
 
         core::recti rect2 = rect;
@@ -1132,11 +1138,17 @@ void Skin::drawRibbonChild(const core::recti &rect, Widget* widget,
         else
             params = &SkinConfig::m_render_params["verticalTab::neutral"];
 
+        RibbonFlip flip = parentRibbon->getRibbonFlip();
 
         // automatically guess from position on-screen if tabs go left or right
         unsigned int screen_width = irr_driver->getActualScreenSize().Width;
-        const bool horizontal_flip =
+        bool horizontal_flip =
             (unsigned int)rect.UpperLeftCorner.X > screen_width/ 2;
+        // force flip direction when the direction is pointed out
+        if(flip == FLIP_UP_LEFT)
+            horizontal_flip = true;
+        else if(flip == FLIP_DOWN_RIGHT)
+            horizontal_flip = false;
         params->m_vertical_flip = false;
 
         core::recti rect2 = rect;
@@ -1822,20 +1834,20 @@ void Skin::drawListHeader(const irr::core::rect< irr::s32 > &rect,
                           Widget* widget)
 {
 #ifndef SERVER_ONLY
+    ListWidget* list = static_cast<ListWidget*>(widget->m_event_handler);
     bool isSelected =
-         (((ListWidget*)widget->m_event_handler)->m_selected_column == widget &&
-         ((ListWidget*)widget->m_event_handler)->m_sort_default == false);
+        (list->m_selected_column == widget && list->m_choosing_header);
 
     drawBoxFromStretchableTexture(widget, rect,
             (isSelected ? SkinConfig::m_render_params["list_header::down"]
                         : SkinConfig::m_render_params["list_header::neutral"]),
             false, NULL /* clip */);
 
-    if (isSelected)
+    if (list->m_selected_column == widget && !list->m_sort_default)
     {
         /** \brief img sets the icon for the column according to sort order **/
         ITexture* img;
-        if (((ListWidget*)widget->m_event_handler)->m_sort_desc)
+        if (list->m_sort_desc)
             img =
                 SkinConfig::m_render_params["list_sort_down::neutral"].getImage();
         else
