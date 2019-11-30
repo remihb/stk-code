@@ -257,7 +257,9 @@ void ServerLobby::initDatabase()
     m_ip_geolocation_table_exists = false;
     if (!ServerConfig::m_sql_management)
         return;
-    int ret = sqlite3_open_v2(ServerConfig::m_database_file.c_str(), &m_db,
+    const std::string& path = ServerConfig::getConfigDirectory() + "/" +
+        ServerConfig::m_database_file.c_str();
+    int ret = sqlite3_open_v2(path.c_str(), &m_db,
         SQLITE_OPEN_SHAREDCACHE | SQLITE_OPEN_FULLMUTEX |
         SQLITE_OPEN_READWRITE, NULL);
     if (ret != SQLITE_OK)
@@ -795,6 +797,8 @@ bool ServerLobby::notifyEventAsynchronous(Event* event)
         case LE_CLIENT_BACK_LOBBY:
             clientSelectingAssetsWantsToBackLobby(event);         break;
         case LE_REPORT_PLAYER: writePlayerReport(event);          break;
+        case LE_ASSETS_UPDATE:
+            handleAssets(event->data(), event->getPeer());        break;
         default:                                                  break;
         }   // switch
     } // if (event->getType() == EVENT_TYPE_MESSAGE)
@@ -1906,11 +1910,10 @@ void ServerLobby::update(int ticks)
 
     if (w && w->getPhase() == World::RACE_PHASE)
     {
-        storePlayingTrack(track_manager->getTrackIndexByIdent(
-            race_manager->getTrackName()));
+        storePlayingTrack(race_manager->getTrackName());
     }
     else
-        storePlayingTrack(-1);
+        storePlayingTrack("");
 
     // Reset server to initial state if no more connected players
     if (m_rs_state.load() == RS_WAITING)
@@ -2064,6 +2067,7 @@ bool ServerLobby::registerServer(bool now)
     {
     private:
         std::weak_ptr<ServerLobby> m_server_lobby;
+        const bool m_execute_now;
     protected:
         virtual void afterOperation()
         {
@@ -2101,15 +2105,15 @@ bool ServerLobby::registerServer(bool now)
                 StringUtils::wideToUtf8(getInfo()).c_str());
             // For auto server recovery wait 3 seconds for next try
             // This sleep only the request manager thread
-            if (manageMemory())
+            if (!m_execute_now)
                 StkTime::sleep(3000);
         }
     public:
         RegisterServerRequest(bool now, std::shared_ptr<ServerLobby> sl)
-        : XMLRequest(!now/*manage memory*/), m_server_lobby(sl) {}
+        : XMLRequest(), m_server_lobby(sl), m_execute_now(now) {}
     };   // RegisterServerRequest
 
-    RegisterServerRequest *request = new RegisterServerRequest(now,
+    auto request = std::make_shared<RegisterServerRequest>(now,
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request, "create");
     request->addParameter("address",      m_server_address.getIP()        );
@@ -2138,14 +2142,13 @@ bool ServerLobby::registerServer(bool now)
     if (now)
     {
         request->executeNow();
-        delete request;
         if (m_server_id_online.load() == 0)
             return false;
     }
     else
     {
         request->queue();
-        m_server_recovering = request->observeExistence();
+        m_server_recovering = request;
     }
     return true;
 }   // registerServer
@@ -2157,9 +2160,8 @@ bool ServerLobby::registerServer(bool now)
  */
 void ServerLobby::unregisterServer(bool now)
 {
-    Online::XMLRequest* request =
-        new Online::XMLRequest(!now/*manage memory*/);
-    m_server_unregistered = request->observeExistence();
+    auto request = std::make_shared<Online::XMLRequest>();
+    m_server_unregistered = request;
     NetworkConfig::get()->setServerDetails(request, "stop");
 
     request->addParameter("address", m_server_address.getIP());
@@ -2171,7 +2173,6 @@ void ServerLobby::unregisterServer(bool now)
     if (now)
     {
         request->executeNow();
-        delete request;
     }
     else
         request->queue();
@@ -2502,14 +2503,14 @@ void ServerLobby::checkIncomingConnectionRequests()
         }
     public:
         PollServerRequest(std::shared_ptr<ServerLobby> sl)
-        : XMLRequest(true), m_server_lobby(sl)
+        : XMLRequest(), m_server_lobby(sl)
         {
             m_disable_sending_log = true;
         }
     };   // PollServerRequest
     // ========================================================================
 
-    PollServerRequest* request = new PollServerRequest(
+    auto request = std::make_shared<PollServerRequest>(
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request,
         "poll-connection-requests");
@@ -2519,9 +2520,9 @@ void ServerLobby::checkIncomingConnectionRequests()
     request->addParameter("current-players", getLobbyPlayers());
     request->addParameter("game-started",
         m_state.load() == WAITING_FOR_START_GAME ? 0 : 1);
-    Track* current_track = getPlayingTrack();
-    if (current_track)
-        request->addParameter("current-track", current_track->getIdent());
+    std::string current_track = getPlayingTrackIdent();
+    if (!current_track.empty())
+        request->addParameter("current-track", getPlayingTrackIdent());
     request->queue();
 
 }   // checkIncomingConnectionRequests
@@ -2954,72 +2955,21 @@ void ServerLobby::saveIPBanTable(const TransportAddress& addr)
 }   // saveIPBanTable
 
 //-----------------------------------------------------------------------------
-void ServerLobby::connectionRequested(Event* event)
+bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
 {
-    std::shared_ptr<STKPeer> peer = event->getPeerSP();
-    NetworkString& data = event->data();
-    if (!checkDataSize(event, 14)) return;
-
-    peer->cleanPlayerProfiles();
-
-    // can we add the player ?
-    if (!allowJoinedPlayersWaiting() &&
-        (m_state.load() != WAITING_FOR_START_GAME ||
-        m_game_setup->isGrandPrixStarted()))
-    {
-        NetworkString *message = getNetworkString(2);
-        message->setSynchronous(true);
-        message->addUInt8(LE_CONNECTION_REFUSED).addUInt8(RR_BUSY);
-        // send only to the peer that made the request and disconnect it now
-        peer->sendPacket(message, true/*reliable*/, false/*encrypted*/);
-        peer->reset();
-        delete message;
-        Log::verbose("ServerLobby", "Player refused: selection started");
-        return;
-    }
-
-    // Check server version
-    int version = data.getUInt32();
-    if (version < stk_config->m_min_server_version ||
-        version > stk_config->m_max_server_version)
-    {
-        NetworkString *message = getNetworkString(2);
-        message->setSynchronous(true);
-        message->addUInt8(LE_CONNECTION_REFUSED)
-                .addUInt8(RR_INCOMPATIBLE_DATA);
-        peer->sendPacket(message, true/*reliable*/, false/*encrypted*/);
-        peer->reset();
-        delete message;
-        Log::verbose("ServerLobby", "Player refused: wrong server version");
-        return;
-    }
-    std::string user_version;
-    data.decodeString(&user_version);
-    event->getPeer()->setUserVersion(user_version);
-
-    unsigned list_caps = data.getUInt16();
-    std::set<std::string> caps;
-    for (unsigned i = 0; i < list_caps; i++)
-    {
-        std::string cap;
-        data.decodeString(&cap);
-        caps.insert(cap);
-    }
-    event->getPeer()->setClientCapabilities(caps);
-
     std::set<std::string> client_karts, client_tracks;
-    const unsigned kart_num = data.getUInt16();
-    const unsigned track_num = data.getUInt16();
+    const unsigned kart_num = ns.getUInt16();
+    const unsigned track_num = ns.getUInt16();
     for (unsigned i = 0; i < kart_num; i++)
     {
         std::string kart;
-        data.decodeString(&kart);
+        ns.decodeString(&kart);
         client_karts.insert(kart);
     }
     for (unsigned i = 0; i < track_num; i++)
     {
         std::string track;
-        data.decodeString(&track);
+        ns.decodeString(&track);
         client_tracks.insert(track);
     }
 
@@ -3104,12 +3054,70 @@ void ServerLobby::connectionRequested(Event* event)
         peer->reset();
         delete message;
         Log::verbose("ServerLobby", "Player has incompatible karts / tracks.");
-        return;
+        return false;
     }
 
     // Save available karts and tracks from clients in STKPeer so if this peer
     // disconnects later in lobby it won't affect current players
     peer->setAvailableKartsTracks(client_karts, client_tracks);
+    return true;
+}   // handleAssets
+
+//-----------------------------------------------------------------------------
+void ServerLobby::connectionRequested(Event* event)
+{
+    std::shared_ptr<STKPeer> peer = event->getPeerSP();
+    NetworkString& data = event->data();
+    if (!checkDataSize(event, 14)) return;
+
+    peer->cleanPlayerProfiles();
+
+    // can we add the player ?
+    if (!allowJoinedPlayersWaiting() &&
+        (m_state.load() != WAITING_FOR_START_GAME ||
+        m_game_setup->isGrandPrixStarted()))
+    {
+        NetworkString *message = getNetworkString(2);
+        message->setSynchronous(true);
+        message->addUInt8(LE_CONNECTION_REFUSED).addUInt8(RR_BUSY);
+        // send only to the peer that made the request and disconnect it now
+        peer->sendPacket(message, true/*reliable*/, false/*encrypted*/);
+        peer->reset();
+        delete message;
+        Log::verbose("ServerLobby", "Player refused: selection started");
+        return;
+    }
+
+    // Check server version
+    int version = data.getUInt32();
+    if (version < stk_config->m_min_server_version ||
+        version > stk_config->m_max_server_version)
+    {
+        NetworkString *message = getNetworkString(2);
+        message->setSynchronous(true);
+        message->addUInt8(LE_CONNECTION_REFUSED)
+                .addUInt8(RR_INCOMPATIBLE_DATA);
+        peer->sendPacket(message, true/*reliable*/, false/*encrypted*/);
+        peer->reset();
+        delete message;
+        Log::verbose("ServerLobby", "Player refused: wrong server version");
+        return;
+    }
+    std::string user_version;
+    data.decodeString(&user_version);
+    event->getPeer()->setUserVersion(user_version);
+
+    unsigned list_caps = data.getUInt16();
+    std::set<std::string> caps;
+    for (unsigned i = 0; i < list_caps; i++)
+    {
+        std::string cap;
+        data.decodeString(&cap);
+        caps.insert(cap);
+    }
+    event->getPeer()->setClientCapabilities(caps);
+    if (!handleAssets(data, event->getPeer()))
+        return;
 
     unsigned player_count = data.getUInt8();
     uint32_t online_id = 0;
@@ -4022,7 +4030,7 @@ bool ServerLobby::decryptConnectionRequest(std::shared_ptr<STKPeer> peer,
 //-----------------------------------------------------------------------------
 void ServerLobby::getRankingForPlayer(std::shared_ptr<NetworkPlayerProfile> p)
 {
-    Online::XMLRequest* request = new Online::XMLRequest();
+    auto request = std::make_shared<Online::XMLRequest>();
     NetworkConfig::get()->setUserDetails(request, "get-ranking");
 
     const uint32_t id = p->getOnlineId();
@@ -4057,7 +4065,6 @@ void ServerLobby::getRankingForPlayer(std::shared_ptr<NetworkPlayerProfile> p)
     m_scores[id] = score;
     m_max_scores[id] = max_score;
     m_num_ranked_races[id] = num_races;
-    delete request;
 }   // getRankingForPlayer
 
 //-----------------------------------------------------------------------------
@@ -4074,7 +4081,7 @@ void ServerLobby::submitRankingsToAddons()
         SumbitRankingRequest(uint32_t online_id, double scores,
                              double max_scores, unsigned num_races,
                              const std::string& country_code)
-            : XMLRequest(true)
+            : XMLRequest()
         {
             addParameter("id", online_id);
             addParameter("scores", scores);
@@ -4099,7 +4106,7 @@ void ServerLobby::submitRankingsToAddons()
     for (unsigned i = 0; i < race_manager->getNumPlayers(); i++)
     {
         const uint32_t id = race_manager->getKartInfo(i).getOnlineId();
-        SumbitRankingRequest* request = new SumbitRankingRequest
+        auto request = std::make_shared<SumbitRankingRequest>
             (id, m_scores.at(id), m_max_scores.at(id),
             m_num_ranked_races.at(id),
             race_manager->getKartInfo(i).getCountryCode());
@@ -4565,8 +4572,7 @@ void ServerLobby::handleServerConfiguration(Event* event)
         Log::info("ServerLobby", "Updating server info with new "
             "difficulty: %d, game mode: %d to stk-addons.", new_difficulty,
             new_game_mode);
-        Online::XMLRequest* request =
-            new Online::XMLRequest(true/*manage_memory*/);
+        auto request = std::make_shared<Online::XMLRequest>();
         NetworkConfig::get()->setServerDetails(request, "update-config");
         request->addParameter("address", m_server_address.getIP());
         request->addParameter("port", m_server_address.getPort());

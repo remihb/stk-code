@@ -43,6 +43,11 @@ class NetworkString;
 class NetworkPlayerProfile;
 class STKPeer;
 
+namespace Online
+{
+    class Request;
+}
+
 class ServerLobby : public LobbyProtocol
 {
 public:
@@ -152,9 +157,9 @@ private:
         std::owner_less<std::weak_ptr<STKPeer> > > m_peers_ready;
 
     /** It indicates if this server is unregistered with the stk server. */
-    std::weak_ptr<bool> m_server_unregistered;
+    std::weak_ptr<Online::Request> m_server_unregistered;
 
-    std::weak_ptr<bool> m_server_recovering;
+    std::weak_ptr<Online::Request> m_server_recovering;
 
     /** Timeout counter for various state. */
     std::atomic<int64_t> m_timeout;
@@ -325,6 +330,7 @@ private:
         std::vector<std::shared_ptr<NetworkPlayerProfile> >& players) const;
     std::vector<std::shared_ptr<NetworkPlayerProfile> > getLivePlayers() const;
     void setPlayerKarts(const NetworkString& ns, STKPeer* peer) const;
+    bool handleAssets(const NetworkString& ns, STKPeer* peer) const;
     void liveJoinRequest(Event* event);
     void rejectLiveJoin(STKPeer* peer, BackLobbyReason blr);
     bool canLiveJoinNow() const;

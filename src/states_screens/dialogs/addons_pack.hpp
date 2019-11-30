@@ -15,44 +15,38 @@
 //  along with this program; if not, write to the Free Software
 //  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
-#ifndef HEADER_DOWNLOAD_ASSETS_HPP
-#define HEADER_DOWNLOAD_ASSETS_HPP
-
-#ifdef MOBILE_STK
+#ifndef HEADER_ADDONS_PACK_HPP
+#define HEADER_ADDONS_PACK_HPP
 
 #include "guiengine/widgets.hpp"
 #include "guiengine/modaldialog.hpp"
 #include "utils/cpp2011.hpp"
 
-class DownloadAssetsRequest;
+class AddonsPackRequest;
 
 /**
   * \ingroup states_screens
   */
-class DownloadAssets : public GUIEngine::ModalDialog
+class AddonsPack : public GUIEngine::ModalDialog
 {
 private:
     GUIEngine::ProgressBarWidget *m_progress;
-    GUIEngine::IconButtonWidget  *m_install_button;
 
-    void startDownload();
     void stopDownload();
     void doInstall();
 
     /** A pointer to the download request, which gives access
      *  to the progress of a download. */
-    std::shared_ptr<DownloadAssetsRequest> m_download_request;
-
+    std::shared_ptr<AddonsPackRequest> m_download_request;
+    AddonsPack(const std::string& url);
 public:
-    DownloadAssets();
-
     virtual GUIEngine::EventPropagation processEvent(const std::string& event_source) OVERRIDE;
     virtual void beforeAddingWidgets() OVERRIDE;
     virtual void init() OVERRIDE;
     void onUpdate(float delta) OVERRIDE;
     virtual bool onEscapePressed() OVERRIDE;
+    static void install(const std::string& name);
+    static void uninstall(const std::string& name);
 };   // DownloadAssets
-
-#endif
 
 #endif

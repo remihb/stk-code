@@ -52,6 +52,7 @@
 #include "network/stk_peer.hpp"
 #include "online/online_profile.hpp"
 #include "online/xml_request.hpp"
+#include "states_screens/dialogs/addons_pack.hpp"
 #include "states_screens/online/networking_lobby.hpp"
 #include "states_screens/online/network_kart_selection.hpp"
 #include "states_screens/race_result_gui.hpp"
@@ -112,12 +113,11 @@ ClientLobby::~ClientLobby()
 {
     if (m_server->supportsEncryption())
     {
-        Online::XMLRequest* request =
-            new Online::XMLRequest(true/*manager_memory*/);
+        auto request = std::make_shared<Online::XMLRequest>();
         NetworkConfig::get()->setServerDetails(request,
             "clear-user-joined-server");
         request->queue();
-        ConnectToServer::m_previous_unjoin = request->observeExistence();
+        ConnectToServer::m_previous_unjoin = request;
     }
 }   // ClientLobby
 
@@ -372,27 +372,15 @@ void ClientLobby::update(int ticks)
         for (const std::string& cap : stk_config->m_network_capabilities)
             ns->encodeString(cap);
 
-        auto all_k = kart_properties_manager->getAllAvailableKarts();
-        auto all_t = track_manager->getAllTrackIdentifiers();
-        if (all_k.size() >= 65536)
-            all_k.resize(65535);
-        if (all_t.size() >= 65536)
-            all_t.resize(65535);
-        ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)all_t.size());
-        for (const std::string& kart : all_k)
-        {
-            ns->encodeString(kart);
-        }
-        for (const std::string& track : all_t)
-        {
-            ns->encodeString(track);
-        }
+        getKartsTracksNetworkString(ns);
         assert(!NetworkConfig::get()->isAddingNetworkPlayers());
         const uint8_t player_count =
             (uint8_t)NetworkConfig::get()->getNetworkPlayers().size();
         ns->addUInt8(player_count);
 
         bool encryption = false;
+        // Make sure there is a player before calling getCurrentOnlineId
+        PlayerManager::get()->enforceCurrentPlayer();
         uint32_t id = PlayerManager::getCurrentOnlineId();
         bool lan_ai = !m_server->supportsEncryption() &&
             NetworkConfig::get()->isNetworkAITester();
@@ -1509,3 +1497,55 @@ void ClientLobby::reportSuccess(Event* event)
         MessageQueue::add(MessageQueue::MT_GENERIC, msg);
     }
 }   // reportSuccess
+
+// ----------------------------------------------------------------------------
+void ClientLobby::handleClientCommand(const std::string& cmd)
+{
+#ifndef SERVER_ONLY
+    auto argv = StringUtils::split(cmd, ' ');
+    if (argv.size() == 0)
+        return;
+    if (argv[0] == "installaddon" && argv.size() == 2)
+        AddonsPack::install(argv[1]);
+    else if (argv[0] == "uninstalladdon" && argv.size() == 2)
+        AddonsPack::uninstall(argv[1]);
+    else
+    {
+        // Send for server command
+        NetworkString* cmd_ns = getNetworkString(1);
+        cmd_ns->addUInt8(LE_COMMAND).encodeString(cmd);
+        sendToServer(cmd_ns, /*reliable*/true);
+        delete cmd_ns;
+    }
+#endif
+}   // handleClientCommand
+
+// ----------------------------------------------------------------------------
+void ClientLobby::getKartsTracksNetworkString(BareNetworkString* ns)
+{
+    auto all_k = kart_properties_manager->getAllAvailableKarts();
+    auto all_t = track_manager->getAllTrackIdentifiers();
+    if (all_k.size() >= 65536)
+        all_k.resize(65535);
+    if (all_t.size() >= 65536)
+        all_t.resize(65535);
+    ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)all_t.size());
+    for (const std::string& kart : all_k)
+    {
+        ns->encodeString(kart);
+    }
+    for (const std::string& track : all_t)
+    {
+        ns->encodeString(track);
+    }
+}   // getKartsTracksNetworkString
+
+// ----------------------------------------------------------------------------
+void ClientLobby::updateAssetsToServer()
+{
+    NetworkString* ns = getNetworkString(1);
+    ns->addUInt8(LE_ASSETS_UPDATE);
+    getKartsTracksNetworkString(ns);
+    sendToServer(ns, /*reliable*/true);
+    delete ns;
+}   // updateAssetsToServer

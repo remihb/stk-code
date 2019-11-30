@@ -249,6 +249,19 @@ void OptionsScreenUI::init()
     story_timer->setState( UserConfigParams::m_display_story_mode_timer );
     CheckBoxWidget* speedrun_timer = getWidget<CheckBoxWidget>("speedrun-timer");
     assert( speedrun_timer != NULL );
+    if (story_mode_timer->getStoryModeTime() < 0)
+    {
+        story_timer->setActive(false);
+        speedrun_timer->setActive(false);
+    }
+    else
+    {
+        story_timer->setActive(true);
+
+        speedrun_timer->setActive(UserConfigParams::m_display_story_mode_timer);
+        getWidget<LabelWidget>("speedrun-timer-text")
+            ->setActive(UserConfigParams::m_display_story_mode_timer);
+    }
     if (UserConfigParams::m_speedrun_mode)
     {
         if (!story_mode_timer->playerCanRun())
@@ -264,9 +277,6 @@ void OptionsScreenUI::init()
         }
     }
     speedrun_timer->setState( UserConfigParams::m_speedrun_mode );
-    speedrun_timer->setVisible( UserConfigParams::m_display_story_mode_timer );
-    getWidget<LabelWidget>("speedrun-timer-text")
-        ->setVisible(UserConfigParams::m_display_story_mode_timer);
 
     // --- select the right skin in the spinner
     bool currSkinFound = false;
