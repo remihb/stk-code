@@ -18,6 +18,7 @@
 
 #include "network/protocols/server_lobby.hpp"
 
+#include "addons/addon.hpp"
 #include "config/user_config.hpp"
 #include "items/network_item_manager.hpp"
 #include "items/powerup_manager.hpp"
@@ -176,30 +177,38 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         if (!t->isAddon())
             m_official_kts.second.insert(t->getIdent());
     }
-
-    for (int kart : addon_karts)
+    std::set<std::string> total_addons;
+    for (unsigned i = 0; i < kart_properties_manager->getNumberOfKarts(); i++)
     {
-        const KartProperties* kp = kart_properties_manager->getKartById(kart);
+        const KartProperties* kp =
+            kart_properties_manager->getKartById(i);
         if (kp->isAddon())
+            total_addons.insert(kp->getIdent());
+    }
+    for (unsigned i = 0; i < track_manager->getNumberOfTracks(); i++)
+    {
+        const Track* track = track_manager->getTrack(i);
+        if (track->isAddon())
+            total_addons.insert(track->getIdent());
+    }
+
+    for (auto& addon : total_addons)
+    {
+        const KartProperties* kp = kart_properties_manager->getKart(addon);
+        if (kp && kp->isAddon())
+        {
             m_addon_kts.first.insert(kp->getIdent());
-    }
-    for (int track : addon_tracks)
-    {
-        Track* t = track_manager->getTrack(track);
-        if (t->isAddon())
-            m_addon_kts.second.insert(t->getIdent());
-    }
-    for (int arena : addon_arenas)
-    {
-        Track* t = track_manager->getTrack(arena);
-        if (t->isAddon())
+            continue;
+        }
+        Track* t = track_manager->getTrack(addon);
+        if (!t || !t->isAddon() || t->isInternal())
+            continue;
+        if (t->isArena())
             m_addon_arenas.insert(t->getIdent());
-    }
-    for (int soccer : addon_soccers)
-    {
-        Track* t = track_manager->getTrack(soccer);
-        if (t->isAddon())
+        else if (t->isSoccer())
             m_addon_soccers.insert(t->getIdent());
+        else
+            m_addon_kts.second.insert(t->getIdent());
     }
 
     m_rs_state.store(RS_NONE);
@@ -799,6 +808,8 @@ bool ServerLobby::notifyEventAsynchronous(Event* event)
         case LE_REPORT_PLAYER: writePlayerReport(event);          break;
         case LE_ASSETS_UPDATE:
             handleAssets(event->data(), event->getPeer());        break;
+        case LE_COMMAND:
+            handleServerCommand(event, event->getPeer());         break;
         default:                                                  break;
         }   // switch
     } // if (event->getType() == EVENT_TYPE_MESSAGE)
@@ -3057,9 +3068,58 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
         return false;
     }
 
+    std::array<int, AS_TOTAL> addons_scores = {{ -1, -1, -1, -1 }};
+    size_t addon_kart = 0;
+    size_t addon_track = 0;
+    size_t addon_arena = 0;
+    size_t addon_soccer = 0;
+
+    for (auto& kart : m_addon_kts.first)
+    {
+        if (client_karts.find(kart) != client_karts.end())
+            addon_kart++;
+    }
+    for (auto& track : m_addon_kts.second)
+    {
+        if (client_tracks.find(track) != client_tracks.end())
+            addon_track++;
+    }
+    for (auto& arena : m_addon_arenas)
+    {
+        if (client_tracks.find(arena) != client_tracks.end())
+            addon_arena++;
+    }
+    for (auto& soccer : m_addon_soccers)
+    {
+        if (client_tracks.find(soccer) != client_tracks.end())
+            addon_soccer++;
+    }
+
+    if (!m_addon_kts.first.empty())
+    {
+        addons_scores[AS_KART] = int
+            ((float)addon_kart / (float)m_addon_kts.first.size() * 100.0);
+    }
+    if (!m_addon_kts.second.empty())
+    {
+        addons_scores[AS_TRACK] = int
+            ((float)addon_track / (float)m_addon_kts.second.size() * 100.0);
+    }
+    if (!m_addon_arenas.empty())
+    {
+        addons_scores[AS_ARENA] = int
+            ((float)addon_arena / (float)m_addon_arenas.size() * 100.0);
+    }
+    if (!m_addon_soccers.empty())
+    {
+        addons_scores[AS_SOCCER] = int
+            ((float)addon_soccer / (float)m_addon_soccers.size() * 100.0);
+    }
+
     // Save available karts and tracks from clients in STKPeer so if this peer
     // disconnects later in lobby it won't affect current players
     peer->setAvailableKartsTracks(client_karts, client_tracks);
+    peer->setAddonsScores(addons_scores);
     return true;
 }   // handleAssets
 
@@ -4936,3 +4996,198 @@ bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
     }
     return true;
 }   // checkPeersReady
+
+//-----------------------------------------------------------------------------
+void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
+{
+    NetworkString& data = event->data();
+    std::string language;
+    data.decodeString(&language);
+    std::string cmd;
+    data.decodeString(&cmd);
+    auto argv = StringUtils::split(cmd, ' ');
+    if (argv.size() == 0)
+        return;
+    if (argv[0] == "listserveraddon")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        if (argv.size() != 2)
+        {
+            chat->encodeString16(
+                L"Usage: /listserveraddon [addon prefix letter(s) to find]");
+        }
+        else
+        {
+            std::set<std::string> total_addons;
+            total_addons.insert(m_addon_kts.first.begin(), m_addon_kts.first.end());
+            total_addons.insert(m_addon_kts.second.begin(), m_addon_kts.second.end());
+            total_addons.insert(m_addon_arenas.begin(), m_addon_arenas.end());
+            total_addons.insert(m_addon_soccers.begin(), m_addon_soccers.end());
+            std::string msg = "";
+            for (auto& addon : total_addons)
+            {
+                // addon_ (6 letters)
+                if (addon.compare(6, argv[1].length(), argv[1]) == 0)
+                {
+                    msg += addon.substr(6);
+                    msg += ", ";
+                }
+            }
+            if (msg.empty())
+                chat->encodeString16(L"Addon not found");
+            else
+            {
+                msg = msg.substr(0, msg.size() - 2);
+                chat->encodeString16((std::string("Server addon: ") + msg).c_str());
+            }
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (StringUtils::startsWith(cmd, "playerhasaddon"))
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string part;
+        if (cmd.length() > 15)
+            part = cmd.substr(15);
+        std::string addon_id = part.substr(0, part.find(' '));
+        std::string player_name;
+        if (part.length() > addon_id.length() + 1)
+            player_name = part.substr(addon_id.length() + 1);
+        std::shared_ptr<STKPeer> player_peer = STKHost::get()->findPeerByName(
+            StringUtils::utf8ToWide(player_name));
+        if (player_name.empty() || !player_peer || addon_id.empty())
+        {
+            chat->encodeString16(
+                L"Usage: /playerhasaddon [addon_identity] [player name]");
+        }
+        else
+        {
+            std::string addon_id_test = Addon::createAddonId(addon_id);
+            bool found = false;
+            const auto& kt = player_peer->getClientAssets();
+            for (auto& kart : kt.first)
+            {
+                if (kart == addon_id_test)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                for (auto& track : kt.second)
+                {
+                    if (track == addon_id_test)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (found)
+            {
+                chat->encodeString16(StringUtils::utf8ToWide
+                    (player_name + " has addon " + addon_id));
+            }
+            else
+            {
+                chat->encodeString16(StringUtils::utf8ToWide
+                    (player_name + " has no addon " + addon_id));
+            }
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (StringUtils::startsWith(cmd, "playeraddonscore"))
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string player_name;
+        if (cmd.length() > 17)
+            player_name = cmd.substr(17);
+        std::shared_ptr<STKPeer> player_peer = STKHost::get()->findPeerByName(
+            StringUtils::utf8ToWide(player_name));
+        if (player_name.empty() || !player_peer)
+        {
+            chat->encodeString16(
+                L"Usage: /playeraddonscore [player name] (return 0-100)");
+        }
+        else
+        {
+            auto& scores = player_peer->getAddonsScores();
+            if (scores[AS_KART] == -1 && scores[AS_TRACK] == -1 &&
+                scores[AS_ARENA] == -1 && scores[AS_SOCCER] == -1)
+            {
+                chat->encodeString16(StringUtils::utf8ToWide
+                    (player_name + " has no addon"));
+            }
+            else
+            {
+                std::string msg = player_name;
+                msg += " addon:";
+                if (scores[AS_KART] != -1)
+                    msg += " kart: " + StringUtils::toString(scores[AS_KART]) + ",";
+                if (scores[AS_TRACK] != -1)
+                    msg += " track: " + StringUtils::toString(scores[AS_TRACK]) + ",";
+                if (scores[AS_ARENA] != -1)
+                    msg += " arena: " + StringUtils::toString(scores[AS_ARENA]) + ",";
+                if (scores[AS_SOCCER] != -1)
+                    msg += " soccer: " + StringUtils::toString(scores[AS_SOCCER]) + ",";
+                msg = msg.substr(0, msg.size() - 1);
+                chat->encodeString16(StringUtils::utf8ToWide(msg));
+            }
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (argv[0] == "serverhasaddon")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        if (argv.size() != 2)
+        {
+            chat->encodeString16(
+                L"Usage: /serverhasaddon [addon_identity]");
+        }
+        else
+        {
+            std::set<std::string> total_addons;
+            total_addons.insert(m_addon_kts.first.begin(), m_addon_kts.first.end());
+            total_addons.insert(m_addon_kts.second.begin(), m_addon_kts.second.end());
+            total_addons.insert(m_addon_arenas.begin(), m_addon_arenas.end());
+            total_addons.insert(m_addon_soccers.begin(), m_addon_soccers.end());
+            std::string addon_id_test = Addon::createAddonId(argv[1]);
+            bool found = total_addons.find(addon_id_test) != total_addons.end();
+            if (found)
+            {
+                chat->encodeString16((std::string
+                    ("Server has addon ") + argv[1]).c_str());
+            }
+            else
+            {
+                chat->encodeString16((std::string
+                    ("Server has no addon ") + argv[1]).c_str());
+            }
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string msg = "Unknown command: ";
+        msg += cmd;
+        chat->encodeString16( msg.c_str());
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+}   // handleServerCommand

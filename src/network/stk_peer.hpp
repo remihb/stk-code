@@ -30,6 +30,7 @@
 
 #include <enet/enet.h>
 
+#include <array>
 #include <atomic>
 #include <deque>
 #include <memory>
@@ -51,6 +52,15 @@ enum PeerDisconnectInfo : unsigned int
     PDI_KICK = 2, //!< Kick disconnection
     PDI_KICK_HIGH_PING = 3, //!< Too high ping, kicked by server
 };   // PeerDisconnectInfo
+
+enum AddonScore : int
+{
+    AS_KART = 0,
+    AS_TRACK = 1,
+    AS_ARENA = 2,
+    AS_SOCCER = 3,
+    AS_TOTAL = 4,
+};   // AddonScore
 
 /*! \class STKPeer
  *  \brief Represents a peer.
@@ -108,6 +118,7 @@ protected:
      *  features available in same version. */
     std::set<std::string> m_client_capabilities;
 
+    std::array<int, AS_TOTAL> m_addons_scores;
 public:
     STKPeer(ENetPeer *enet_peer, STKHost* host, uint32_t host_id);
     // ------------------------------------------------------------------------
@@ -158,7 +169,7 @@ public:
               { m_available_kts = std::make_pair(std::move(k), std::move(t)); }
     // ------------------------------------------------------------------------
     void eraseServerKarts(const std::set<std::string>& server_karts,
-                          std::set<std::string>& karts_erase)
+                          std::set<std::string>& karts_erase) const
     {
         if (m_available_kts.first.empty())
             return;
@@ -173,7 +184,7 @@ public:
     }
     // ------------------------------------------------------------------------
     void eraseServerTracks(const std::set<std::string>& server_tracks,
-                           std::set<std::string>& tracks_erase)
+                           std::set<std::string>& tracks_erase) const
     {
         if (m_available_kts.second.empty())
             return;
@@ -257,6 +268,8 @@ public:
     // ------------------------------------------------------------------------
     int getPacketLoss() const                  { return m_packet_loss.load(); }
     // ------------------------------------------------------------------------
+    // next four lines are kimden's part, delete them when it's possible
+    // to limit players by addon number
     int addon_karts_count = 0;
     // ------------------------------------------------------------------------
     int addon_tracks_count = 0;
@@ -265,6 +278,11 @@ public:
     // ------------------------------------------------------------------------
     int addon_soccers_count = 0;
     // ------------------------------------------------------------------------
+    const std::array<int, AS_TOTAL>& getAddonsScores() const
+                                                    { return m_addons_scores; }
+    // ------------------------------------------------------------------------
+    void setAddonsScores(const std::array<int, AS_TOTAL>& scores)
+                                                  { m_addons_scores = scores; }
 };   // STKPeer
 
 #endif // STK_PEER_HPP

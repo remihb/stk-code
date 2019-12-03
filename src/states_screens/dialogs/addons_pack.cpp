@@ -21,6 +21,7 @@
 
 #include "addons/addons_manager.hpp"
 #include "addons/zip.hpp"
+#include "config/user_config.hpp"
 #include "io/file_manager.hpp"
 #include "karts/kart_properties.hpp"
 #include "karts/kart_properties_manager.hpp"
@@ -31,6 +32,7 @@
 #include "states_screens/addons_screen.hpp"
 #include "states_screens/dialogs/addons_loading.hpp"
 #include "states_screens/dialogs/message_dialog.hpp"
+#include "states_screens/online/networking_lobby.hpp"
 #include "states_screens/state_manager.hpp"
 #include "tracks/track_manager.hpp"
 #include "utils/string_utils.hpp"
@@ -303,6 +305,14 @@ void AddonsPack::install(const std::string& name)
     Addon* addon = addons_manager->getAddon(Addon::createAddonId(name));
     if (addon)
     {
+        NetworkingLobby* nl = dynamic_cast<NetworkingLobby*>(
+            GUIEngine::getCurrentScreen());
+        if (addon->isInstalled())
+        {
+            if (nl)
+                nl->addMoreServerInfo(L"Addon already installed");
+            return;
+        }
         AddonsLoading* al = new AddonsLoading(addon->getId());
         al->tryInstall();
     }
@@ -319,11 +329,63 @@ void AddonsPack::uninstall(const std::string& name)
     // Only uninstall addon live in menu
     if (StateManager::get()->getGameState() != GUIEngine::MENU)
         return;
-    Addon* addon = addons_manager->getAddon(Addon::createAddonId(name));
+    std::string addon_id = Addon::createAddonId(name);
+    Addon* addon = addons_manager->getAddon(addon_id);
+    NetworkingLobby* nl = dynamic_cast<NetworkingLobby*>(
+        GUIEngine::getCurrentScreen());
     if (addon && addons_manager->uninstall(*addon))
     {
         if (auto cl = LobbyProtocol::get<ClientLobby>())
             cl->updateAssetsToServer();
+        if (nl)
+            nl->addMoreServerInfo(L"Addon uninstalled");
+    }
+    else
+    {
+        // Assume it's non-official addon kart, track or skin
+        const KartProperties* prop =
+            kart_properties_manager->getKart(addon_id);
+        if (prop)
+        {
+            kart_properties_manager->removeKart(addon_id);
+            if (nl)
+                nl->addMoreServerInfo(L"Addon kart uninstalled");
+            file_manager->removeDirectory(
+                file_manager->getAddonsFile("karts/") + name);
+            if (auto cl = LobbyProtocol::get<ClientLobby>())
+                cl->updateAssetsToServer();
+            return;
+        }
+        if (track_manager->getTrack(addon_id))
+        {
+            track_manager->removeTrack(addon_id);
+            if (nl)
+                nl->addMoreServerInfo(L"Addon track uninstalled");
+            file_manager->removeDirectory(
+                file_manager->getAddonsFile("tracks/") + name);
+            if (auto cl = LobbyProtocol::get<ClientLobby>())
+                cl->updateAssetsToServer();
+            return;
+        }
+        std::string skin_folder = file_manager->getAddonsFile("skins/") + name;
+        std::string skin_file = skin_folder + "/stkskin.xml";
+        if (file_manager->fileExists(skin_file))
+        {
+            if (addon_id == UserConfigParams::m_skin_file.c_str())
+            {
+                if (nl)
+                    nl->addMoreServerInfo(L"Can't remove current used skin");
+            }
+            else
+            {
+                file_manager->removeDirectory(skin_folder);
+                if (nl)
+                    nl->addMoreServerInfo(L"Addon skin removed");
+            }
+            return;
+        }
+        if (nl)
+            nl->addMoreServerInfo(L"Invalid addon");
     }
 }   // uninstall
 

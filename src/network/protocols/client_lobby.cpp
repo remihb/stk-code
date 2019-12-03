@@ -18,6 +18,8 @@
 
 #include "network/protocols/client_lobby.hpp"
 
+#include "addons/addons_manager.hpp"
+#include "audio/music_manager.hpp"
 #include "audio/sfx_manager.hpp"
 #include "config/user_config.hpp"
 #include "config/player_manager.hpp"
@@ -62,6 +64,8 @@
 #include "utils/log.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
+
+#include <cstdlib>
 
 // ============================================================================
 /** The protocol that manages starting a race with the server. It uses a 
@@ -1509,11 +1513,121 @@ void ClientLobby::handleClientCommand(const std::string& cmd)
         AddonsPack::install(argv[1]);
     else if (argv[0] == "uninstalladdon" && argv.size() == 2)
         AddonsPack::uninstall(argv[1]);
+    else if (argv[0] == "music" && argv.size() == 2)
+    {
+        int vol = atoi(argv[1].c_str());
+        if (vol > 10)
+            vol = 10;
+        else if (vol < 0)
+            vol = 0;
+        if (vol == 0 && UserConfigParams::m_music)
+        {
+            UserConfigParams::m_music = false;
+            music_manager->stopMusic();
+        }
+        else if (vol != 0 && !UserConfigParams::m_music)
+        {
+            UserConfigParams::m_music = true;
+            music_manager->startMusic();
+            music_manager->setMasterMusicVolume((float)vol / 10);
+        }
+        else
+            music_manager->setMasterMusicVolume((float)vol / 10);
+    }
+    else if (argv[0] == "liststkaddon")
+    {
+        if (argv.size() != 2)
+        {
+            NetworkingLobby::getInstance()->addMoreServerInfo(
+                L"Usage: /liststkaddon [addon prefix letter(s) to find]");
+        }
+        else
+        {
+            std::string msg = "";
+            for (unsigned i = 0; i < addons_manager->getNumAddons(); i++)
+            {
+                // addon_ (6 letters)
+                const Addon& addon = addons_manager->getAddon(i);
+                const std::string& addon_id = addon.getId();
+                if (addon.testStatus(Addon::AS_APPROVED) &&
+                    addon_id.compare(6, argv[1].length(), argv[1]) == 0)
+                {
+                    msg += addon_id.substr(6);
+                    msg += ", ";
+                }
+            }
+            if (msg.empty())
+                NetworkingLobby::getInstance()->addMoreServerInfo(L"Addon not found");
+            else
+            {
+                msg = msg.substr(0, msg.size() - 2);
+                NetworkingLobby::getInstance()->addMoreServerInfo(
+                    (std::string("STK addon: ") + msg).c_str());
+            }
+        }
+    }
+    else if (argv[0] == "listlocaladdon")
+    {
+        if (argv.size() != 2)
+        {
+            NetworkingLobby::getInstance()->addMoreServerInfo(
+                L"Usage: /listlocaladdon [addon prefix letter(s) to find]");
+        }
+        else
+        {
+            std::set<std::string> total_addons;
+            for (unsigned i = 0;
+                i < kart_properties_manager->getNumberOfKarts(); i++)
+            {
+                const KartProperties* kp =
+                    kart_properties_manager->getKartById(i);
+                if (kp->isAddon())
+                    total_addons.insert(kp->getIdent());
+            }
+            for (unsigned i = 0; i < track_manager->getNumberOfTracks(); i++)
+            {
+                const Track* track = track_manager->getTrack(i);
+                if (track->isAddon())
+                    total_addons.insert(track->getIdent());
+            }
+            std::set<std::string> addon_skin_files;
+            std::string skin_folder = file_manager->getAddonsFile("skins/");
+            file_manager->listFiles(addon_skin_files/*out*/, skin_folder,
+                false/*make full path*/);
+            for (auto& skin : addon_skin_files)
+            {
+                if (skin == "." || skin == "..")
+                    continue;
+                std::string stkskin = skin_folder + skin + "/stkskin.xml";
+                if (file_manager->fileExists(stkskin))
+                    total_addons.insert(Addon::createAddonId(skin));
+            }
+            std::string msg = "";
+            for (auto& addon : total_addons)
+            {
+                // addon_ (6 letters)
+                if (addon.compare(6, argv[1].length(), argv[1]) == 0)
+                {
+                    msg += addon.substr(6);
+                    msg += ", ";
+                }
+            }
+            if (msg.empty())
+                NetworkingLobby::getInstance()->addMoreServerInfo(L"Addon not found");
+            else
+            {
+                msg = msg.substr(0, msg.size() - 2);
+                NetworkingLobby::getInstance()->addMoreServerInfo(
+                    (std::string("Local addon: ") + msg).c_str());
+            }
+        }
+    }
     else
     {
         // Send for server command
         NetworkString* cmd_ns = getNetworkString(1);
-        cmd_ns->addUInt8(LE_COMMAND).encodeString(cmd);
+        const std::string& language = UserConfigParams::m_language;
+        cmd_ns->addUInt8(LE_COMMAND).encodeString(language).encodeString(cmd);
         sendToServer(cmd_ns, /*reliable*/true);
         delete cmd_ns;
     }
