@@ -2346,7 +2346,7 @@ void ServerLobby::startSelection(const Event *event)
         else
             it++;
     }
-    if (official_tracks.empty())
+    if (ServerConfig::m_official_tracks_needed && official_tracks.empty())
     {
         Log::error("ServerLobby", "No official tracks for playing!");
         return;
@@ -3074,7 +3074,7 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
         if (client_tracks.find(required_track) == client_tracks.end())
         {
             has_required_tracks = false;
-            Log::info("ServerLobby", "Player does not have a required track '%s'.", required_track);
+            Log::info("ServerLobby", "Player does not have a required track '%s'.", required_track.c_str());
             break;
         }
     }
