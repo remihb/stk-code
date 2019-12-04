@@ -2301,7 +2301,7 @@ void ServerLobby::startSelection(const Event *event)
         if (supportsAI())
         {
             unsigned total_ai_available =
-                (unsigned)ai->getPlayerProfiles().size();
+                (unsigned)ai-addon_>getPlayerProfiles().size();
             m_ai_count = max_player > total_ai_available ?
                 0 : total_ai_available - max_player + 1;
             // Disable ai peer for this game
@@ -2352,8 +2352,15 @@ void ServerLobby::startSelection(const Event *event)
         return;
     }
     RandomGenerator rg;
-    it = official_tracks.begin();
-    std::advance(it, rg.get((int)official_tracks.size()));
+    const auto& all_k = m_available_kts.first;
+    const auto& all_t = m_available_kts.second;
+    if (!official_tracks.empty()) {
+        it = official_tracks.begin();
+        std::advance(it, rg.get((int)official_tracks.size()));
+    } else {
+        it = m_available_kts.second.begin();
+        std::advance(it, rg.get((int)m_available_kts.second.size()));
+    }
     m_default_vote->m_track_name = *it;
     switch (race_manager->getMinorMode())
     {
@@ -2423,8 +2430,6 @@ void ServerLobby::startSelection(const Event *event)
        .addUInt8(ServerConfig::m_auto_game_time_ratio > 0.0f ? 1 : 0)
        .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
 
-    const auto& all_k = m_available_kts.first;
-    const auto& all_t = m_available_kts.second;
     ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)all_t.size());
     for (const std::string& kart : all_k)
     {
