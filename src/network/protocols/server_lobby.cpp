@@ -2301,7 +2301,7 @@ void ServerLobby::startSelection(const Event *event)
         if (supportsAI())
         {
             unsigned total_ai_available =
-                (unsigned)ai-addon_>getPlayerProfiles().size();
+                (unsigned)ai->getPlayerProfiles().size();
             m_ai_count = max_player > total_ai_available ?
                 0 : total_ai_available - max_player + 1;
             // Disable ai peer for this game
