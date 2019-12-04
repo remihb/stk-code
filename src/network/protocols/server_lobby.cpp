@@ -211,6 +211,18 @@ ServerLobby::ServerLobby() : LobbyProtocol()
             m_addon_kts.second.insert(t->getIdent());
     }
 
+    if (ServerConfig::m_only_played_tracks_string.empty())
+        m_restricting_config = false;
+    else
+    {
+        std::vector<std::string> available_tracks = StringUtils::split(ServerConfig::m_only_played_tracks_string, ' ', false);
+        for (unsigned i = 0; i < available_tracks.size(); i++)
+        {
+            m_config_available_tracks.insert(available_tracks[i]);
+        }
+    }
+    m_must_have_tracks = StringUtils::split(ServerConfig::m_must_have_tracks_string, ' ', false);
+
     m_rs_state.store(RS_NONE);
     m_last_success_poll_time.store(StkTime::getMonoTimeMs() + 30000);
     m_server_owner_id.store(-1);
@@ -628,7 +640,20 @@ void ServerLobby::updateTracksForMode()
             assert(false);
             break;
     }
-
+    if (m_restricting_config)
+    {
+        std::set<std::string> erase_tracks;
+        auto it = m_available_kts.second.begin();
+        while (it != m_available_kts.second.end())
+        {
+            if (m_config_available_tracks.find(*it) == m_config_available_tracks.end())
+                erase_tracks.insert(*it);
+            it++;
+        }
+        for (const std::string& track : erase_tracks) {
+            m_available_kts.second.erase(track);
+        }
+    }
 }   // updateTracksForMode
 
 //-----------------------------------------------------------------------------
@@ -3035,6 +3060,17 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
         }
     }
 
+    bool has_required_tracks = true;
+    for (const std::string& required_track : m_must_have_tracks)
+    {
+        if (client_tracks.find(required_track) == client_tracks.end())
+        {
+            has_required_tracks = false;
+            Log::info("ServerLobby", "Player does not have a required track '%s'.", required_track);
+            break;
+        }
+    }
+
     Log::info("ServerLobby", "Player has the following addons: %d/%d karts,"
         " %d/%d tracks, %d/%d arenas, %d/%d soccer fields.", addon_karts,
         (int)ServerConfig::m_addon_karts_threshold, addon_tracks,
@@ -3054,7 +3090,8 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
         addon_karts < (int)ServerConfig::m_addon_karts_threshold ||
         addon_tracks < (int)ServerConfig::m_addon_tracks_threshold ||
         addon_arenas < (int)ServerConfig::m_addon_arenas_threshold ||
-        addon_soccers < (int)ServerConfig::m_addon_soccers_threshold)
+        addon_soccers < (int)ServerConfig::m_addon_soccers_threshold ||
+        !has_required_tracks)
     {
         NetworkString *message = getNetworkString(2);
         message->setSynchronous(true);

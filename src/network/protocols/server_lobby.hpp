@@ -230,6 +230,12 @@ private:
     // Calculated before each game started
     unsigned m_ai_count;
 
+    std::vector<std::string> m_must_have_tracks;
+
+    bool m_restricting_config;
+
+    std::set<std::string> m_config_available_tracks;
+
     // connection management
     void clientDisconnected(Event* event);
     void connectionRequested(Event* event);

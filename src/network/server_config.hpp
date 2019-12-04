@@ -236,6 +236,16 @@ namespace ServerConfig
         "Clients below this value will be rejected from joining this server. "
         "It's determined by number of addon soccer fields in client"));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_must_have_tracks_string
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "must-have-tracks", "Tracks needed to enter the server, "
+        "leave empty for no restriction."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_only_played_tracks_string
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "only-played-tracks", "List of tracks that can be played on a server, "
+        "leave empty for no restriction."));
+
     SERVER_CFG_PREFIX IntServerConfigParam m_min_start_game_players
         SERVER_CFG_DEFAULT(IntServerConfigParam(2, "min-start-game-players",
         "Only auto start kart selection when number of "
