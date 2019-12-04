@@ -211,12 +211,20 @@ ServerLobby::ServerLobby() : LobbyProtocol()
             m_addon_kts.second.insert(t->getIdent());
     }
 
-    if (ServerConfig::m_only_played_tracks_string.empty())
+
+    m_inverted_config_restriction = false;
+    m_restricting_config = true;
+    if (((std::string)(ServerConfig::m_only_played_tracks_string)).empty())
         m_restricting_config = false;
     else
     {
         std::vector<std::string> available_tracks = StringUtils::split(ServerConfig::m_only_played_tracks_string, ' ', false);
-        for (unsigned i = 0; i < available_tracks.size(); i++)
+        int start = 0;
+        if (available_tracks[0] == "not") {
+            start = 1;
+            m_inverted_config_restriction = true;
+        }
+        for (unsigned i = start; i < available_tracks.size(); i++)
         {
             m_config_available_tracks.insert(available_tracks[i]);
         }
@@ -646,7 +654,7 @@ void ServerLobby::updateTracksForMode()
         auto it = m_available_kts.second.begin();
         while (it != m_available_kts.second.end())
         {
-            if (m_config_available_tracks.find(*it) == m_config_available_tracks.end())
+            if (m_inverted_config_restriction ^ (m_config_available_tracks.find(*it) == m_config_available_tracks.end()))
                 erase_tracks.insert(*it);
             it++;
         }

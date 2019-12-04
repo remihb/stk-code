@@ -234,6 +234,8 @@ private:
 
     bool m_restricting_config;
 
+    bool m_inverted_config_restriction;
+
     std::set<std::string> m_config_available_tracks;
 
     // connection management
