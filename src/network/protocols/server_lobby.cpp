@@ -842,7 +842,7 @@ bool ServerLobby::notifyEventAsynchronous(Event* event)
         case LE_ASSETS_UPDATE:
             handleAssets(event->data(), event->getPeer());        break;
         case LE_COMMAND:
-            handleServerCommand(event, event->getPeer());         break;
+            handleServerCommand(event, event->getPeerSP());       break;
         default:                                                  break;
         }   // switch
     } // if (event->getType() == EVENT_TYPE_MESSAGE)
@@ -1837,10 +1837,19 @@ void ServerLobby::finishedLoadingLiveJoinClient(Event* event)
     World* w = World::getWorld();
     assert(w);
 
-    // Give 3 seconds for all peers to get new kart info
-    m_last_live_join_util_ticks = w->getTicksSinceStart() +
-        stk_config->time2Ticks(3.0f);
     uint64_t live_join_start_time = STKHost::get()->getNetworkTimer();
+
+    // Instead of using getTicksSinceStart we caculate the current world ticks
+    // only from network timer, because if the server hangs in between the
+    // world ticks may not be up to date
+    // 2000 is the time for ready set, remove 3 ticks after for minor
+    // correction (make it more looks like getTicksSinceStart if server has no
+    // hang
+    int cur_world_ticks = stk_config->time2Ticks(
+        (live_join_start_time - m_server_started_at - 2000) / 1000.f) - 3;
+    // Give 3 seconds for all peers to get new kart info
+    m_last_live_join_util_ticks =
+        cur_world_ticks + stk_config->time2Ticks(3.0f);
     live_join_start_time -= m_server_delay;
     live_join_start_time += 3000;
 
@@ -4185,10 +4194,10 @@ void ServerLobby::submitRankingsToAddons()
         return;
 
     // ========================================================================
-    class SumbitRankingRequest : public Online::XMLRequest
+    class SubmitRankingRequest : public Online::XMLRequest
     {
     public:
-        SumbitRankingRequest(uint32_t online_id, double scores,
+        SubmitRankingRequest(uint32_t online_id, double scores,
                              double max_scores, unsigned num_races,
                              const std::string& country_code)
             : XMLRequest()
@@ -4216,7 +4225,7 @@ void ServerLobby::submitRankingsToAddons()
     for (unsigned i = 0; i < race_manager->getNumPlayers(); i++)
     {
         const uint32_t id = race_manager->getKartInfo(i).getOnlineId();
-        auto request = std::make_shared<SumbitRankingRequest>
+        auto request = std::make_shared<SubmitRankingRequest>
             (id, m_scores.at(id), m_max_scores.at(id),
             m_num_ranked_races.at(id),
             race_manager->getKartInfo(i).getCountryCode());
@@ -5048,7 +5057,8 @@ bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
 }   // checkPeersReady
 
 //-----------------------------------------------------------------------------
-void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
+void ServerLobby::handleServerCommand(Event* event,
+                                      std::shared_ptr<STKPeer> peer) const
 {
     NetworkString& data = event->data();
     std::string language;
@@ -5090,7 +5100,8 @@ void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
             else
             {
                 msg = msg.substr(0, msg.size() - 2);
-                chat->encodeString16((std::string("Server addon: ") + msg).c_str());
+                chat->encodeString16(StringUtils::utf8ToWide(
+                    std::string("Server addon: ") + msg));
             }
         }
         peer->sendPacket(chat, true/*reliable*/);
@@ -5152,6 +5163,38 @@ void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
         }
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
+    }
+    else if (StringUtils::startsWith(cmd, "kick"))
+    {
+        if (m_server_owner.lock() != peer)
+        {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(L"You are not server owner");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+            return;
+        }
+        std::string player_name;
+        if (cmd.length() > 5)
+            player_name = cmd.substr(5);
+        std::shared_ptr<STKPeer> player_peer = STKHost::get()->findPeerByName(
+            StringUtils::utf8ToWide(player_name));
+        if (player_name.empty() || !player_peer || player_peer->isAIPeer())
+        {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(
+                L"Usage: /kick [player name]");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        }
+        else
+        {
+            player_peer->kick();
+        }
     }
     else if (StringUtils::startsWith(cmd, "playeraddonscore"))
     {
@@ -5217,13 +5260,13 @@ void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
             bool found = total_addons.find(addon_id_test) != total_addons.end();
             if (found)
             {
-                chat->encodeString16((std::string
-                    ("Server has addon ") + argv[1]).c_str());
+                chat->encodeString16(StringUtils::utf8ToWide(std::string
+                    ("Server has addon ") + argv[1]));
             }
             else
             {
-                chat->encodeString16((std::string
-                    ("Server has no addon ") + argv[1]).c_str());
+                chat->encodeString16(StringUtils::utf8ToWide(std::string
+                    ("Server has no addon ") + argv[1]));
             }
         }
         peer->sendPacket(chat, true/*reliable*/);
@@ -5236,7 +5279,7 @@ void ServerLobby::handleServerCommand(Event* event, STKPeer* peer) const
         chat->setSynchronous(true);
         std::string msg = "Unknown command: ";
         msg += cmd;
-        chat->encodeString16( msg.c_str());
+        chat->encodeString16(StringUtils::utf8ToWide(msg));
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }
