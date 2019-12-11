@@ -233,7 +233,7 @@
            larger than this value.
   -->
   <networking steering-reduction="1.0"
-              max-moveable-objects="15"/>
+              max-moveable-objects="30"/>
 
   <!-- The field od views for 1-4 player split screen. fov-3 is
        actually not used (since 3 player split screen uses the
