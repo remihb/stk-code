@@ -747,6 +747,30 @@ void ServerLobby::handleChat(Event* event)
     // Update so that the peer is not kicked
     event->getPeer()->updateLastActivity();
     const bool sender_in_game = event->getPeer()->isWaitingForGame();
+
+    int64_t last_message = event->getPeer()->getLastMessage();
+    int64_t elapsed_time = (int64_t)StkTime::getMonoTimeMs() - last_message;
+
+    // Read ServerConfig for formula and details
+    if (ServerConfig::m_chat_consecutive_interval > 0 &&
+        elapsed_time < ServerConfig::m_chat_consecutive_interval * 1000)
+        event->getPeer()->updateConsecutiveMessages(true);
+    else
+        event->getPeer()->updateConsecutiveMessages(false);
+
+    if (ServerConfig::m_chat_consecutive_interval > 0 &&
+        event->getPeer()->getConsecutiveMessages() >
+        ServerConfig::m_chat_consecutive_interval / 2)
+    {
+        NetworkString* chat = getNetworkString();
+        chat->setSynchronous(true);
+        core::stringw warn = "Spam detected";
+        chat->addUInt8(LE_CHAT).encodeString16(warn);
+        event->getPeer()->sendPacket(chat, true/*reliable*/);
+        delete chat;
+        return;
+    }
+
     core::stringw message;
     event->data().decodeString16(&message, 360/*max_len*/);
     if (message.size() > 0)
@@ -767,6 +791,7 @@ void ServerLobby::handleChat(Event* event)
                 }
                 return true;
             }, chat);
+            event->getPeer()->updateLastMessage();
         delete chat;
     }
 }   // handleChat
