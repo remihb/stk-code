@@ -22,7 +22,7 @@ Than you can just run:
 
 It will create that xml configuration file if not found in current directory, you can type `quit` in terminal, than you can edit that file for further configuration as required.
 
-The current server configuration xml looks like this:
+The current server configuration xml looks like this (this is only an example, just copying and running server with this config file makes some tracks obligatory and some unplayable, please read carefully):
 ```xml
 <?xml version="1.0"?>
 <server-config version="6" >
@@ -95,6 +95,27 @@ The current server configuration xml looks like this:
 
     <!-- Clients below this value will be rejected from joining this server. It's determined by number of official tracks in client / number of official tracks in server, setting this value too high will prevent android players from joining this server, because STK android apk has some official tracks removed. -->
     <official-tracks-threshold value="0.7" />
+
+    <!-- Clients below this value will be rejected from joining this server. It's determined by number of addon karts in client -->
+    <addon_karts_threshold value="0" />
+
+    <!-- Clients below this value will be rejected from joining this server. It's determined by number of addon tracks in client -->
+    <addon_tracks_threshold value="0" />
+
+    <!-- Clients below this value will be rejected from joining this server. It's determined by number of addon arenas in client -->
+    <addon_arenas_threshold value="0" />
+
+    <!-- Clients below this value will be rejected from joining this server. It's determined by number of addon soccer fields in client -->
+    <addon_soccers_threshold value="0" />
+
+    <!-- Tracks needed to enter the server, leave empty for no restriction. -->
+    <must-have-tracks value="hacienda xr591 addon_animtrack_1 minigolf" />
+
+    <!-- List of tracks that can be played on a server, leave empty for no restriction or put 'not' before the list to name tracks that cannot be played. -->
+    <only-played-tracks value="not abyss snowtuxpeak addon_minigolf" />
+
+    <!-- If this value is set to true, players and the server must have at least one common official track. -->
+    <official-tracks-needed value="true" />
 
     <!-- Only auto start kart selection when number of connected player is larger than or equals this value, for owner less or ranked server, after start-game-counter reaches 0. -->
     <min-start-game-players value="2" />
@@ -254,7 +275,12 @@ CREATE TABLE IF NOT EXISTS (table name above)
     os TEXT NOT NULL, -- Operating system of the host
     connected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when connected
     disconnected_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Time when disconnected (saved when disconnected)
-    ping INTEGER UNSIGNED NOT NULL DEFAULT 0 -- Ping of the host
+    ping INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Ping of the host
+    packet_loss INTEGER NOT NULL DEFAULT 0, -- Mean packet loss count from ENet (saved when disconnected)
+    addon_karts_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon karts of the host
+    addon_tracks_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon tracks of the host
+    addon_arenas_count INTEGER UNSIGNED NOT NULL DEFAULT 0, -- Number of addon arenas of the host
+    addon_soccers_count INTEGER UNSIGNED NOT NULL DEFAULT 0 -- Number of addon soccers of the host
 ) WITHOUT ROWID;
 ```
 
@@ -282,7 +308,7 @@ CREATE TABLE IF NOT EXISTS (table name above)
 
 If you want to see flags and readable names of countries in the above views, you need to initialize `v(server database version)_countries` table, check [this script](tools/generate-countries-table.py).
 
-For IPv4 and online ID ban list, player reports or IP mapping, you need to create one yourself:
+For IPv4 and online ID ban list, player reports or IP mapping (in case your server doesn't communicate with STK addons server, which can do IP mapping instead of your server), you need to create one yourself:
 ```sql
 CREATE TABLE ip_ban
 (

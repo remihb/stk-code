@@ -153,15 +153,6 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         track_manager->getArenasInGroup("standard", false);
     std::vector<int> all_soccers =
         track_manager->getArenasInGroup("standard", true);
-    std::vector<int> addon_karts =
-        kart_properties_manager->getKartsInGroup("Add-Ons");
-    std::vector<int> addon_tracks =
-        track_manager->getTracksInGroup("Add-Ons");
-    std::vector<int> addon_arenas =
-        track_manager->getArenasInGroup("Add-Ons", false);
-    std::vector<int> addon_soccers =
-        track_manager->getArenasInGroup("Add-Ons", true);
-    std::vector<int> all_tracks = all_t;
     all_t.insert(all_t.end(), all_arenas.begin(), all_arenas.end());
     all_t.insert(all_t.end(), all_soccers.begin(), all_soccers.end());
 
@@ -177,6 +168,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         if (!t->isAddon())
             m_official_kts.second.insert(t->getIdent());
     }
+    
     std::set<std::string> total_addons;
     for (unsigned i = 0; i < kart_properties_manager->getNumberOfKarts(); i++)
     {

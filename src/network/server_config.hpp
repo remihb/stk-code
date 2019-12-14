@@ -250,12 +250,13 @@ namespace ServerConfig
     SERVER_CFG_PREFIX StringServerConfigParam m_only_played_tracks_string
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "only-played-tracks", "List of tracks that can be played on a server, "
-        "leave empty for no restriction."));
+        "leave empty for no restriction or put 'not' before the list "
+        "to name tracks that cannot be played."));
 
     SERVER_CFG_PREFIX BoolServerConfigParam m_official_tracks_needed
         SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "official-tracks-needed",
-        "If this value is set to true, players and the server must have at least "
-        "one common official track."));
+        "If this value is set to true, players and the server must have "
+        "at least one common official track."));
 
     SERVER_CFG_PREFIX IntServerConfigParam m_min_start_game_players
         SERVER_CFG_DEFAULT(IntServerConfigParam(2, "min-start-game-players",
