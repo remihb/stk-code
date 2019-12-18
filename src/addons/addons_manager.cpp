@@ -486,7 +486,6 @@ bool AddonsManager::anyAddonsInstalled() const
  */
 bool AddonsManager::install(const Addon &addon)
 {
-    file_manager->checkAndCreateDirForAddons(addon.getDataDir());
 
     //extract the zip in the addons folder called like the addons name
     std::string base_name = StringUtils::getBasename(addon.getZipFileName());
@@ -494,7 +493,12 @@ bool AddonsManager::install(const Addon &addon)
     std::string to        = addon.getDataDir();
 
     // Remove old addon first (including non official way to install addons)
-    AddonsPack::uninstallByName(addon.getDirName(), true/*false_remove_skin*/);
+    AddonsPack::uninstallByName(addon.getDirName(), true/*force_clear*/);
+    if (file_manager->isDirectory(to))
+        file_manager->removeDirectory(to);
+
+    file_manager->checkAndCreateDirForAddons(to);
+
     bool success = extract_zip(from, to, true/*recursive*/);
     if (!success)
     {
