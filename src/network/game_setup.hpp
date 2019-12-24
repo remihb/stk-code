@@ -145,7 +145,7 @@ public:
     // ------------------------------------------------------------------------
     const std::string& getServerNameUtf8() const { return m_server_name_utf8; }
     // ------------------------------------------------------------------------
-    static irr::core::stringw readOrLoadFromFile(std::string& value);
+    irr::core::stringw readOrLoadFromFile(std::string value);
 };
 
 #endif // GAME_SETUP_HPP

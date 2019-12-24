@@ -41,7 +41,7 @@
 GameSetup::GameSetup()
 {
     m_message_of_today = readOrLoadFromFile
-        ((std::string&) ServerConfig::m_motd);
+        ((std::string) ServerConfig::m_motd);
     const std::string& server_name = ServerConfig::m_server_name;
     m_server_name_utf8 = StringUtils::wideToUtf8
         (StringUtils::xmlDecode(server_name));
@@ -200,7 +200,7 @@ void GameSetup::setRace(const PeerVote &vote)
     m_reverse = vote.m_reverse;
 }   // setRace
 // ----------------------------------------------------------------------------
-irr::core::stringw readOrLoadFromFile(std::string& value)
+irr::core::stringw GameSetup::readOrLoadFromFile(std::string value)
 {
     const std::string& temp = value;
     irr::core::stringw answer;
