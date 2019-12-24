@@ -496,8 +496,6 @@ namespace ServerConfig
     void loadServerLobbyFromConfig();
     // ------------------------------------------------------------------------
     std::string getConfigDirectory();
-    // ------------------------------------------------------------------------
-    irr::core::stringw readOrLoadFromFile(std::string& value);
 
 };   // namespace ServerConfig
 

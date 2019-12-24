@@ -145,7 +145,8 @@ sqlite3_extension_init(sqlite3* db, char** pzErrMsg,
 ServerLobby::ServerLobby() : LobbyProtocol()
 {
     m_lobby_players.store(0);
-    m_help_message = ServerConfig::readOrLoadFromFile(ServerConfig::m_help);
+    m_help_message = GameSetup::readOrLoadFromFile
+        ((std::string&) ServerConfig::m_help);
 
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");

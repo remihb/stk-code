@@ -40,7 +40,8 @@
 //-----------------------------------------------------------------------------
 GameSetup::GameSetup()
 {
-    m_message_of_today = ServerConfig::readOrLoadFromFile(ServerConfig::m_motd);
+    m_message_of_today = readOrLoadFromFile
+        ((std::string&) ServerConfig::m_motd);
     const std::string& server_name = ServerConfig::m_server_name;
     m_server_name_utf8 = StringUtils::wideToUtf8
         (StringUtils::xmlDecode(server_name));
@@ -198,3 +199,28 @@ void GameSetup::setRace(const PeerVote &vote)
     m_laps = vote.m_num_laps;
     m_reverse = vote.m_reverse;
 }   // setRace
+// ----------------------------------------------------------------------------
+irr::core::stringw readOrLoadFromFile(std::string& value)
+{
+    const std::string& temp = value;
+    irr::core::stringw answer;
+    if (temp.find(".txt") != std::string::npos)
+    {
+        const std::string& path = ServerConfig::getConfigDirectory() + "/" +
+            temp;
+        std::ifstream message(FileUtils::getPortableReadingPath(path));
+        if (message.is_open())
+        {
+            for (std::string line; std::getline(message, line); )
+            {
+                answer += StringUtils::utf8ToWide(line).trim() +
+                    L"\n";
+            }
+            // Remove last newline
+            answer.erase(answer.size() - 1);
+        }
+    }
+    else if (!temp.empty())
+        answer = StringUtils::xmlDecode(temp);
+    return answer;
+}

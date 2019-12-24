@@ -415,28 +415,3 @@ std::string getConfigDirectory()
 }   // getConfigDirectory
 
 }
-// ----------------------------------------------------------------------------
-irr::core::stringw readOrLoadFromFile(std::string& value)
-{
-    const std::string& temp = value;
-    irr::core::stringw answer;
-    if (temp.find(".txt") != std::string::npos)
-    {
-        const std::string& path = ServerConfig::getConfigDirectory() + "/" +
-            temp;
-        std::ifstream message(FileUtils::getPortableReadingPath(path));
-        if (message.is_open())
-        {
-            for (std::string line; std::getline(message, line); )
-            {
-                answer += StringUtils::utf8ToWide(line).trim() +
-                    L"\n";
-            }
-            // Remove last newline
-            answer.erase(answer.size() - 1);
-        }
-    }
-    else if (!temp.empty())
-        answer = StringUtils::xmlDecode(temp);
-    return answer;
-}
