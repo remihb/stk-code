@@ -145,7 +145,7 @@ sqlite3_extension_init(sqlite3* db, char** pzErrMsg,
 ServerLobby::ServerLobby() : LobbyProtocol()
 {
     m_lobby_players.store(0);
-    m_help_message = GameSetup::readOrLoadFromFile
+    m_help_message = getGameSetup()->readOrLoadFromFile
         ((std::string&) ServerConfig::m_help);
 
     std::vector<int> all_k =
