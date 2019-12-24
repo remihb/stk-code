@@ -57,8 +57,11 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- Password for private server, leave empty for a public server. -->
     <private-server-password value="" />
 
-    <!-- Message of today shown in lobby, you can enter encoded XML words here or a file.txt and let STK load it. -->
+    <!-- Message of today shown in lobby, you can enter here encoded XML words or a .txt file and let STK load it. -->
     <motd value="" />
+
+    <!-- Help message shown after sending /help. You can enter here the message or a .txt file and let STK load it. -->
+    <help value="" />
 
     <!-- If this value is set to false, the server will ignore chat messages from all players. -->
     <chat value="true" />

@@ -145,6 +145,8 @@ sqlite3_extension_init(sqlite3* db, char** pzErrMsg,
 ServerLobby::ServerLobby() : LobbyProtocol()
 {
     m_lobby_players.store(0);
+    m_help_message = ServerConfig::readOrLoadFromFile(ServerConfig::m_help);
+
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
     std::vector<int> all_t =
@@ -5286,6 +5288,15 @@ void ServerLobby::handleServerCommand(Event* event,
                     ("Server has no addon ") + argv[1]));
             }
         }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (argv[0] == "help")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        chat->encodeString16(m_help_message);
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }

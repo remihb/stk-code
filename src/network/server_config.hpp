@@ -141,8 +141,13 @@ namespace ServerConfig
 
     SERVER_CFG_PREFIX StringServerConfigParam m_motd
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
-        "motd", "Message of today shown in lobby, you can enter encoded XML "
-        "words here or a file.txt and let STK load it."));
+        "motd", "Message of today shown in lobby, you can enter here "
+        "encoded XML words or a .txt file and let STK load it."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_help
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "help", "Help message shown after sending /help. You can enter here "
+        "the message or a .txt file and let STK load it."));
 
     SERVER_CFG_PREFIX BoolServerConfigParam m_chat
         SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "chat",
@@ -491,6 +496,8 @@ namespace ServerConfig
     void loadServerLobbyFromConfig();
     // ------------------------------------------------------------------------
     std::string getConfigDirectory();
+    // ------------------------------------------------------------------------
+    irr::core::stringw readOrLoadFromFile(std::string& value);
 
 };   // namespace ServerConfig
 

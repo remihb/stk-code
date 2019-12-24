@@ -238,6 +238,8 @@ private:
 
     std::set<std::string> m_config_available_tracks;
 
+    irr::core::stringw m_help_message;
+
     // connection management
     void clientDisconnected(Event* event);
     void connectionRequested(Event* event);

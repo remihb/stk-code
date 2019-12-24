@@ -40,26 +40,7 @@
 //-----------------------------------------------------------------------------
 GameSetup::GameSetup()
 {
-    const std::string& motd = ServerConfig::m_motd;
-    if (motd.find(".txt") != std::string::npos)
-    {
-        const std::string& path = ServerConfig::getConfigDirectory() + "/" +
-            motd;
-        std::ifstream message(FileUtils::getPortableReadingPath(path));
-        if (message.is_open())
-        {
-            for (std::string line; std::getline(message, line); )
-            {
-                m_message_of_today += StringUtils::utf8ToWide(line).trim() +
-                    L"\n";
-            }
-            // Remove last newline
-            m_message_of_today.erase(m_message_of_today.size() - 1);
-        }
-    }
-    else if (!motd.empty())
-        m_message_of_today = StringUtils::xmlDecode(motd);
-
+    m_message_of_today = ServerConfig::readOrLoadFromFile(ServerConfig::m_motd);
     const std::string& server_name = ServerConfig::m_server_name;
     m_server_name_utf8 = StringUtils::wideToUtf8
         (StringUtils::xmlDecode(server_name));
