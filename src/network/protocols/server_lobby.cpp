@@ -148,6 +148,10 @@ ServerLobby::ServerLobby() : LobbyProtocol()
     m_help_message = getGameSetup()->readOrLoadFromFile
         ((std::string) ServerConfig::m_help);
 
+    m_available_commands = "help commands music kick installpack "
+        "installaddon uninstalladdon liststkaddon listlocaladdon "
+        "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
+
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
     std::vector<int> all_t =
@@ -5298,6 +5302,15 @@ void ServerLobby::handleServerCommand(Event* event,
         chat->addUInt8(LE_CHAT);
         chat->setSynchronous(true);
         chat->encodeString16(m_help_message);
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (argv[0] == "commands")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);chat->encodeString16
+            (StringUtils::utf8ToWide(m_available_commands));
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }

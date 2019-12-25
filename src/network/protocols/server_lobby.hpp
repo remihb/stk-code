@@ -240,6 +240,8 @@ private:
 
     irr::core::stringw m_help_message;
 
+    std::string m_available_commands;
+
     // connection management
     void clientDisconnected(Event* event);
     void connectionRequested(Event* event);
