@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.4)
 
 # root CMakeLists for the SuperTuxKart project
 project(SuperTuxKart)
-set(PROJECT_VERSION "git")
+set(PROJECT_VERSION "1.1")
 add_definitions( -DSUPERTUXKART_VERSION="${PROJECT_VERSION}" )
 
 if(NOT (CMAKE_MAJOR_VERSION VERSION_LESS 3))
@@ -237,6 +237,19 @@ endif()
 if(NOT SERVER_ONLY)
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/graphics_utils")
     include_directories("${PROJECT_SOURCE_DIR}/lib/graphics_utils")
+endif()
+
+# Libmcpp
+find_library(MCPP_LIBRARY NAMES mcpp libmcpp)
+find_path(MCPP_INCLUDEDIR NAMES mcpp_lib.h PATHS)
+if (NOT MCPP_LIBRARY OR NOT MCPP_INCLUDEDIR)
+    add_subdirectory("${PROJECT_SOURCE_DIR}/lib/mcpp")
+    include_directories("${PROJECT_SOURCE_DIR}/lib/mcpp")
+    SET(MCPP_LIBRARY mcpp)
+    message(STATUS "System libmcpp not found, use the bundled one.")
+else()
+    include_directories("${MCPP_INCLUDEDIR}")
+    MESSAGE(STATUS "Use system libmcpp: ${MCPP_LIBRARY}")
 endif()
 
 if(NOT SERVER_ONLY)
@@ -578,6 +591,7 @@ target_link_libraries(supertuxkart
     stkirrlicht
     ${Angelscript_LIBRARIES}
     ${CURL_LIBRARIES}
+    mcpp
     )
 
 if (USE_SQLITE3)
