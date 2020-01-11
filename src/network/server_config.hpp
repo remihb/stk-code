@@ -463,6 +463,11 @@ namespace ServerConfig
         "network-ai=x, which will kick N - 1 bot(s) where N is the number "
         "of human players. Only use this for non-GP racing server."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_sleeping_server
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "sleeping-server",
+        "If true no one can start a race and everyone should use the "
+        "server for sleeping/chatting only."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

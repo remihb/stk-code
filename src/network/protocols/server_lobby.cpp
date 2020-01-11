@@ -2272,6 +2272,11 @@ void ServerLobby::startSelection(const Event *event)
                 m_state.load());
             return;
         }
+        if (ServerConfig::m_sleeping_server) {
+            Log::info("ServerLobby",
+                "An attempt to start a race on a sleeping server. Lol.");
+            return;
+        }
         if (ServerConfig::m_owner_less)
         {
             m_peers_ready.at(event->getPeerSP()) =
@@ -3129,6 +3134,25 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
     peer->addon_tracks_count = addon_tracks;
     peer->addon_arenas_count = addon_arenas;
     peer->addon_soccers_count = addon_soccers;
+
+    if (karts_erase.size() == m_available_kts.first.size())
+        Log::verbose("ServerLobby", "Bad player: no common karts with server");
+    if (tracks_erase.size() == m_available_kts.second.size())
+        Log::verbose("ServerLobby", "Bad player: no common tracks with server");
+    if (okt < ServerConfig::m_official_karts_threshold)
+        Log::verbose("ServerLobby", "Bad player: bad official kart threshold");
+    if (ott < ServerConfig::m_official_tracks_threshold)
+        Log::verbose("ServerLobby", "Bad player: bad official track threshold");
+    if (addon_karts < (int)ServerConfig::m_addon_karts_threshold)
+        Log::verbose("ServerLobby", "Bad player: too little addon karts");
+    if (addon_tracks < (int)ServerConfig::m_addon_tracks_threshold)
+        Log::verbose("ServerLobby", "Bad player: too little addon tracks");
+    if (addon_arenas < (int)ServerConfig::m_addon_arenas_threshold)
+        Log::verbose("ServerLobby", "Bad player: too little addon arenas");
+    if (addon_soccers < (int)ServerConfig::m_addon_soccers_threshold)
+        Log::verbose("ServerLobby", "Bad player: too little addon soccers");
+    if (!has_required_tracks)
+        Log::verbose("ServerLobby", "Bad player: no required tracks");
 
     if (karts_erase.size() == m_available_kts.first.size() ||
         tracks_erase.size() == m_available_kts.second.size() ||
