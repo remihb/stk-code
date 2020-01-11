@@ -328,7 +328,7 @@ void loadServerLobbyFromConfig()
     if (m_official_tracks_threshold > 1.0f)
         m_official_tracks_threshold = 1.0f;
 
-    if (m_live_players)
+    if (m_live_players && !m_sleeping_server)
         m_official_karts_threshold = 1.0f;
     if (m_high_ping_workaround)
         m_kick_high_ping_players = false;
