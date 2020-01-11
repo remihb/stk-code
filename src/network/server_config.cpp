@@ -358,10 +358,17 @@ void loadServerLobbyFromConfig()
         m_owner_less = true;
         m_strict_players = true;
     }
+    if (m_sleeping_server) {
+        m_owner_less = true;
+    }
     if (m_owner_less)
     {
-        if (m_min_start_game_players > m_server_max_players)
-            m_min_start_game_players = 1;
+        if (m_sleeping_server) {
+            m_min_start_game_players = 123456;
+        } else {
+            if (m_min_start_game_players > m_server_max_players)
+                m_min_start_game_players = 1;
+        }
         if (!m_live_players)
             m_team_choosing = false;
         m_server_configurable = false;
