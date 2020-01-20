@@ -174,7 +174,8 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
-    m_gnu_elimination = false;
+    m_gnu_elimination = new bool[1];
+    *m_gnu_elimination = false;
 
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
@@ -284,6 +285,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
  */
 ServerLobby::~ServerLobby()
 {
+    delete [] m_gnu_elimination;
     if (NetworkConfig::get()->isNetworking() &&
         NetworkConfig::get()->isWAN())
     {
@@ -5179,7 +5181,7 @@ bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
 
 //-----------------------------------------------------------------------------
 void ServerLobby::handleServerCommand(Event* event,
-                                      std::shared_ptr<STKPeer> peer) /*const*/
+                                      std::shared_ptr<STKPeer> peer) const
 {
     NetworkString& data = event->data();
     std::string language;
@@ -5460,7 +5462,7 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (m_gnu_elimination) {
+        } else if (*m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->encodeString16(
@@ -5471,7 +5473,7 @@ void ServerLobby::handleServerCommand(Event* event,
 
         } else {
             NetworkString* chat = getNetworkString();
-            m_gnu_elimination = true;
+            *m_gnu_elimination = true;
             chat->addUInt8(LE_CHAT);
             chat->encodeString16(
                     L"Gnu Elimination starts");
@@ -5490,7 +5492,7 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (!m_gnu_elimination) {
+        } else if (!*m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->encodeString16(
@@ -5499,7 +5501,7 @@ void ServerLobby::handleServerCommand(Event* event,
             delete chat;
         } else {
             NetworkString* chat = getNetworkString();
-            m_gnu_elimination = false;
+            *m_gnu_elimination = false;
             chat->addUInt8(LE_CHAT);
             chat->encodeString16(
                     L"Gnu Elimination is off");

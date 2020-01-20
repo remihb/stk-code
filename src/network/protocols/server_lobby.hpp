@@ -246,7 +246,7 @@ private:
 
     std::string m_available_commands;
 
-    bool m_gnu_elimination;
+    bool* m_gnu_elimination;
 
     // connection management
     void clientDisconnected(Event* event);
