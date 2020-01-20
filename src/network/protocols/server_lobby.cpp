@@ -5179,7 +5179,7 @@ bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
 
 //-----------------------------------------------------------------------------
 void ServerLobby::handleServerCommand(Event* event,
-                                      std::shared_ptr<STKPeer> peer) const
+                                      std::shared_ptr<STKPeer> peer) /*const*/
 {
     NetworkString& data = event->data();
     std::string language;
