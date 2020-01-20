@@ -174,6 +174,8 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
+    m_gnu_elimination = false;
+
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
     std::vector<int> all_t =
@@ -5446,6 +5448,64 @@ void ServerLobby::handleServerCommand(Event* event,
             (StringUtils::utf8ToWide(m_available_commands));
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
+    }
+    else if (argv[0] == "gnu")
+    {
+        if (m_server_owner.lock() != peer)
+        {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(L"You are not server owner");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+            return;
+        } else if (m_gnu_elimination) {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->encodeString16(
+                    L"Gnu Elimination mode was already enabled!");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        } else if (false/* one player */) {
+
+        } else {
+            NetworkString* chat = getNetworkString();
+            m_gnu_elimination = true;
+            chat->addUInt8(LE_CHAT);
+            chat->encodeString16(
+                    L"Gnu Elimination starts");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        }
+    }
+    else if (argv[0] == "nognu")
+    {        
+        if (m_server_owner.lock() != peer)
+        {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(L"You are not server owner");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+            return;
+        } else if (!m_gnu_elimination) {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->encodeString16(
+                    L"Gnu Elimination mode was already off!");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        } else {
+            NetworkString* chat = getNetworkString();
+            m_gnu_elimination = false;
+            chat->addUInt8(LE_CHAT);
+            chat->encodeString16(
+                    L"Gnu Elimination is off");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        }
     }
     else
     {
