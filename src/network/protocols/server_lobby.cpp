@@ -809,9 +809,14 @@ void ServerLobby::handleChat(Event* event)
         chat->setSynchronous(true);
         chat->addUInt8(LE_CHAT).encodeString16(message);
         const bool game_started = m_state.load() != WAITING_FOR_START_GAME;
+        STKPeer* sender = event->getPeer();
+        auto can_receive = m_message_receivers[sender];
         STKHost::get()->sendPacketToAllPeersWith(
-            [game_started, sender_in_game](STKPeer* p)
+            [game_started, sender_in_game, can_receive, sender](STKPeer* p)
             {
+                if (sender == p) {
+                    return true;
+                }
                 if (game_started)
                 {
                     if (p->isWaitingForGame() && !sender_in_game)
@@ -819,7 +824,17 @@ void ServerLobby::handleChat(Event* event)
                     if (!p->isWaitingForGame() && sender_in_game)
                         return false;
                 }
-                return true;
+                if (can_receive.empty()) {
+                    return true;
+                }
+                for (auto& profile : p->getPlayerProfiles())
+                {
+                    if (can_receive.find(profile->getName()) != can_receive.end())
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }, chat);
             event->getPeer()->updateLastMessage();
         delete chat;
@@ -5181,7 +5196,7 @@ bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
 
 //-----------------------------------------------------------------------------
 void ServerLobby::handleServerCommand(Event* event,
-                                      std::shared_ptr<STKPeer> peer) const
+                                      std::shared_ptr<STKPeer> peer) //const
 {
     NetworkString& data = event->data();
     std::string language;
@@ -5465,6 +5480,7 @@ void ServerLobby::handleServerCommand(Event* event,
         } else if (*m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
             chat->encodeString16(
                     L"Gnu Elimination mode was already enabled!");
             peer->sendPacket(chat, true/*reliable*/);
@@ -5475,6 +5491,7 @@ void ServerLobby::handleServerCommand(Event* event,
             NetworkString* chat = getNetworkString();
             *m_gnu_elimination = true;
             chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
             chat->encodeString16(
                     L"Gnu Elimination starts");
             peer->sendPacket(chat, true/*reliable*/);
@@ -5495,6 +5512,7 @@ void ServerLobby::handleServerCommand(Event* event,
         } else if (!*m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
             chat->encodeString16(
                     L"Gnu Elimination mode was already off!");
             peer->sendPacket(chat, true/*reliable*/);
@@ -5503,11 +5521,35 @@ void ServerLobby::handleServerCommand(Event* event,
             NetworkString* chat = getNetworkString();
             *m_gnu_elimination = false;
             chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
             chat->encodeString16(
                     L"Gnu Elimination is off");
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
         }
+    }
+    else if (argv[0] == "to")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        m_message_receivers[peer.get()].clear();
+        for (int i = 1; i < argv.size(); ++i) {
+            m_message_receivers[peer.get()].insert(
+                StringUtils::utf8ToWide(argv[i]));
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+// m_message_receivers
+    }
+    else if (argv[0] == "public")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        m_message_receivers[peer.get()].clear();
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
     }
     else
     {
