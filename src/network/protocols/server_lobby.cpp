@@ -170,7 +170,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
     m_help_message = getGameSetup()->readOrLoadFromFile
         ((std::string) ServerConfig::m_help);
 
-    m_available_commands = "help commands music kick "
+    m_available_commands = "help commands music kick to public "
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
