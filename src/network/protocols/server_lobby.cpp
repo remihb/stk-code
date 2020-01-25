@@ -5546,6 +5546,7 @@ void ServerLobby::handleServerCommand(Event* event,
                 m_message_receivers[peer.get()].insert(
                     StringUtils::utf8ToWide(argv[i]));
             }
+            chat->encodeString16(L"Successfully changed chat settings");
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
         }
@@ -5556,6 +5557,7 @@ void ServerLobby::handleServerCommand(Event* event,
         chat->addUInt8(LE_CHAT);
         chat->setSynchronous(true);
         m_message_receivers[peer.get()].clear();
+        chat->encodeString16(L"Your messages are now public");
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }
