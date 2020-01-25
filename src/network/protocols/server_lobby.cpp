@@ -5530,17 +5530,25 @@ void ServerLobby::handleServerCommand(Event* event,
     }
     else if (argv[0] == "to")
     {
-        NetworkString* chat = getNetworkString();
-        chat->addUInt8(LE_CHAT);
-        chat->setSynchronous(true);
-        m_message_receivers[peer.get()].clear();
-        for (int i = 1; i < argv.size(); ++i) {
-            m_message_receivers[peer.get()].insert(
-                StringUtils::utf8ToWide(argv[i]));
+        if (argv.size() == 1) {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(L"Usage: /to (username1) ... (usernameN)");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+        } else {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            m_message_receivers[peer.get()].clear();
+            for (int i = 1; i < argv.size(); ++i) {
+                m_message_receivers[peer.get()].insert(
+                    StringUtils::utf8ToWide(argv[i]));
+            }
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
         }
-        peer->sendPacket(chat, true/*reliable*/);
-        delete chat;
-// m_message_receivers
     }
     else if (argv[0] == "public")
     {
