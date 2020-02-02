@@ -25,11 +25,13 @@
 #include "network/event.hpp"
 #include "network/network_config.hpp"
 #include "network/game_setup.hpp"
+#include "network/network.hpp"
 #include "network/network_config.hpp"
 #include "network/network_string.hpp"
 #include "network/protocol_manager.hpp"
 #include "network/rewind_info.hpp"
 #include "network/rewind_manager.hpp"
+#include "network/socket_address.hpp"
 #include "network/stk_host.hpp"
 #include "network/stk_peer.hpp"
 #include "utils/log.hpp"
@@ -205,7 +207,7 @@ void GameProtocol::handleControllerAction(Event *event)
             !peer->availableKartID(kart_id))
         {
             Log::warn("GameProtocol", "Wrong kart id %d from %s.",
-                kart_id, peer->getRealAddress().c_str());
+                kart_id, peer->getAddress().toString().c_str());
             return;
         }
 

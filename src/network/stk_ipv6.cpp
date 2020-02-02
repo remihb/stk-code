@@ -26,7 +26,6 @@
 
 extern "C"
 {
-   WINSOCK_API_LINKAGE  PCSTR WSAAPI inet_ntop(INT Family, PVOID pAddr, PSTR pStringBuf, size_t StringBufSize);
    WINSOCK_API_LINKAGE  INT WSAAPI inet_pton(INT Family, PCSTR pszAddrString, PVOID pAddrBuf);
 }
 
@@ -46,17 +45,156 @@ extern "C"
 #include <stdlib.h>
 #endif
 
+#include "network/network_config.hpp"
+#include <array>
 #include <string>
+
+// ============================================================================
+// Android STK seems to crash when using inet_ntop so we copy it from linux
+static const char *
+stk_inet_ntop4(const u_char *src, char *dst, socklen_t size)
+{
+    static const char fmt[] = "%u.%u.%u.%u";
+    char tmp[sizeof "255.255.255.255"];
+
+    if (sprintf(tmp, fmt, src[0], src[1], src[2], src[3]) >= (int)size)
+    {
+        return NULL;
+    }
+    return strcpy(dst, tmp);
+}
+
+static const char *
+stk_inet_ntop6(const uint8_t *src, char *dst, socklen_t size)
+{
+    /*
+    * Note that int32_t and int16_t need only be "at least" large enough
+    * to contain a value of the specified size.  On some systems, like
+    * Crays, there is no such thing as an integer variable with 16 bits.
+    * Keep this in mind if you think this function should have been coded
+    * to use pointer overlays.  All the world's not a VAX.
+    */
+    char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"], *tp;
+    struct { int base, len; } best, cur;
+    std::array<uint32_t, 8> words;
+    int i;
+    /*
+    * Preprocess:
+    *        Copy the input (bytewise) array into a wordwise array.
+    *        Find the longest run of 0x00's in src[] for :: shorthanding.
+    */
+    words.fill(0);
+    for (i = 0; i < 16; i += 2)
+        words[i / 2] = ((uint32_t)src[i] << 8) | src[i + 1];
+    // Test for nat64 prefix (remove the possible IPv4 in the last 32bit)
+    std::array<uint32_t, 8> test_nat64 = words;
+    test_nat64[6] = 0;
+    test_nat64[7] = 0;
+
+    best.base = -1;
+    cur.base = -1;
+    best.len = 0;
+    cur.len = 0;
+    for (i = 0; i < 8; i++)
+    {
+        if (words[i] == 0)
+        {
+            if (cur.base == -1)
+                cur.base = i, cur.len = 1;
+            else
+                cur.len++;
+        }
+        else
+        {
+            if (cur.base != -1)
+            {
+                if (best.base == -1 || cur.len > best.len)
+                    best = cur;
+                cur.base = -1;
+            }
+        }
+    }
+    if (cur.base != -1)
+    {
+        if (best.base == -1 || cur.len > best.len)
+            best = cur;
+    }
+    if (best.base != -1 && best.len < 2)
+            best.base = -1;
+    /*
+    * Format the result.
+    */
+    tp = tmp;
+    for (i = 0; i < 8; i++)
+    {
+        /* Are we inside the best run of 0x00's? */
+        if (best.base != -1 && i >= best.base && i < (best.base + best.len))
+        {
+            if (i == best.base)
+                *tp++ = ':';
+            continue;
+        }
+        /* Are we following an initial run of 0x00s or any real hex? */
+        if (i != 0)
+            *tp++ = ':';
+        /* Is this address an encapsulated IPv4? */
+        if (i == 6 &&
+            ((best.base == 0 &&
+            (best.len == 6 || (best.len == 5 && words[5] == 0xffff))) ||
+            test_nat64 == NetworkConfig::get()->getNAT64PrefixData()))
+        {
+            if (!stk_inet_ntop4(src + 12, tp, sizeof tmp - (tp - tmp)))
+                return (NULL);
+            tp += strlen(tp);
+            break;
+        }
+        tp += sprintf(tp, "%x", words[i]);
+    }
+    /* Was it a trailing run of 0x00's? */
+    if (best.base != -1 && (best.base + best.len) == 8)
+        *tp++ = ':';
+    *tp++ = '\0';
+    /*
+     * Check for overflow, copy, and we're done.
+     */
+    if ((socklen_t)(tp - tmp) > size)
+    {
+        return NULL;
+    }
+    return strcpy(dst, tmp);
+}
+
+// ----------------------------------------------------------------------------
+bool isIPv4MappedAddress(const struct sockaddr_in6* in6)
+{
+    uint8_t w0 = in6->sin6_addr.s6_addr[0];
+    uint8_t w1 = in6->sin6_addr.s6_addr[1];
+    uint8_t w2 = in6->sin6_addr.s6_addr[2];
+    uint8_t w3 = in6->sin6_addr.s6_addr[3];
+    uint8_t w4 = in6->sin6_addr.s6_addr[4];
+    uint8_t w5 = in6->sin6_addr.s6_addr[5];
+    uint8_t w6 = in6->sin6_addr.s6_addr[6];
+    uint8_t w7 = in6->sin6_addr.s6_addr[7];
+    uint8_t w8 = in6->sin6_addr.s6_addr[8];
+    uint8_t w9 = in6->sin6_addr.s6_addr[9];
+    uint8_t w10 = in6->sin6_addr.s6_addr[10];
+    uint8_t w11 = in6->sin6_addr.s6_addr[11];
+    if (w0 == 0 && w1 == 0 && w2 == 0 && w3 == 0 && w4 == 0 &&
+        w5 == 0 && w6 == 0 && w7 == 0 && w8 == 0 && w9 == 0 &&
+        w10 == 0xff && w11 == 0xff)
+        return true;
+    return false;
+}   // isIPv4MappedAddress
 
 // ----------------------------------------------------------------------------
 std::string getIPV6ReadableFromIn6(const struct sockaddr_in6* in)
 {
-    std::string result;
-    char ipv6[INET6_ADDRSTRLEN] = {};
-    struct in6_addr ipv6_addr = in->sin6_addr;
-    inet_ntop(AF_INET6, &ipv6_addr, ipv6, INET6_ADDRSTRLEN);
-    result = ipv6;
-    return result;
+    std::string ipv6;
+    ipv6.resize(INET6_ADDRSTRLEN, 0);
+    stk_inet_ntop6(in->sin6_addr.s6_addr, &ipv6[0], INET6_ADDRSTRLEN);
+    size_t len = strlen(ipv6.c_str());
+    ipv6.resize(len);
+    return ipv6;
 }   // getIPV6ReadableFromIn6
 
 // ----------------------------------------------------------------------------
@@ -197,13 +335,13 @@ extern "C" int insideIPv6CIDR(const char* ipv6_cidr, const char* ipv6_in)
 #ifndef ENABLE_IPV6
 #include "network/stk_ipv6.hpp"
 // ----------------------------------------------------------------------------
-int isIPV6()
+int isIPv6Socket()
 {
     return 0;
 }   // isIPV6
 
 // ----------------------------------------------------------------------------
-void setIPV6(int val)
+void setIPv6Socket(int val)
 {
 }   // setIPV6
 
@@ -226,8 +364,7 @@ void addMappedAddress(const ENetAddress* ea, const struct sockaddr_in6* in6)
 #else
 
 #include "network/stk_ipv6.hpp"
-#include "network/ios_ipv6.hpp"
-#include "network/transport_address.hpp"
+#include "network/protocols/connect_to_server.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/time.hpp"
@@ -253,13 +390,13 @@ struct MappedAddress
 };
 std::vector<MappedAddress> g_mapped_ips;
 // ============================================================================
-int isIPV6()
+int isIPv6Socket()
 {
     return g_ipv6;
 }   // isIPV6
 
 // ----------------------------------------------------------------------------
-void setIPV6(int val)
+void setIPv6Socket(int val)
 {
     g_ipv6 = val;
 }   // setIPV6
@@ -271,10 +408,6 @@ void stkInitialize()
     g_mapped_ipv6_used = 0;
     g_ipv6 = 0;
     g_mapped_ips.clear();
-#ifdef IOS_STK
-    if (isIPV6Only())
-        g_ipv6 = 1;
-#endif
 }   // stkInitialize
 
 // ----------------------------------------------------------------------------
@@ -342,25 +475,10 @@ void getMappedFromIPV6(const struct sockaddr_in6* in6, ENetAddress* ea)
         return;
     }
 
-    uint8_t w0 = in6->sin6_addr.s6_addr[0];
-    uint8_t w1 = in6->sin6_addr.s6_addr[1];
-    uint8_t w2 = in6->sin6_addr.s6_addr[2];
-    uint8_t w3 = in6->sin6_addr.s6_addr[3];
-    uint8_t w4 = in6->sin6_addr.s6_addr[4];
-    uint8_t w5 = in6->sin6_addr.s6_addr[5];
-    uint8_t w6 = in6->sin6_addr.s6_addr[6];
-    uint8_t w7 = in6->sin6_addr.s6_addr[7];
-    uint8_t w8 = in6->sin6_addr.s6_addr[8];
-    uint8_t w9 = in6->sin6_addr.s6_addr[9];
-    uint8_t w10 = in6->sin6_addr.s6_addr[10];
-    uint8_t w11 = in6->sin6_addr.s6_addr[11];
-    if (w0 == 0 && w1 == 0 && w2 == 0 && w3 == 0 && w4 == 0 &&
-        w5 == 0 && w6 == 0 && w7 == 0 && w8 == 0 && w9 == 0 &&
-        w10 == 0xff && w11 == 0xff)
+    if (isIPv4MappedAddress(in6))
     {
         ea->host = ((in_addr*)(in6->sin6_addr.s6_addr + 12))->s_addr;
         ea->port = ntohs(in6->sin6_port);
-        TransportAddress addr(*ea);
         addMappedAddress(ea, in6);
     }
     else
@@ -368,10 +486,11 @@ void getMappedFromIPV6(const struct sockaddr_in6* in6, ENetAddress* ea)
         // Create a fake IPv4 address of 0.x.x.x if it's a real IPv6 connection
         if (g_mapped_ipv6_used >= 16777215)
             g_mapped_ipv6_used = 0;
-        TransportAddress addr(++g_mapped_ipv6_used, ntohs(in6->sin6_port));
-        *ea = addr.toEnetAddress();
+        *ea = ConnectToServer::toENetAddress(++g_mapped_ipv6_used,
+            ntohs(in6->sin6_port));
         Log::debug("IPv6", "Fake IPv4 address %s mapped to %s",
-            addr.toString().c_str(), getIPV6ReadableFromIn6(in6).c_str());
+            ConnectToServer::enetAddressToString(*ea).c_str(),
+            getIPV6ReadableFromIn6(in6).c_str());
         addMappedAddress(ea, in6);
     }
 }   // getMappedFromIPV6
@@ -386,10 +505,9 @@ void removeDisconnectedMappedAddress()
     {
         if (it->m_last_activity + 20000 < StkTime::getMonoTimeMs())
         {
-            TransportAddress addr(it->m_addr);
             Log::debug("IPv6", "Removing expired %s, IPv4 address %s.",
                 getIPV6ReadableFromIn6(&it->m_in6).c_str(),
-                addr.toString().c_str());
+                ConnectToServer::enetAddressToString(it->m_addr).c_str());
             it = g_mapped_ips.erase(it);
             Log::debug("IPv6", "Mapped address size now: %d.",
                 g_mapped_ips.size());

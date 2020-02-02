@@ -220,6 +220,7 @@
 #include "network/protocols/connect_to_server.hpp"
 #include "network/protocols/client_lobby.hpp"
 #include "network/protocols/server_lobby.hpp"
+#include "network/network.hpp"
 #include "network/network_config.hpp"
 #include "network/network_string.hpp"
 #include "network/rewind_manager.hpp"
@@ -227,6 +228,7 @@
 #include "network/server.hpp"
 #include "network/server_config.hpp"
 #include "network/servers_manager.hpp"
+#include "network/socket_address.hpp"
 #include "network/stk_host.hpp"
 #include "network/stk_peer.hpp"
 #include "online/profile_manager.hpp"
@@ -615,11 +617,8 @@ void cmdLineHelp()
     "       --lan-server=name  Start a LAN server (not a playing client).\n"
     "       --server-password= Sets a password for a server (both client and server).\n"
     "       --connect-now=ip   Connect to a server with IP or domain known now\n"
-    "                          (in format x.x.x.x:xxx(port)), the port should be its\n"
-    "                          public port.\n"
-    "       --connect-now6=ip   Connect to a server with IPv6 known now\n"
-    "                          (in format [x:x:x:x:x:x:x:x]:xxx(port)), the port should be its\n"
-    "                          public port.\n"
+    "                          (in format x.x.x.x:xxx(optional port)), the port should be its\n"
+    "                          public port, you can use [::] to replace x.x.x.x for IPv6 address.\n"
     "       --server-id=n      Server id in stk addons for --connect-now.\n"
     "       --network-ai=n     Numbers of AI for connecting to linear race server, used\n"
     "                          together with --connect-now.\n"
@@ -1362,11 +1361,9 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         ServerConfig::m_server_configurable = false;
     }
 
-    std::string ipv4;
-    std::string ipv6;
-    bool has_ipv4 = CommandLine::has("--connect-now", &ipv4);
-    bool has_ipv6 = CommandLine::has("--connect-now6", &ipv6);
-    if (has_ipv4 || has_ipv6)
+    std::string addr;
+    bool has_addr = CommandLine::has("--connect-now", &addr);
+    if (has_addr)
     {
         NetworkConfig::get()->setIsServer(false);
         if (CommandLine::has("--network-ai", &n))
@@ -1388,24 +1385,22 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
                 input_manager->getDeviceManager()->getLatestUsedDevice(),
                 PlayerManager::getCurrentPlayer(), HANDICAP_NONE);
         }
-        std::string fixed_ipv6 = StringUtils::findAndReplace(ipv6, "[", " ");
-        fixed_ipv6 = StringUtils::findAndReplace(fixed_ipv6, "]", " ");
-        auto split_ipv6 = StringUtils::split(fixed_ipv6, ' ');
-        std::string ipv6_port;
-        if (split_ipv6.size() == 3)
+        SocketAddress server_addr(addr);
+        if (server_addr.getIP() == 0 && !server_addr.isIPv6())
         {
-            ipv4 = "0.0.0.1" + split_ipv6[2];
-            fixed_ipv6 = split_ipv6[1];
+            Log::error("Main", "Invalid server address: %s", addr.c_str());
+            cleanSuperTuxKart();
+            return false;
         }
-        else
-            fixed_ipv6.clear();
-        TransportAddress server_addr = TransportAddress::fromDomain(ipv4);
+        SocketAddress ipv4_addr = server_addr;
+        if (server_addr.isIPv6())
+            ipv4_addr.setIP(0);
         auto server = std::make_shared<Server>(0,
-            StringUtils::utf8ToWide(server_addr.toString()), 0, 0, 0, 0,
-            server_addr, !server_password.empty(), false);
-        if (!fixed_ipv6.empty())
+            StringUtils::utf8ToWide(addr), 0, 0, 0, 0, ipv4_addr,
+            !server_password.empty(), false);
+        if (server_addr.isIPv6())
         {
-            server->setIPV6Address(fixed_ipv6);
+            server->setIPV6Address(server_addr);
             server->setIPV6Connection(true);
         }
         NetworkConfig::get()->doneAddingNetworkPlayers();
@@ -1431,6 +1426,10 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
                 // Server owner online account will keep online as long as
                 // server is live
                 Online::RequestManager::m_disable_polling = true;
+                // For server we assume it is an IPv4 one, because if it fails
+                // to detect the server won't start at all
+                NetworkConfig::get()->setIPType(NetworkConfig::IP_V4);
+                NetworkConfig::get()->detectIPType();
                 NetworkConfig::get()->setIsWAN();
                 NetworkConfig::get()->setIsPublicServer();
                 ServerConfig::loadServerLobbyFromConfig();
@@ -2026,6 +2025,8 @@ int main(int argc, char *argv[])
 
         // ServerConfig will use stk_config for server version testing
         stk_config->load(file_manager->getAsset("stk_config.xml"));
+        // Client port depends on user config file and stk_config
+        NetworkConfig::get()->initClientPort();
         bool no_graphics = !CommandLine::has("--graphical-server");
 
 #ifndef SERVER_ONLY
@@ -2580,8 +2581,8 @@ void runUnitTests()
     GraphicsRestrictions::unitTesting();
     Log::info("UnitTest", "NetworkString");
     NetworkString::unitTesting();
-    Log::info("UnitTest", "TransportAddress");
-    TransportAddress::unitTesting();
+    Log::info("UnitTest", "SocketAddress");
+    SocketAddress::unitTesting();
     Log::info("UnitTest", "StringUtils::versionToInt");
     StringUtils::unitTesting();
 

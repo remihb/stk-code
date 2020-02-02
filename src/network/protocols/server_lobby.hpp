@@ -20,7 +20,6 @@
 #define SERVER_LOBBY_HPP
 
 #include "network/protocols/lobby_protocol.hpp"
-#include "network/transport_address.hpp"
 #include "utils/cpp2011.hpp"
 #include "utils/time.hpp"
 
@@ -42,6 +41,7 @@ class BareNetworkString;
 class NetworkString;
 class NetworkPlayerProfile;
 class STKPeer;
+class SocketAddress;
 
 namespace Online
 {
@@ -102,9 +102,9 @@ private:
 
     void checkTableExists(const std::string& table, bool& result);
 
-    std::string ip2Country(const TransportAddress& addr) const;
+    std::string ip2Country(const SocketAddress& addr) const;
 
-    std::string ipv62Country(const std::string& ipv6) const;
+    std::string ipv62Country(const SocketAddress& addr) const;
 #endif
     void initDatabase();
 
@@ -167,8 +167,6 @@ private:
 
     /** Timeout counter for various state. */
     std::atomic<int64_t> m_timeout;
-
-    TransportAddress m_server_address;
 
     std::mutex m_keys_mutex;
 
@@ -394,7 +392,7 @@ public:
     int getGameMode() const                      { return m_game_mode.load(); }
     int getLobbyPlayers() const              { return m_lobby_players.load(); }
     void saveInitialItems();
-    void saveIPBanTable(const TransportAddress& addr);
+    void saveIPBanTable(const SocketAddress& addr);
     void listBanTable();
     void initServerStatsTable();
 };   // class ServerLobby

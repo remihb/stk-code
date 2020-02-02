@@ -22,9 +22,6 @@
 #ifndef STK_HOST_HPP
 #define STK_HOST_HPP
 
-#include "network/network.hpp"
-#include "network/network_string.hpp"
-#include "network/transport_address.hpp"
 #include "utils/synchronised.hpp"
 #include "utils/time.hpp"
 
@@ -46,14 +43,22 @@
 #include <set>
 #include <thread>
 #include <tuple>
+#include <vector>
 
+class BareNetworkString;
 class GameSetup;
 class LobbyProtocol;
+class Network;
 class NetworkPlayerProfile;
+class NetworkString;
 class NetworkTimerSynchronizer;
 class Server;
 class ServerLobby;
 class SeparateProcess;
+class SocketAddress;
+class STKPeer;
+
+using namespace irr;
 
 enum ENetCommandType : unsigned int
 {
@@ -115,9 +120,6 @@ private:
     /** Id of thread listening to enet events. */
     std::thread m_listening_thread;
 
-    /** The private port enet socket is bound. */
-    uint16_t m_private_port;
-
     /** Flag which is set from the protocol manager thread which
      *  triggers a shutdown of the STKHost (and the Protocolmanager). */
     std::atomic_bool m_shutdown;
@@ -133,13 +135,16 @@ private:
     irr::core::stringw m_error_message;
 
     /** The public address found by stun (if WAN is used). */
-    TransportAddress m_public_address;
+    std::unique_ptr<SocketAddress> m_public_address;
 
     /** The public IPv6 address found by stun (if WAN is used). */
     std::string m_public_ipv6_address;
 
-    /** The public address stun server used. */
-    TransportAddress m_stun_address;
+    /** The public IPv4 address stun server used. */
+    std::unique_ptr<SocketAddress> m_stun_ipv4;
+
+    /** The public IPv6 address stun server used. */
+    std::unique_ptr<SocketAddress> m_stun_ipv6;
 
     Synchronised<std::map<uint32_t, uint32_t> > m_peer_pings;
 
@@ -172,8 +177,8 @@ private:
     // ------------------------------------------------------------------------
     void mainLoop();
     // ------------------------------------------------------------------------
-    std::string getIPFromStun(int socket, const std::string& stun_address,
-                              bool ipv4);
+    void getIPFromStun(int socket, const std::string& stun_address,
+                       short family, SocketAddress* result);
 public:
     /** If a network console should be started. */
     static bool m_enable_console;
@@ -200,23 +205,25 @@ public:
     /** Checks if the STKHost has been created. */
     static bool existHost() { return m_stk_host != NULL; }
     // ------------------------------------------------------------------------
-    const TransportAddress& getPublicAddress() const
-                                                   { return m_public_address; }
+    const SocketAddress& getPublicAddress() const
+                                            { return *m_public_address.get(); }
     // ------------------------------------------------------------------------
-    const std::string& getPublicIPV6Address() const
+    const std::string& getPublicIPv6Address() const
                                               { return m_public_ipv6_address; }
     // ------------------------------------------------------------------------
-    const TransportAddress& getStunAddress() const   { return m_stun_address; }
+    std::string getValidPublicAddress() const;
     // ------------------------------------------------------------------------
-    uint16_t getPrivatePort() const                  { return m_private_port; }
+    const SocketAddress* getStunIPv4Address() const
+                                                  { return m_stun_ipv4.get(); }
     // ------------------------------------------------------------------------
-    void setPrivatePort();
+    const SocketAddress* getStunIPv6Address() const
+                                                  { return m_stun_ipv6.get(); }
     // ------------------------------------------------------------------------
-    void setPublicAddress();
+    uint16_t getPrivatePort() const;
+    // ------------------------------------------------------------------------
+    void setPublicAddress(short family);
     // ------------------------------------------------------------------------
     void disconnectAllPeers(bool timeout_waiting = false);
-    // ------------------------------------------------------------------------
-    bool connect(const TransportAddress& peer);
     //-------------------------------------------------------------------------
     /** Requests that the network infrastructure is to be shut down. This
     *   function is called from a thread, but the actual shutdown needs to be
@@ -269,9 +276,9 @@ public:
     // ------------------------------------------------------------------------
     void stopListening();
     // ------------------------------------------------------------------------
-    bool peerExists(const TransportAddress& peer_address);
+    bool peerExists(const SocketAddress& peer_address);
     // ------------------------------------------------------------------------
-    bool isConnectedTo(const TransportAddress& peer_address);
+    bool isConnectedTo(const ENetAddress& peer_address);
     // ------------------------------------------------------------------------
     std::shared_ptr<STKPeer> getServerPeerForClient() const;
     // ------------------------------------------------------------------------
@@ -292,18 +299,11 @@ public:
      *  requested. */
     bool requestedShutdown() const                { return m_shutdown.load(); }
     // ------------------------------------------------------------------------
-    int receiveRawPacket(char *buffer, int buffer_len, 
-                         TransportAddress* sender, int max_tries = -1)
-    {
-        return m_network->receiveRawPacket(buffer, buffer_len, sender,
-                                           max_tries);
-    }   // receiveRawPacket
+    int receiveRawPacket(char *buffer, int buffer_len,
+                         SocketAddress* sender, int max_tries = -1);
     // ------------------------------------------------------------------------
     void sendRawPacket(const BareNetworkString &buffer,
-                       const TransportAddress& dst)
-    {
-        m_network->sendRawPacket(buffer, dst);
-    }  // sendRawPacket
+                       const SocketAddress& dst);
     // ------------------------------------------------------------------------
     Network* getNetwork() const                           { return m_network; }
     // ------------------------------------------------------------------------
@@ -393,6 +393,13 @@ public:
     // ------------------------------------------------------------------------
     std::vector<std::shared_ptr<NetworkPlayerProfile> >
         getPlayersForNewGame() const;
+    // ------------------------------------------------------------------------
+    void replaceNetwork(Network* new_network)
+    {
+        m_network = new_network;
+    }
+    // ------------------------------------------------------------------------
+    static BareNetworkString getStunRequest(uint8_t* stun_tansaction_id);
 };   // class STKHost
 
 #endif // STK_HOST_HPP
