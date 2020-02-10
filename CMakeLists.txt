@@ -132,7 +132,10 @@ endif()
 
 if(USE_GLES2)
     add_definitions(-DUSE_GLES2)
-    add_definitions(-D_IRR_COMPILE_WITH_OGLES2_ -DNO_IRR_COMPILE_WITH_OPENGL_)
+    if (NOT IOS)
+        add_definitions(-D_IRR_COMPILE_WITH_OGLES2_)
+    endif()
+    add_definitions(-DNO_IRR_COMPILE_WITH_OPENGL_)
 endif()
 
 if(SERVER_ONLY)
@@ -158,6 +161,16 @@ endif()
 # Build the Bullet physics library
 add_subdirectory("${PROJECT_SOURCE_DIR}/lib/bullet")
 include_directories("${PROJECT_SOURCE_DIR}/lib/bullet/src")
+
+if(WIN32)
+    set(LIBRESOLV_LIBRARY)
+else()
+    if (NOT CMAKE_SYSTEM_NAME MATCHES "BSD")
+        find_library(LIBRESOLV_LIBRARY NAMES resolv libresolv)
+    else()
+        set(LIBRESOLV_LIBRARY)
+    endif()
+endif()
 
 # Find system ENet library or build it if missing
 if((UNIX AND NOT APPLE) AND USE_SYSTEM_ENET AND NOT USE_IPV6)
@@ -511,14 +524,15 @@ else()
 
     # Build the final executable
     if (IOS)
-        file(GLOB IOS_ASSETS_FILES ${IOS_ASSETS} ${IOS_LAUNCHSCREEN})
+        file(GLOB IOS_ASSETS_FILES ${IOS_ASSETS} ${IOS_LAUNCHSCREEN} ${IOS_IMAGES_XCASSETS})
         set_source_files_properties(${IOS_ASSETS_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
         add_executable(supertuxkart ${STK_SOURCES} ${STK_RESOURCES} ${STK_HEADERS} ${IOS_ASSETS_FILES})
         set_target_properties(supertuxkart PROPERTIES
             MACOSX_BUNDLE_INFO_PLIST ${PROJECT_SOURCE_DIR}/data/SuperTuxKart-Info-iOS.plist
             XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET 9.0
             XCODE_ATTRIBUTE_INSTALL_PATH /Applications
-            XCODE_ATTRIBUTE_SKIP_INSTALL No)
+            XCODE_ATTRIBUTE_SKIP_INSTALL No
+            XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME "AppIcon")
     else()
         add_executable(supertuxkart ${STK_SOURCES} ${STK_RESOURCES} ${STK_HEADERS})
     endif()
@@ -590,6 +604,7 @@ target_link_libraries(supertuxkart
     stkirrlicht
     ${Angelscript_LIBRARIES}
     ${CURL_LIBRARIES}
+    ${LIBRESOLV_LIBRARY}
     mcpp
     )
 
@@ -676,7 +691,7 @@ if(MSVC OR MINGW)
 endif()
 
 if(MINGW)
-    target_link_libraries(supertuxkart -ldxguid -ldinput8)
+    target_link_libraries(supertuxkart -ldxguid -ldinput8 -ldnsapi)
     if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
         target_link_libraries(supertuxkart -mwindows)
     endif()
