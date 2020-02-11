@@ -2308,7 +2308,6 @@ bool ServerLobby::registerServer(bool now)
         RegisterServerRequest(bool now, std::shared_ptr<ServerLobby> sl)
         : XMLRequest(), m_server_lobby(sl), m_execute_now(now) {}
     };   // RegisterServerRequest
-Online::XMLRequest
     auto request = std::make_shared<RegisterServerRequest>(now,
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request, "create");
