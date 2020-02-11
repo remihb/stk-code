@@ -2308,7 +2308,7 @@ bool ServerLobby::registerServer(bool now)
         RegisterServerRequest(bool now, std::shared_ptr<ServerLobby> sl)
         : XMLRequest(), m_server_lobby(sl), m_execute_now(now) {}
     };   // RegisterServerRequest
-
+Online::XMLRequest
     auto request = std::make_shared<RegisterServerRequest>(now,
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request, "create");
@@ -2369,7 +2369,10 @@ void ServerLobby::unregisterServer(bool now)
     NetworkConfig::get()->setServerDetails(request, "stop");
 
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    request->addParameter("address", addr.getIP());
+    if (ServerConfig::m_false_ip == 0)
+        request->addParameter("address",      addr.getIP()        );
+    else
+        request->addParameter("address",  ServerConfig::m_false_ip);
     request->addParameter("port", addr.getPort());
     bool ipv6_only = addr.isUnset();
     if (!ipv6_only)
@@ -2750,7 +2753,10 @@ void ServerLobby::checkIncomingConnectionRequests()
     NetworkConfig::get()->setServerDetails(request,
         "poll-connection-requests");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    request->addParameter("address", addr.getIP()  );
+    if (ServerConfig::m_false_ip == 0)
+        request->addParameter("address",      addr.getIP()        );
+    else
+        request->addParameter("address",  ServerConfig::m_false_ip);
     request->addParameter("port",    addr.getPort());
     request->addParameter("current-players", getLobbyPlayers());
     request->addParameter("game-started",
@@ -4941,7 +4947,10 @@ void ServerLobby::handleServerConfiguration(Event* event)
         auto request = std::make_shared<Online::XMLRequest>();
         NetworkConfig::get()->setServerDetails(request, "update-config");
         const SocketAddress& addr = STKHost::get()->getPublicAddress();
-        request->addParameter("address", addr.getIP());
+        if (ServerConfig::m_false_ip == 0)
+            request->addParameter("address",      addr.getIP()        );
+        else
+            request->addParameter("address",  ServerConfig::m_false_ip);
         request->addParameter("port", addr.getPort());
         request->addParameter("new-difficulty", new_difficulty);
         request->addParameter("new-game-mode", new_game_mode);
