@@ -478,6 +478,15 @@ namespace ServerConfig
         "If true no one can start a race and everyone should use the "
         "server for sleeping/chatting only."));
 
+    SERVER_CFG_PREFIX IntServerConfigParam m_false_ip
+        SERVER_CFG_DEFAULT(IntServerConfigParam(0, "false-ip",
+        "IP that should be used to connect to a server, set 0 for a "
+        "default IP. You need this only if the server's IP shouldn't be "
+        "used for some reason (e.g. blocking) and there is another IP "
+        "('good') that points to the same server. In this case, you "
+        "should write a good IP here as a number. Only IPv4 is "
+        "supported."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

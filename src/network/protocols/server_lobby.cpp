@@ -2313,8 +2313,11 @@ bool ServerLobby::registerServer(bool now)
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request, "create");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    request->addParameter("address",      addr.getIP()        );
-    request->addParameter("port",         addr.getPort()      );
+    if (ServerConfig::m_false_ip == 0)
+        request->addParameter("address",      addr.getIP()        );
+    else
+        request->addParameter("address",  ServerConfig::m_false_ip);
+    request->addParameter("port",             addr.getPort()      );
     request->addParameter("private_port",
                                     STKHost::get()->getPrivatePort()      );
     request->addParameter("name", m_game_setup->getServerNameUtf8());
