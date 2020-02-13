@@ -5649,9 +5649,9 @@ void ServerLobby::handleServerCommand(Event* event,
         {
             std::string line = (i < m_gnu_remained ?
                 std::to_string(i + 1) : "[" + std::to_string(i + 1) + "]");
-            line.push_back("\t");
-            line += std::string(m_gnu_participants[i]);
-            Log::info("GnuElimination", line.c_str());
+            line.push_back('\t');
+            line += "%s";
+            Log::info("GnuElimination", line.c_str(), m_gnu_participants[i]);
         }
     }
     else if (argv[0] == "to")
@@ -5702,12 +5702,6 @@ void ServerLobby::handleServerCommand(Event* event,
 //-----------------------------------------------------------------------------
 void ServerLobby::updateGnuElimination()
 {
-
-    for (int i = 0; i < player_count; i++)
-    {
-        irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
-        double time = race_manager->getKartRaceTime(i);
-    }
     World* w = World::getWorld();
     assert(w);
     assert(m_gnu_remained != 0);
@@ -5718,8 +5712,8 @@ void ServerLobby::updateGnuElimination()
     {
         for (int i = 0; i < player_count; i++)
         {
-            irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
-            double elapsed_time = (w->getKart(i)->isEliminated(i) ? INF :
+            irr::core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
                 race_manager->getKartRaceTime(i));
             order.emplace_back(elapsed_time, username);
         }
@@ -5734,8 +5728,8 @@ void ServerLobby::updateGnuElimination()
         // the number of players is very small and I don't want maps
         for (int i = 0; i < player_count; i++)
         {
-            irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
-            double elapsed_time = (w->getKart(i)->isEliminated(i) ? INF :
+            irr::core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
                 race_manager->getKartRaceTime(i));
             for (int j = 0; j < m_gnu_remained; j++)
             {
