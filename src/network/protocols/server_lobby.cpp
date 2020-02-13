@@ -177,8 +177,8 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
-    m_gnu_elimination = new bool[1];
-    *m_gnu_elimination = false;
+    m_gnu_elimination = false;
+    m_gnu_remained = 0;
 
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
@@ -288,7 +288,6 @@ ServerLobby::ServerLobby() : LobbyProtocol()
  */
 ServerLobby::~ServerLobby()
 {
-    delete [] m_gnu_elimination;
     if (NetworkConfig::get()->isNetworking() &&
         NetworkConfig::get()->isWAN())
     {
@@ -2308,15 +2307,13 @@ bool ServerLobby::registerServer(bool now)
         RegisterServerRequest(bool now, std::shared_ptr<ServerLobby> sl)
         : XMLRequest(), m_server_lobby(sl), m_execute_now(now) {}
     };   // RegisterServerRequest
+
     auto request = std::make_shared<RegisterServerRequest>(now,
         std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
     NetworkConfig::get()->setServerDetails(request, "create");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    if (ServerConfig::m_false_ip == 0)
-        request->addParameter("address",      addr.getIP()        );
-    else
-        request->addParameter("address",  ServerConfig::m_false_ip);
-    request->addParameter("port",             addr.getPort()      );
+    request->addParameter("address",      addr.getIP()        );
+    request->addParameter("port",         addr.getPort()      );
     request->addParameter("private_port",
                                     STKHost::get()->getPrivatePort()      );
     request->addParameter("name", m_game_setup->getServerNameUtf8());
@@ -2368,10 +2365,7 @@ void ServerLobby::unregisterServer(bool now)
     NetworkConfig::get()->setServerDetails(request, "stop");
 
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    if (ServerConfig::m_false_ip == 0)
-        request->addParameter("address",      addr.getIP()        );
-    else
-        request->addParameter("address",  ServerConfig::m_false_ip);
+    request->addParameter("address", addr.getIP());
     request->addParameter("port", addr.getPort());
     bool ipv6_only = addr.isUnset();
     if (!ipv6_only)
@@ -2752,10 +2746,7 @@ void ServerLobby::checkIncomingConnectionRequests()
     NetworkConfig::get()->setServerDetails(request,
         "poll-connection-requests");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
-    if (ServerConfig::m_false_ip == 0)
-        request->addParameter("address",      addr.getIP()        );
-    else
-        request->addParameter("address",  ServerConfig::m_false_ip);
+    request->addParameter("address", addr.getIP()  );
     request->addParameter("port",    addr.getPort());
     request->addParameter("current-players", getLobbyPlayers());
     request->addParameter("game-started",
@@ -2837,6 +2828,10 @@ void ServerLobby::checkRaceFinished()
     if (ServerConfig::m_ranked && race_manager->modeHasLaps())
         ranking_changes_indication = 1;
     m_result_ns->addUInt8(ranking_changes_indication);
+
+    if (m_gnu_elimination) {
+        updateGnuElimination();
+    }
 
     if (ServerConfig::m_ranked)
     {
@@ -4946,10 +4941,7 @@ void ServerLobby::handleServerConfiguration(Event* event)
         auto request = std::make_shared<Online::XMLRequest>();
         NetworkConfig::get()->setServerDetails(request, "update-config");
         const SocketAddress& addr = STKHost::get()->getPublicAddress();
-        if (ServerConfig::m_false_ip == 0)
-            request->addParameter("address",      addr.getIP()        );
-        else
-            request->addParameter("address",  ServerConfig::m_false_ip);
+        request->addParameter("address", addr.getIP());
         request->addParameter("port", addr.getPort());
         request->addParameter("new-difficulty", new_difficulty);
         request->addParameter("new-game-mode", new_game_mode);
@@ -5595,7 +5587,7 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (*m_gnu_elimination) {
+        } else if (m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
@@ -5607,7 +5599,9 @@ void ServerLobby::handleServerCommand(Event* event,
 
         } else {
             NetworkString* chat = getNetworkString();
-            *m_gnu_elimination = true;
+            m_gnu_elimination = true;
+            m_gnu_remained = -1;
+            m_gnu_participants.clear();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
             chat->encodeString16(
@@ -5627,7 +5621,7 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (!*m_gnu_elimination) {
+        } else if (!m_gnu_elimination) {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
@@ -5637,13 +5631,27 @@ void ServerLobby::handleServerCommand(Event* event,
             delete chat;
         } else {
             NetworkString* chat = getNetworkString();
-            *m_gnu_elimination = false;
+            m_gnu_elimination = false;
+            m_gnu_remained = 0;
+            m_gnu_participants.clear();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
             chat->encodeString16(
                     L"Gnu Elimination is off");
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
+        }
+    }
+    else if (argv[0] == "standings")
+    {
+        Log::info("GnuElimination", "total %d participants", (int)m_gnu_participants.size());
+        for (int i = 0; i < (int)m_gnu_participants.size(); i++)
+        {
+            std::string line = (i < m_gnu_remained ?
+                std::to_string(i + 1) : "[" + std::to_string(i + 1) + "]");
+            line.push_back("\t");
+            line += std::string(m_gnu_participants[i]);
+            Log::info("GnuElimination", line.c_str());
         }
     }
     else if (argv[0] == "to")
@@ -5691,3 +5699,65 @@ void ServerLobby::handleServerCommand(Event* event,
         delete chat;
     }
 }   // handleServerCommand
+//-----------------------------------------------------------------------------
+void ServerLobby::updateGnuElimination()
+{
+
+    for (int i = 0; i < player_count; i++)
+    {
+        irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+        double time = race_manager->getKartRaceTime(i);
+    }
+    World* w = World::getWorld();
+    assert(w);
+    assert(m_gnu_remained != 0);
+    int player_count = race_manager->getNumPlayers();
+    const double INF = 1e9;
+    std::vector<std::pair<double, irr::core::stringw>> order;
+    if (m_gnu_remained < 0)
+    {
+        for (int i = 0; i < player_count; i++)
+        {
+            irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            double elapsed_time = (w->getKart(i)->isEliminated(i) ? INF :
+                race_manager->getKartRaceTime(i));
+            order.emplace_back(elapsed_time, username);
+        }
+        m_gnu_remained = player_count;
+    }
+    else
+    {
+        for (int i = 0; i < m_gnu_participants.size(); i++)
+        {
+            order.emplace_back(INF, m_gnu_participants[i]);
+        }
+        // the number of players is very small and I don't want maps
+        for (int i = 0; i < player_count; i++)
+        {
+            irr:core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            double elapsed_time = (w->getKart(i)->isEliminated(i) ? INF :
+                race_manager->getKartRaceTime(i));
+            for (int j = 0; j < m_gnu_remained; j++)
+            {
+                if (m_gnu_participants[j] == username)
+                {
+                    order[j].first = elapsed_time;
+                    break;
+                }
+            }
+        }
+    }
+    std::stable_sort(order.begin(), order.begin() + m_gnu_remained);
+    bool all_quit = false;//order[0].first == INF;
+    for (int i = 0; i < m_gnu_remained; i++)
+        m_gnu_participants[i] = order[i].second;
+    --m_gnu_remained;
+    if (!all_quit)
+    {
+        while (m_gnu_remained - 1 >= 0 && order[m_gnu_remained - 1].first == INF)
+            --m_gnu_remained;
+    }
+    if (m_gnu_remained == 0) {
+        m_gnu_elimination = false;
+    }
+}

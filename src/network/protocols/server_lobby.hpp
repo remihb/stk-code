@@ -252,7 +252,9 @@ private:
 
     std::map<STKPeer*, std::set<irr::core::stringw>> m_message_receivers;
 
-    bool* m_gnu_elimination;
+    bool m_gnu_elimination;
+    int m_gnu_remained;
+    std::vector<irr::core::stringw> m_gnu_participants;
 
     // connection management
     void clientDisconnected(Event* event);
@@ -372,6 +374,7 @@ private:
     void writeDisconnectInfoTable(STKPeer* peer);
     void writePlayerReport(Event* event);
     bool supportsAI();
+    void updateGnuElimination();
 public:
              ServerLobby();
     virtual ~ServerLobby();
