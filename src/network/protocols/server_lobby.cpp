@@ -247,7 +247,8 @@ ServerLobby::ServerLobby() : LobbyProtocol()
     {
         std::vector<std::string> available_tracks = StringUtils::split(ServerConfig::m_only_played_tracks_string, ' ', false);
         int start = 0;
-        if (available_tracks[0] == "not") {
+        if (available_tracks[0] == "not")
+        {
             start = 1;
             m_inverted_config_restriction = true;
         }
@@ -840,7 +841,7 @@ void ServerLobby::handleChat(Event* event)
                 }
                 return false;
             }, chat);
-            event->getPeer()->updateLastMessage();
+        event->getPeer()->updateLastMessage();
         delete chat;
     }
 }   // handleChat
@@ -2406,7 +2407,7 @@ void ServerLobby::startSelection(const Event *event)
             return;
         }
         if (ServerConfig::m_sleeping_server) {
-            Log::info("ServerLobby",
+            Log::warn("ServerLobby",
                 "An attempt to start a race on a sleeping server. Lol.");
             return;
         }
@@ -2612,8 +2613,70 @@ void ServerLobby::startSelection(const Event *event)
         ns->encodeString(track);
     }
 
-    sendMessageToPeers(ns, /*reliable*/true);
-    delete ns;
+    if (!m_gnu_elimination || m_gnu_remained < 0)
+    {
+        sendMessageToPeers(ns, /*reliable*/true);
+        delete ns;
+    }
+    else
+    {
+        auto remaining_begin = m_gnu_participants.begin();
+        auto remaining_end = remaining_begin + m_gnu_remained;
+        STKHost::get()->sendPacketToAllPeersWith(
+            [remaining_begin, remaining_end](STKPeer* p)
+            {
+                for (auto& profile : p->getPlayerProfiles())
+                {
+                    if (std::find(
+                        remaining_begin, remaining_end,
+                        StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }, ns, /*reliable*/true);
+        delete ns;
+        bool has_gnu = false;
+        for (auto it = all_k.begin(); it != all_k.end(); it++)
+        {
+            has_gnu |= (*it == "gnu");
+        }
+
+        // The same NetworkString but without any non-Gnu karts
+        NetworkString *ns = getNetworkString(1);
+        ns->setSynchronous(true);
+        ns->addUInt8(LE_START_SELECTION)
+           .addFloat(ServerConfig::m_voting_timeout)
+           .addUInt8(m_game_setup->isGrandPrixStarted() ? 1 : 0)
+           .addUInt8(ServerConfig::m_auto_game_time_ratio > 0.0f ? 1 : 0)
+           .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
+
+        ns->addUInt16((uint16_t)(has_gnu ? 1 : 0)).addUInt16((uint16_t)all_t.size());
+        if (has_gnu)
+        {
+            ns->encodeString(std::string("gnu"));
+        }
+        for (const std::string& track : all_t)
+        {
+            ns->encodeString(track);
+        }
+
+        STKHost::get()->sendPacketToAllPeersWith(
+            [remaining_begin, remaining_end](STKPeer* p)
+            {
+                for (auto& profile : p->getPlayerProfiles())
+                {
+                    if (std::find(
+                        remaining_begin, remaining_end,
+                        StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }, ns, /*reliable*/true);
+    }
 
     m_state = SELECTING;
     if (!allowJoinedPlayersWaiting())
