@@ -254,7 +254,7 @@ private:
 
     bool m_gnu_elimination;
     int m_gnu_remained;
-    std::vector<irr::core::stringw> m_gnu_participants;
+    std::vector<std::string> m_gnu_participants;
 
     // connection management
     void clientDisconnected(Event* event);

@@ -5645,14 +5645,20 @@ void ServerLobby::handleServerCommand(Event* event,
     else if (argv[0] == "standings")
     {
         Log::info("GnuElimination", "total %d participants", (int)m_gnu_participants.size());
+        std::string result = "Gnu Elimination standings:";
         for (int i = 0; i < (int)m_gnu_participants.size(); i++)
         {
-            std::string line = (i < m_gnu_remained ?
+            std::string line = "\n" + (i < m_gnu_remained ?
                 std::to_string(i + 1) : "[" + std::to_string(i + 1) + "]");
-            line.push_back('\t');
-            line += "%s";
-            Log::info("GnuElimination", line.c_str(), m_gnu_participants[i]);
+            line += ". " + m_gnu_participants[i];
+            result += line;
         }
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        chat->encodeString16(StringUtils::utf8ToWide(result));
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
     }
     else if (argv[0] == "to")
     {
@@ -5707,15 +5713,16 @@ void ServerLobby::updateGnuElimination()
     assert(m_gnu_remained != 0);
     int player_count = race_manager->getNumPlayers();
     const double INF = 1e9;
-    std::vector<std::pair<double, irr::core::stringw>> order;
+    std::vector<std::pair<double, std::string>> order;
     if (m_gnu_remained < 0)
     {
         for (int i = 0; i < player_count; i++)
         {
-            irr::core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
             double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
                 race_manager->getKartRaceTime(i));
             order.emplace_back(elapsed_time, username);
+            m_gnu_participants.push_back(username);
         }
         m_gnu_remained = player_count;
     }
@@ -5728,7 +5735,7 @@ void ServerLobby::updateGnuElimination()
         // the number of players is very small and I don't want maps
         for (int i = 0; i < player_count; i++)
         {
-            irr::core::stringw username = race_manager->getKartInfo(i).getPlayerName();
+            std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
             double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
                 race_manager->getKartRaceTime(i));
             for (int j = 0; j < m_gnu_remained; j++)
@@ -5751,7 +5758,7 @@ void ServerLobby::updateGnuElimination()
         while (m_gnu_remained - 1 >= 0 && order[m_gnu_remained - 1].first == INF)
             --m_gnu_remained;
     }
-    if (m_gnu_remained == 0) {
+    if (m_gnu_remained <= 1) {
         m_gnu_elimination = false;
     }
 }
