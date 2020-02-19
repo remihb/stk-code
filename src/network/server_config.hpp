@@ -258,6 +258,10 @@ namespace ServerConfig
         "leave empty for no restriction or put 'not' before the list "
         "to name tracks that cannot be played."));
 
+    SERVER_CFG_PREFIX IntServerConfigParam m_fixed_lap_count
+        SERVER_CFG_DEFAULT(IntServerConfigParam(-1, "fixed-lap-count",
+        "Use fixed lap count, negative or zero to disable."));
+
     SERVER_CFG_PREFIX BoolServerConfigParam m_official_tracks_needed
         SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "official-tracks-needed",
         "If this value is set to true, players and the server must have "

@@ -117,6 +117,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- List of tracks that can be played on a server, leave empty for no restriction or put 'not' before the list to name tracks that cannot be played. -->
     <only-played-tracks value="not abyss snowtuxpeak addon_minigolf" />
 
+    <!-- Use fixed lap count, negative or zero to disable. -->
+    <fixed-lap-count value="-1" />
+    
     <!-- If this value is set to true, players and the server must have at least one common official track. -->
     <official-tracks-needed value="true" />
 

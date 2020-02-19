@@ -1577,6 +1577,11 @@ void ServerLobby::asynchronousUpdate()
         }
         if (go_on_race)
         {
+            if (ServerConfig::m_fixed_lap_count > 0)
+            {
+                winner_vote.m_num_laps = ServerConfig::m_fixed_lap_count;
+                Log::info("ServerLobby", "Enforcing %d lap race", ServerConfig::m_fixed_lap_count);
+            }
             *m_default_vote = winner_vote;
             m_item_seed = (uint32_t)StkTime::getTimeSinceEpoch();
             ItemManager::updateRandomSeed(m_item_seed);
