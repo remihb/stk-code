@@ -52,7 +52,6 @@
 #include "karts/kart_rewinder.hpp"
 #include "main_loop.hpp"
 #include "modes/overworld.hpp"
-#include "modes/profile_world.hpp"
 #include "network/protocols/client_lobby.hpp"
 #include "network/network_config.hpp"
 #include "network/rewind_manager.hpp"
@@ -252,7 +251,8 @@ void World::init()
     loadCustomModels();
     main_loop->renderGUI(7100);
     // Must be called after all karts are created
-    m_race_gui->init();
+    if (m_race_gui)
+        m_race_gui->init();
 
     powerup_manager->computeWeightsForRace(race_manager->getNumberOfKarts());
     main_loop->renderGUI(7200);
@@ -265,7 +265,7 @@ void World::init()
     {
         auto cl = LobbyProtocol::get<ClientLobby>();
         if ( (NetworkConfig::get()->isServer() && 
-              !ProfileWorld::isNoGraphics()       ) ||
+              !GUIEngine::isNoGraphics()       ) ||
             race_manager->isWatchingReplay()        ||
             (cl && cl->isSpectator()))
         {
@@ -287,7 +287,7 @@ void World::init()
 //-----------------------------------------------------------------------------
 void World::initTeamArrows(AbstractKart* k)
 {
-    if (!hasTeam())
+    if (!hasTeam() || GUIEngine::isNoGraphics())
         return;
 #ifndef SERVER_ONLY
     //Loading the indicator textures
@@ -372,7 +372,8 @@ void World::reset(bool restart)
         }
     }
 
-    Camera::resetAllCameras();
+    if (!GUIEngine::isNoGraphics())
+        Camera::resetAllCameras();
 
     if(race_manager->hasGhostKarts())
         ReplayPlay::get()->reset();
@@ -387,7 +388,8 @@ void World::reset(bool restart)
     Track::getCurrentTrack()->reset();
 
     // Reset the race gui.
-    m_race_gui->reset();
+    if (m_race_gui)
+        m_race_gui->reset();
 
     // Start music from beginning
     music_manager->stopMusic();
@@ -414,7 +416,8 @@ void World::reset(bool restart)
 
 void World::createRaceGUI()
 {
-    m_race_gui = new RaceGUI();
+    if (!GUIEngine::isNoGraphics())
+        m_race_gui = new RaceGUI();
 }
 
 //-----------------------------------------------------------------------------
@@ -468,8 +471,9 @@ std::shared_ptr<AbstractKart> World::createKart
     {
     case RaceManager::KT_PLAYER:
     {
-        int local_player_count = -1;
-        if (NetworkConfig::get()->isClient())
+        int local_player_count = 99999;
+        if (NetworkConfig::get()->isNetworking() &&
+            NetworkConfig::get()->isClient())
         {
             local_player_count =
                 (int)NetworkConfig::get()->getNetworkPlayers().size();
@@ -625,7 +629,8 @@ World::~World()
     race_manager->setTimeTarget(0.0f);
     race_manager->setSpareTireKartNum(0);
 
-    Camera::removeAllCameras();
+    if (!GUIEngine::isNoGraphics())
+        Camera::removeAllCameras();
 
     // In case that the track is not found, Physics was not instantiated,
     // but kill handles this correctly.
@@ -724,19 +729,17 @@ void World::terminateRace()
     assert(m_saved_race_gui==NULL);
     m_saved_race_gui = m_race_gui;
 
-    RaceResultGUI* results = RaceResultGUI::getInstance();
-    m_race_gui       = results;
-
-    if (best_highscore_rank > 0)
+    if (!GUIEngine::isNoGraphics())
     {
-        results->setHighscore(best_highscore_rank);
-    }
-    else
-    {
-        results->clearHighscores();
+        RaceResultGUI* results = RaceResultGUI::getInstance();
+        m_race_gui = results;
+        if (best_highscore_rank > 0)
+            results->setHighscore(best_highscore_rank);
+        else
+            results->clearHighscores();
+        results->push();
     }
 
-    results->push();
     WorldStatus::terminateRace();
 }   // terminateRace
 
@@ -1313,7 +1316,7 @@ void World::eliminateKart(int kart_id, bool notify_of_elimination)
     if (kart->isGhostKart()) return;
 
     // Display a message about the eliminated kart in the race gui
-    if (notify_of_elimination)
+    if (m_race_gui && notify_of_elimination)
     {
         for(unsigned int i=0; i<Camera::getNumCameras(); i++)
         {

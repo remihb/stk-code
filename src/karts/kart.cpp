@@ -65,7 +65,6 @@
 #include "modes/capture_the_flag.hpp"
 #include "modes/linear_world.hpp"
 #include "modes/overworld.hpp"
-#include "modes/profile_world.hpp"
 #include "modes/soccer_world.hpp"
 #include "network/compress_network_body.hpp"
 #include "network/network_config.hpp"
@@ -130,7 +129,6 @@ Kart::Kart (const std::string& ident, unsigned int world_kart_id,
     m_collision_particles  = NULL;
     m_controller           = NULL;
     m_saved_controller     = NULL;
-    m_stars_effect         = NULL;
     m_consumption_per_tick = stk_config->ticks2Time(1) *
                              m_kart_properties->getNitroConsumption();
     m_fire_clicked         = 0;
@@ -218,14 +216,7 @@ void Kart::init(RaceManager::KartType type)
         Log::error("Kart","Could not allocate a sfx object for the kart. Further errors may ensue!");
     }
 
-
-#ifdef SERVER_ONLY
-    bool animations = false;  // server never animates
-#else
-    bool animations = UserConfigParams::m_animated_characters;
-#endif
-    loadData(type, animations);
-
+    loadData(type, UserConfigParams::m_animated_characters);
     reset();
 }   // init
 
@@ -237,14 +228,8 @@ void Kart::changeKart(const std::string& new_ident,
     AbstractKart::changeKart(new_ident, handicap, ri);
     m_kart_model->setKart(this);
 
-#ifdef SERVER_ONLY
-    bool animations = false;  // server never animates
-#else
-    bool animations = UserConfigParams::m_animated_characters;
-#endif
     scene::ISceneNode* old_node = m_node;
-
-    loadData(m_type, animations);
+    loadData(m_type, UserConfigParams::m_animated_characters);
     m_wheel_box = NULL;
 
     if (LocalPlayerController* lpc =
@@ -342,7 +327,8 @@ void Kart::reset()
                              m_kart_properties->getNitroConsumption();
 
     // Reset star effect in case that it is currently being shown.
-    m_stars_effect->reset();
+    if (m_stars_effect)
+        m_stars_effect->reset();
     m_max_speed->reset();
     m_powerup->reset();
 
@@ -396,7 +382,8 @@ void Kart::reset()
     m_flying               = false;
     m_startup_boost        = 0.0f;
 
-    m_node->setScale(core::vector3df(1.0f, 1.0f, 1.0f));
+    if (m_node)
+        m_node->setScale(core::vector3df(1.0f, 1.0f, 1.0f));
 
     for (int i=0;i<m_xyz_history_size;i++)
     {
@@ -1312,7 +1299,8 @@ void Kart::decreaseShieldTime()
  */
 void Kart::showStarEffect(float t)
 {
-    m_stars_effect->showFor(t);
+    if (m_stars_effect)
+        m_stars_effect->showFor(t);
 }   // showStarEffect
 
 //-----------------------------------------------------------------------------
@@ -1346,7 +1334,8 @@ void Kart::eliminate()
     if (m_shadow)
         m_shadow->update(false);
 #endif
-    m_node->setVisible(false);
+    if (m_node)
+        m_node->setVisible(false);
 }   // eliminate
 
 //-----------------------------------------------------------------------------
@@ -1876,7 +1865,7 @@ bool Kart::setSquash(float time, float slowdown)
 void Kart::setSquashGraphics()
 {
 #ifndef SERVER_ONLY
-    if (isGhostKart()) return;
+    if (isGhostKart() || GUIEngine::isNoGraphics()) return;
 
     m_node->setScale(core::vector3df(1.0f, 0.5f, 1.0f));
     if (m_vehicle->getNumWheels() > 0)
@@ -1902,7 +1891,7 @@ void Kart::setSquashGraphics()
 void Kart::unsetSquash()
 {
 #ifndef SERVER_ONLY
-    if (isGhostKart()) return;
+    if (isGhostKart() || GUIEngine::isNoGraphics()) return;
 
     m_node->setScale(core::vector3df(1.0f, 1.0f, 1.0f));
     if (m_vehicle && m_vehicle->getNumWheels() > 0)
@@ -2395,7 +2384,8 @@ void Kart::crashed(const Material *m, const Vec3 &normal)
     {
 #ifndef SERVER_ONLY
         std::string particles = m->getCrashResetParticles();
-        if (particles.size() > 0 && UserConfigParams::m_particles_effects > 0)
+        if (!GUIEngine::isNoGraphics() &&
+            particles.size() > 0 && UserConfigParams::m_particles_effects > 0)
         {
             ParticleKind* kind =
                 ParticleKindManager::get()->getParticles(particles);
@@ -2978,10 +2968,12 @@ void Kart::loadData(RaceManager::KartType type, bool is_animated_model)
 {
     bool always_animated = (type == RaceManager::KT_PLAYER &&
         race_manager->getNumLocalPlayers() == 1);
-    m_node = m_kart_model->attachModel(is_animated_model, always_animated);
+    if (!GUIEngine::isNoGraphics())
+        m_node = m_kart_model->attachModel(is_animated_model, always_animated);
 
 #ifdef DEBUG
-    m_node->setName( (getIdent()+"(lod-node)").c_str() );
+    if (m_node)
+        m_node->setName( (getIdent()+"(lod-node)").c_str() );
 #endif
 
     // Attachment must be created after attachModel, since only then the
@@ -2996,13 +2988,13 @@ void Kart::loadData(RaceManager::KartType type, bool is_animated_model)
 #ifndef SERVER_ONLY
     m_skidmarks = nullptr;
     m_shadow = nullptr;
-    if (!ProfileWorld::isNoGraphics() &&
+    if (!GUIEngine::isNoGraphics() &&
         m_kart_properties->getSkidEnabled() && CVS->isGLSL())
     {
         m_skidmarks.reset(new SkidMarks(*this));
     }
 
-    if (!ProfileWorld::isNoGraphics() &&
+    if (!GUIEngine::isNoGraphics() &&
         CVS->isGLSL() && !CVS->isShadowEnabled() && m_kart_properties
         ->getShadowMaterial()->getSamplerPath(0) != "unicolor_white")
     {
@@ -3015,7 +3007,8 @@ void Kart::loadData(RaceManager::KartType type, bool is_animated_model)
         new KartGFX(this, Track::getCurrentTrack()->getIsDuringDay()));
     m_skidding.reset(new Skidding(this));
     // Create the stars effect
-    m_stars_effect.reset(new Stars(this));
+    if (!GUIEngine::isNoGraphics())
+        m_stars_effect.reset(new Stars(this));
 
 }   // loadData
 
@@ -3196,10 +3189,10 @@ void Kart::updateGraphics(float dt)
     }
      */
 #ifndef SERVER_ONLY
-    if (isSquashed() &&
+    if (m_node && isSquashed() &&
         m_node->getScale() != core::vector3df(1.0f, 0.5f, 1.0f))
         setSquashGraphics();
-    else if (!isSquashed() &&
+    else if (m_node && !isSquashed() &&
         m_node->getScale() != core::vector3df(1.0f, 1.0f, 1.0f))
         unsetSquash();
 #endif
@@ -3234,13 +3227,16 @@ void Kart::updateGraphics(float dt)
 
     // update star effect (call will do nothing if stars are not activated)
     // Remove it if no invulnerability
-    if (!isInvulnerable() && m_stars_effect->isEnabled())
+    if (m_stars_effect)
     {
-        m_stars_effect->reset();
-        m_stars_effect->update(1);
+        if (!isInvulnerable() && m_stars_effect->isEnabled())
+        {
+            m_stars_effect->reset();
+            m_stars_effect->update(1);
+        }
+        else
+            m_stars_effect->update(dt);
     }
-    else
-        m_stars_effect->update(dt);
 
     // Update particle effects (creation rate, and emitter size
     // depending on speed)
@@ -3370,7 +3366,7 @@ btQuaternion Kart::getVisualRotation() const
 void Kart::setOnScreenText(const core::stringw& text)
 {
 #ifndef SERVER_ONLY
-    if (ProfileWorld::isNoGraphics())
+    if (GUIEngine::isNoGraphics())
         return;
         
     BoldFace* bold_face = font_manager->getFont<BoldFace>();

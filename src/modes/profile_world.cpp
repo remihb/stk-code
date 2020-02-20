@@ -34,7 +34,6 @@
 ProfileWorld::ProfileType ProfileWorld::m_profile_mode=PROFILE_NONE;
 int   ProfileWorld::m_num_laps    = 0;
 float ProfileWorld::m_time        = 0.0f;
-bool  ProfileWorld::m_no_graphics = false;
 
 //-----------------------------------------------------------------------------
 /** The constructor sets the number of (local) players to 0, since only AI
@@ -120,7 +119,8 @@ std::shared_ptr<AbstractKart> ProfileWorld::createKart
 
     // Create a camera for the last kart (since this way more of the
     // karts can be seen.
-    if (index == (int)race_manager->getNumberOfKarts()-1)
+    if (!GUIEngine::isNoGraphics() &&
+        index == (int)race_manager->getNumberOfKarts()-1)
     {
         // The camera keeps track of all cameras and will free them
         Camera::createCamera(new_kart.get(), local_player_id);
@@ -206,7 +206,7 @@ void ProfileWorld::enterRaceOverState()
                  m_frame_count, runtime, (float)m_frame_count/runtime);
 
     // Print geometry statistics if we're not in no-graphics mode
-    if(!m_no_graphics)
+    if(!GUIEngine::isNoGraphics())
     {
         Log::verbose("profile", "Average # drawn nodes           %f k",
                      (float)m_num_triangles/m_frame_count);

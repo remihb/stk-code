@@ -177,6 +177,8 @@ void ThreeStrikesBattle::reset(bool restart)
  */
 void ThreeStrikesBattle::kartAdded(AbstractKart* kart, scene::ISceneNode* node)
 {
+    if (!node)
+        return;
     if (kart->getType() == RaceManager::KartType::KT_SPARE_TIRE)
     {
         // Add heart billboard above it
@@ -638,9 +640,12 @@ void ThreeStrikesBattle::spawnSpareTireKarts()
     unsigned int spawn_sta = unsigned(ratio);
     if (spawn_sta > m_spare_tire_karts.size())
         spawn_sta = (int)m_spare_tire_karts.size();
-    m_race_gui->addMessage(_P("%i spare tire kart has been spawned!",
-                              "%i spare tire karts have been spawned!",
-                              spawn_sta), NULL, 2.0f);
+    if (m_race_gui)
+    {
+        m_race_gui->addMessage(_P("%i spare tire kart has been spawned!",
+                                "%i spare tire karts have been spawned!",
+                                spawn_sta), NULL, 2.0f);
+    }
     for (unsigned int i = 0; i < spawn_sta; i++)
     {
         SpareTireAI* sta = dynamic_cast<SpareTireAI*>

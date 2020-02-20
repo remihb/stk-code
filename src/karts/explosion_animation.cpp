@@ -20,6 +20,7 @@
 
 #include "graphics/camera.hpp"
 #include "graphics/stars.hpp"
+#include "guiengine/engine.hpp"
 #include "items/attachment.hpp"
 #include "karts/abstract_kart.hpp"
 #include "karts/kart_properties.hpp"
@@ -163,7 +164,7 @@ ExplosionAnimation::~ExplosionAnimation()
         m_kart->getBody()->setAngularVelocity(btVector3(0,0,0));
         // Don't reset spectate camera
         auto cl = LobbyProtocol::get<ClientLobby>();
-        if (!cl || !cl->isSpectator())
+        if (!GUIEngine::isNoGraphics() && (!cl || !cl->isSpectator()))
         {
             for (unsigned i = 0; i < Camera::getNumCameras(); i++)
             {
@@ -287,7 +288,7 @@ void ExplosionAnimation::update(int ticks)
 // ----------------------------------------------------------------------------
 void ExplosionAnimation::updateGraphics(float dt)
 {
-    if (!m_kart->getStarsEffect()->isEnabled())
+    if (m_kart->getStarsEffect() && !m_kart->getStarsEffect()->isEnabled())
     {
         // Set graphical effects for invulnerable time in updateGraphics
         // to avoid issue with rewind

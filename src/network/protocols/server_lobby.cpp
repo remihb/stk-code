@@ -46,10 +46,9 @@
 #include "network/stk_ipv6.hpp"
 #include "network/stk_peer.hpp"
 #include "online/online_profile.hpp"
+#include "online/request_manager.hpp"
 #include "online/xml_request.hpp"
 #include "race/race_manager.hpp"
-#include "states_screens/online/networking_lobby.hpp"
-#include "states_screens/race_result_gui.hpp"
 #include "tracks/check_manager.hpp"
 #include "tracks/track.hpp"
 #include "tracks/track_manager.hpp"
@@ -64,6 +63,8 @@
 #include <iostream>
 #include <iterator>
 
+// We use max priority for all server requests to avoid downloading of addons
+// icons blocking the poll request in all-in-one graphical client server
 
 #ifdef ENABLE_SQLITE3
 
@@ -2124,7 +2125,7 @@ void ServerLobby::update(int ticks)
             !GameProtocol::emptyInstance())
             return;
 
-        RaceResultGUI::getInstance()->backToLobby();
+        exitGameState();
         m_rs_state.store(RS_ASYNC_RESET);
     }
 
@@ -2221,7 +2222,7 @@ void ServerLobby::update(int ticks)
             return;
 
         // This will go back to lobby in server (and exit the current race)
-        RaceResultGUI::getInstance()->backToLobby();
+        exitGameState();
         // Reset for next state usage
         resetPeersReady();
         // Set the delay before the server forces all clients to exit the race
@@ -2311,7 +2312,8 @@ bool ServerLobby::registerServer(bool now)
         }
     public:
         RegisterServerRequest(bool now, std::shared_ptr<ServerLobby> sl)
-        : XMLRequest(), m_server_lobby(sl), m_execute_now(now) {}
+        : XMLRequest(Online::RequestManager::HTTP_MAX_PRIORITY),
+        m_server_lobby(sl), m_execute_now(now) {}
     };   // RegisterServerRequest
 
     auto request = std::make_shared<RegisterServerRequest>(now,
@@ -2366,7 +2368,8 @@ bool ServerLobby::registerServer(bool now)
  */
 void ServerLobby::unregisterServer(bool now)
 {
-    auto request = std::make_shared<Online::XMLRequest>();
+    int priority = Online::RequestManager::HTTP_MAX_PRIORITY;
+    auto request = std::make_shared<Online::XMLRequest>(priority);
     m_server_unregistered = request;
     NetworkConfig::get()->setServerDetails(request, "stop");
 
@@ -2738,6 +2741,7 @@ void ServerLobby::checkIncomingConnectionRequests()
     {
     private:
         std::weak_ptr<ServerLobby> m_server_lobby;
+        std::weak_ptr<ProtocolManager> m_protocol_manager;
     protected:
         virtual void afterOperation()
         {
@@ -2794,15 +2798,19 @@ void ServerLobby::checkIncomingConnectionRequests()
                     {
                         continue;
                     }
-                    std::make_shared<ConnectToPeer>(peer_addr)->requestStart();
+                    auto ctp = std::make_shared<ConnectToPeer>(peer_addr);
+                    if (auto pm = m_protocol_manager.lock())
+                        pm->requestStart(ctp);
                     sl->addPeerConnection(peer_addr_str);
                 }
             }
             sl->replaceKeys(keys);
         }
     public:
-        PollServerRequest(std::shared_ptr<ServerLobby> sl)
-        : XMLRequest(), m_server_lobby(sl)
+        PollServerRequest(std::shared_ptr<ServerLobby> sl,
+                          std::shared_ptr<ProtocolManager> pm)
+        : XMLRequest(Online::RequestManager::HTTP_MAX_PRIORITY),
+        m_server_lobby(sl), m_protocol_manager(pm)
         {
             m_disable_sending_log = true;
         }
@@ -2810,7 +2818,8 @@ void ServerLobby::checkIncomingConnectionRequests()
     // ========================================================================
 
     auto request = std::make_shared<PollServerRequest>(
-        std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
+        std::dynamic_pointer_cast<ServerLobby>(shared_from_this()),
+        ProtocolManager::lock());
     NetworkConfig::get()->setServerDetails(request,
         "poll-connection-requests");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
@@ -3733,9 +3742,10 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
     if (m_ai_profiles.empty() && peer->getAddress().isLoopback())
     {
         unsigned ai_add = NetworkConfig::get()->getNumFixedAI();
+        unsigned max_players = ServerConfig::m_server_max_players;
         // We need to reserve at least 1 slot for new player
-        if (player_count + ai_add + 1 > ServerConfig::m_server_max_players)
-            ai_add = ServerConfig::m_server_max_players - player_count - 1;
+        if (player_count + ai_add + 1 > max_players)
+            ai_add = max_players - player_count - 1;
         for (unsigned i = 0; i < ai_add; i++)
         {
 #ifdef SERVER_ONLY
@@ -4447,7 +4457,8 @@ bool ServerLobby::decryptConnectionRequest(std::shared_ptr<STKPeer> peer,
 //-----------------------------------------------------------------------------
 void ServerLobby::getRankingForPlayer(std::shared_ptr<NetworkPlayerProfile> p)
 {
-    auto request = std::make_shared<Online::XMLRequest>();
+    int priority = Online::RequestManager::HTTP_MAX_PRIORITY;
+    auto request = std::make_shared<Online::XMLRequest>(priority);
     NetworkConfig::get()->setUserDetails(request, "get-ranking");
 
     const uint32_t id = p->getOnlineId();
@@ -4514,7 +4525,7 @@ void ServerLobby::submitRankingsToAddons()
         SubmitRankingRequest(uint32_t online_id, double scores,
                              double max_scores, unsigned num_races,
                              const std::string& country_code)
-            : XMLRequest()
+            : XMLRequest(Online::RequestManager::HTTP_MAX_PRIORITY)
         {
             addParameter("id", online_id);
             addParameter("scores", scores);
@@ -5006,7 +5017,8 @@ void ServerLobby::handleServerConfiguration(Event* event)
         Log::info("ServerLobby", "Updating server info with new "
             "difficulty: %d, game mode: %d to stk-addons.", new_difficulty,
             new_game_mode);
-        auto request = std::make_shared<Online::XMLRequest>();
+        int priority = Online::RequestManager::HTTP_MAX_PRIORITY;
+        auto request = std::make_shared<Online::XMLRequest>(priority);
         NetworkConfig::get()->setServerDetails(request, "update-config");
         const SocketAddress& addr = STKHost::get()->getPublicAddress();
         request->addParameter("address", addr.getIP());
