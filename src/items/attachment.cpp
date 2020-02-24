@@ -41,8 +41,6 @@
 #include "network/rewind_manager.hpp"
 #include "physics/triangle_mesh.hpp"
 #include "tracks/track.hpp"
-#include "physics/triangle_mesh.hpp"
-#include "tracks/track.hpp"
 #include "utils/constants.hpp"
 
 #include "irrMath.h"
@@ -307,7 +305,7 @@ void Attachment::hitBanana(ItemState *item_state)
     case ATTACH_BOMB:
         {
         add_a_new_item = false;
-        if (!RewindManager::get()->isRewinding())
+        if (!GUIEngine::isNoGraphics() && !RewindManager::get()->isRewinding())
         {
             HitEffect* he = new Explosion(m_kart->getXYZ(), "explosion",
                 "explosion_bomb.xml");
@@ -516,7 +514,7 @@ void Attachment::update(int ticks)
         m_initial_speed = 0;
         if (m_ticks_left <= 0)
         {
-            if (!RewindManager::get()->isRewinding())
+            if (!GUIEngine::isNoGraphics() && !RewindManager::get()->isRewinding())
             {
                 HitEffect* he = new Explosion(m_kart->getXYZ(), "explosion",
                     "explosion_bomb.xml");
@@ -543,7 +541,7 @@ void Attachment::update(int ticks)
                 m_bubble_explode_sound->play();
             }
             if (!m_kart->isGhostKart())
-                ItemManager::get()->dropNewItem(Item::ITEM_BUBBLEGUM, m_kart);
+                Track::getCurrentTrack()->getItemManager()->dropNewItem(Item::ITEM_BUBBLEGUM, m_kart);
         }
         break;
     }   // switch

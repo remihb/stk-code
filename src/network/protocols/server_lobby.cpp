@@ -2018,15 +2018,15 @@ void ServerLobby::finishedLoadingLiveJoinClient(Event* event)
         spectator = true;
     }
 
-    const uint8_t cc = (uint8_t)CheckManager::get()->getCheckStructureCount();
+    const uint8_t cc = (uint8_t)Track::getCurrentTrack()->getCheckManager()->getCheckStructureCount();
     NetworkString* ns = getNetworkString(10);
     ns->setSynchronous(true);
     ns->addUInt8(LE_LIVE_JOIN_ACK).addUInt64(m_client_starting_time)
         .addUInt8(cc).addUInt64(live_join_start_time)
         .addUInt32(m_last_live_join_util_ticks);
 
-    NetworkItemManager* nim =
-        dynamic_cast<NetworkItemManager*>(ItemManager::get());
+    NetworkItemManager* nim = dynamic_cast<NetworkItemManager*>
+        (Track::getCurrentTrack()->getItemManager());
     assert(nim);
     nim->saveCompleteState(ns);
     nim->addLiveJoinPeer(peer);
@@ -4603,7 +4603,7 @@ void ServerLobby::configPeersStartTime()
     NetworkString* ns = getNetworkString(10);
     ns->setSynchronous(true);
     ns->addUInt8(LE_START_RACE).addUInt64(start_time);
-    const uint8_t cc = (uint8_t)CheckManager::get()->getCheckStructureCount();
+    const uint8_t cc = (uint8_t)Track::getCurrentTrack()->getCheckManager()->getCheckStructureCount();
     ns->addUInt8(cc);
     *ns += *m_items_complete_state;
     m_client_starting_time = start_time;
@@ -5294,8 +5294,8 @@ void ServerLobby::clientInGameWantsToBackLobby(Event* event)
                 peer->getAddress().toString().c_str());
         }
     }
-    NetworkItemManager* nim =
-        dynamic_cast<NetworkItemManager*>(ItemManager::get());
+    NetworkItemManager* nim = dynamic_cast<NetworkItemManager*>
+        (Track::getCurrentTrack()->getItemManager());
     assert(nim);
     nim->erasePeerInGame(peer);
     m_peers_ready.erase(peer);
@@ -5350,13 +5350,10 @@ void ServerLobby::clientSelectingAssetsWantsToBackLobby(Event* event)
 }   // clientSelectingAssetsWantsToBackLobby
 
 //-----------------------------------------------------------------------------
-void ServerLobby::saveInitialItems()
+void ServerLobby::saveInitialItems(std::shared_ptr<NetworkItemManager> nim)
 {
     m_items_complete_state->getBuffer().clear();
     m_items_complete_state->reset();
-    NetworkItemManager* nim =
-        dynamic_cast<NetworkItemManager*>(ItemManager::get());
-    assert(nim);
     nim->saveCompleteState(m_items_complete_state);
 }   // saveInitialItems
 
