@@ -175,6 +175,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         ((std::string) ServerConfig::m_help);
 
     m_available_commands = "help commands music kick to public "
+        "gnu nognu standings "
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
@@ -1632,12 +1633,32 @@ void ServerLobby::asynchronousUpdate()
             {
                 if (players[i]->getKartName().empty())
                 {
-                    RandomGenerator rg;
-                    std::set<std::string>::iterator it =
-                        m_available_kts.first.begin();
-                    std::advance(it,
-                        rg.get((int)m_available_kts.first.size()));
-                    players[i]->setKartName(*it);
+                    bool gnu_eliminated = m_gnu_elimination;
+                    auto remaining_begin = m_gnu_participants.begin();
+                    auto remaining_end = remaining_begin + m_gnu_remained;
+                    for (auto& profile : players)
+                    {
+                        if (std::find(
+                            remaining_begin, remaining_end,
+                            StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                        {
+                            gnu_eliminated = false;
+                            break;
+                        }
+                    }
+                    if (gnu_eliminated)
+                    {
+
+                    }
+                    else
+                    {
+                        RandomGenerator rg;
+                        std::set<std::string>::iterator it =
+                            m_available_kts.first.begin();
+                        std::advance(it,
+                            rg.get((int)m_available_kts.first.size()));
+                        players[i]->setKartName(*it);
+                    }
                 }
             }
 
@@ -5682,8 +5703,8 @@ void ServerLobby::handleServerCommand(Event* event,
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
             chat->encodeString16(
-                    L"Gnu Elimination starts");
-            peer->sendPacket(chat, true/*reliable*/);
+                    L"Gnu Elimination starts now! Use /standings after each race for results.");
+            sendMessageToPeers(chat);
             delete chat;
         }
     }
@@ -5714,15 +5735,20 @@ void ServerLobby::handleServerCommand(Event* event,
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
             chat->encodeString16(
-                    L"Gnu Elimination is off");
-            peer->sendPacket(chat, true/*reliable*/);
+                    L"Gnu Elimination is now off");
+            sendMessageToPeers(chat);
             delete chat;
         }
     }
     else if (argv[0] == "standings")
     {
-        Log::info("GnuElimination", "total %d participants", (int)m_gnu_participants.size());
-        std::string result = "Gnu Elimination standings:";
+        // Log::info("ServerLobby", "Gnu Elimination: total %d participants", (int)m_gnu_participants.size());
+        std::string result = "Gnu Elimination ";
+        if (m_gnu_elimination)
+            result += "is running";
+        else
+            result += "is disabled";
+        result += ", standings:";
         for (int i = 0; i < (int)m_gnu_participants.size(); i++)
         {
             std::string line = "\n" + (i < m_gnu_remained ?
@@ -5837,5 +5863,12 @@ void ServerLobby::updateGnuElimination()
     }
     if (m_gnu_remained <= 1) {
         m_gnu_elimination = false;
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string message = "Gnu Elimination has finished! Congratulations to " + m_gnu_participants[0] + " !";
+        chat->encodeString16(StringUtils::utf8ToWide(message));
+        sendMessageToPeers(chat);
+        delete chat;
     }
 }
