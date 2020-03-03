@@ -1639,7 +1639,8 @@ void ServerLobby::asynchronousUpdate()
                     {
                         if (std::find(m_gnu_participants.begin(),
                             m_gnu_participants.begin() + m_gnu_remained,
-                            StringUtils::wideToUtf8(players[i]->getName())) != remaining_end)
+                            StringUtils::wideToUtf8(players[i]->getName())) !=
+                            m_gnu_participants.begin() + m_gnu_remained)
                         {
                             gnu_eliminated = false;
                         }
