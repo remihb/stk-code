@@ -436,7 +436,7 @@ void ServerLobby::initServerStatsTable()
         "    time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Timestamp of the result\n"
         "    username TEXT NOT NULL, -- User who set the result\n"
         "    venue TEXT NOT NULL, -- Track for a race\n"
-        "    mode INTEGER NOT NULL, -- Racing mode\n"
+        "    mode TEXT NOT NULL, -- Racing mode\n"
         "    laps INTEGER NOT NULL, -- Number of laps\n"
         "    result REAL NOT NULL -- Elapsed time for a race, possibly with autofinish\n"
         ") WITHOUT ROWID;", m_results_table_name.c_str());
