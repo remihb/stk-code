@@ -1648,7 +1648,7 @@ void ServerLobby::asynchronousUpdate()
                     }
                     if (gnu_eliminated)
                     {
-
+                        players[i]->setKartName("gnu");
                     }
                     else
                     {
