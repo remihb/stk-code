@@ -1629,27 +1629,19 @@ void ServerLobby::asynchronousUpdate()
             // Add placeholder players for live join
             addLiveJoinPlaceholder(players);
             // If player chose random / hasn't chose any kart
+            bool possible_gnu_enforcement = m_gnu_elimination && m_gnu_remained >= 0;
             for (unsigned i = 0; i < players.size(); i++)
             {
                 if (players[i]->getKartName().empty())
                 {
-                    bool gnu_eliminated = m_gnu_elimination && m_gnu_remained >= 0;
+                    bool gnu_eliminated = possible_gnu_enforcement;
                     if (gnu_eliminated)
                     {
-                        auto remaining_begin = m_gnu_participants.begin();
-                        auto remaining_end = remaining_begin + m_gnu_remained;
-                        for (auto& profile : players)
+                        if (std::find(m_gnu_participants.begin(),
+                            m_gnu_participants.begin() + m_gnu_remained,
+                            StringUtils::wideToUtf8(players[i]->getName())) != remaining_end)
                         {
-                            if (std::find(
-                                remaining_begin, remaining_end,
-                                StringUtils::wideToUtf8(profile->getName())) != remaining_end)
-                            {
-                                Log::info("ServerLobby",
-                                    "Player %s with no chosen kart is not eliminated!",
-                                    StringUtils::wideToUtf8(profile->getName()).c_str());
-                                gnu_eliminated = false;
-                                break;
-                            }
+                            gnu_eliminated = false;
                         }
                     }
                     if (gnu_eliminated)
