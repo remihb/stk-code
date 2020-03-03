@@ -3412,6 +3412,19 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
         message->setSynchronous(true);
         message->addUInt8(LE_CONNECTION_REFUSED)
             .addUInt8(RR_INCOMPATIBLE_DATA);
+
+        std::string advice = ServerConfig::m_incompatible_advice;
+        if (!advice.empty())
+        {
+            NetworkString* incompatible_reason = getNetworkString();
+            incompatible_reason->addUInt8(LE_CHAT);
+            incompatible_reason->setSynchronous(true);
+            incompatible_reason->encodeString16(StringUtils::utf8ToWide(advice));
+            peer->sendPacket(incompatible_reason, true/*reliable*/, false/*encrypted*/);
+            Log::info("ServerLobby", "Sent advice");
+            delete incompatible_reason;
+        }
+
         peer->cleanPlayerProfiles();
         peer->sendPacket(message, true/*reliable*/, false/*encrypted*/);
         peer->reset();

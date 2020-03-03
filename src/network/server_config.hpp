@@ -491,6 +491,12 @@ namespace ServerConfig
         "should write a good IP here as a number. Only IPv4 is "
         "supported."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "incompatible-advice",
+        "A string given to a peer if it has incompatible data, so "
+        "that it can know why it cannot enter, empty to disable."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

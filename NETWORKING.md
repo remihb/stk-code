@@ -222,6 +222,10 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- IP that should be used to connect to a server, set 0 for a default IP. You need this only if the server's IP shouldn't be used for some reason (e.g. blocking) and there is another IP ('good') that points to the same server. In this case, you should write a good IP here as a number. Only IPv4 is supported. -->
     <sleeping-server value="false" />
 
+    <!-- A string given to a peer if it has incompatible data, so that it can know why it cannot enter, empty to disable. -->
+    <incompatible-advice value="Well, you have incompatible data!" />
+
+
 </server-config>
 
 ```
