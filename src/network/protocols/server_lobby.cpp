@@ -1633,17 +1633,23 @@ void ServerLobby::asynchronousUpdate()
             {
                 if (players[i]->getKartName().empty())
                 {
-                    bool gnu_eliminated = m_gnu_elimination;
-                    auto remaining_begin = m_gnu_participants.begin();
-                    auto remaining_end = remaining_begin + m_gnu_remained;
-                    for (auto& profile : players)
+                    bool gnu_eliminated = m_gnu_elimination && m_gnu_remained >= 0;
+                    if (gnu_eliminated)
                     {
-                        if (std::find(
-                            remaining_begin, remaining_end,
-                            StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                        auto remaining_begin = m_gnu_participants.begin();
+                        auto remaining_end = remaining_begin + m_gnu_remained;
+                        for (auto& profile : players)
                         {
-                            gnu_eliminated = false;
-                            break;
+                            if (std::find(
+                                remaining_begin, remaining_end,
+                                StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                            {
+                                Log::info("ServerLobby",
+                                    "Player %s with no chosen kart is not eliminated!",
+                                    StringUtils::wideToUtf8(profile->getName()).c_str());
+                                gnu_eliminated = false;
+                                break;
+                            }
                         }
                     }
                     if (gnu_eliminated)
