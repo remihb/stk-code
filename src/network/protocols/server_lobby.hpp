@@ -84,6 +84,8 @@ private:
 
     std::string m_server_stats_table;
 
+    std::string m_results_table_name;
+
     bool m_ip_ban_table_exists;
 
     bool m_ipv6_ban_table_exists;
@@ -407,6 +409,7 @@ public:
     void initServerStatsTable();
     bool isAIProfile(const std::shared_ptr<NetworkPlayerProfile>& npp) const
                      { return m_ai_profiles.find(npp) != m_ai_profiles.end(); }
+    void storeResults();
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP

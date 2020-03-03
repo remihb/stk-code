@@ -491,6 +491,11 @@ namespace ServerConfig
         "should write a good IP here as a number. Only IPv4 is "
         "supported."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_store_results
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "store-results",
+        "When true, stores race results in a separate table for each "
+        "server."));
+
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "incompatible-advice",

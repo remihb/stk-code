@@ -427,6 +427,21 @@ void ServerLobby::initServerStatsTable()
         ") WITHOUT ROWID;", country_table_name.c_str());
     easySQLQuery(query);
 
+    // Extra default table _results:
+    // Server owner need to initialise this table himself, check NETWORKING.md
+    m_results_table_name = std::string("v") + StringUtils::toString(
+        ServerConfig::m_server_db_version) + "_results";
+    query = StringUtils::insertValues(
+        "CREATE TABLE IF NOT EXISTS %s (\n"
+        "    time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Timestamp of the result\n"
+        "    username TEXT NOT NULL, -- User who set the result\n"
+        "    venue TEXT NOT NULL, -- Track for a race\n"
+        "    mode INTEGER NOT NULL, -- Racing mode\n"
+        "    laps INTEGER NOT NULL, -- Number of laps\n"
+        "    result REAL NOT NULL -- Elapsed time for a race, possibly with autofinish\n"
+        ") WITHOUT ROWID;", m_results_table_name.c_str());
+    easySQLQuery(query);
+
     // Default views:
     // _full_stats
     // Full stats with ip in human readable format and time played of each
@@ -2928,6 +2943,15 @@ void ServerLobby::checkRaceFinished()
 
     if (m_gnu_elimination) {
         updateGnuElimination();
+    }
+
+    if (ServerConfig::m_store_results)
+    {
+        bool racing_mode = false;
+        racing_mode |= race_manager->getMinorMode() == RaceManager::MINOR_MODE_NORMAL_RACE;
+        racing_mode |= race_manager->getMinorMode() == RaceManager::MINOR_MODE_TIME_TRIAL;
+        if (racing_mode)
+            storeResults();
     }
 
     if (ServerConfig::m_ranked)
@@ -5883,4 +5907,32 @@ void ServerLobby::updateGnuElimination()
         sendMessageToPeers(chat);
         delete chat;
     }
-}
+}  // updateGnuElimination
+//-----------------------------------------------------------------------------
+void ServerLobby::storeResults()
+{
+#ifdef ENABLE_SQLITE3
+    World* w = World::getWorld();
+    assert(w);
+    std::string mode_name = race_manager->getMinorModeName();
+    int player_count = race_manager->getNumPlayers();
+    int laps_number = race_manager->getNumLaps();
+    std::string track_name = race_manager->getTrackName();
+    for (int i = 0; i < player_count; i++)
+    {
+        if (w->getKart(i)->isEliminated())
+            continue;
+        std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
+        double elapsed_time = race_manager->getKartRaceTime(i);
+        std::string query = StringUtils::insertValues(
+            "INSERT INTO %s "
+            "(username, venue, mode, laps, result) "
+            "VALUES (\"%s\", \"%s\", \"%s\", %d, %f);",
+            m_results_table_name.c_str(), username.c_str(), track_name.c_str(),
+            mode_name.c_str(), laps_number, elapsed_time
+        );
+        easySQLQuery(query);
+    }
+#endif
+}  // storeResults
+//-----------------------------------------------------------------------------
