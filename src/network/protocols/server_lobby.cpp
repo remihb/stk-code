@@ -430,7 +430,7 @@ void ServerLobby::initServerStatsTable()
     // Extra default table _results:
     // Server owner need to initialise this table himself, check NETWORKING.md
     m_results_table_name = std::string("v") + StringUtils::toString(
-        ServerConfig::m_server_db_version) + "_results";
+        ServerConfig::m_server_db_version) + "_" + ServerConfig::m_server_uid + "_results";
     query = StringUtils::insertValues(
         "CREATE TABLE IF NOT EXISTS %s (\n"
         "    time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Timestamp of the result\n"
@@ -439,7 +439,7 @@ void ServerLobby::initServerStatsTable()
         "    mode TEXT NOT NULL, -- Racing mode\n"
         "    laps INTEGER NOT NULL, -- Number of laps\n"
         "    result REAL NOT NULL -- Elapsed time for a race, possibly with autofinish\n"
-        ") WITHOUT ROWID;", m_results_table_name.c_str());
+        ");", m_results_table_name.c_str());
     easySQLQuery(query);
 
     // Default views:
