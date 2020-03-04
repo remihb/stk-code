@@ -436,6 +436,7 @@ void ServerLobby::initServerStatsTable()
         "    time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Timestamp of the result\n"
         "    username TEXT NOT NULL, -- User who set the result\n"
         "    venue TEXT NOT NULL, -- Track for a race\n"
+        "    reverse TEXT NOT NULL, -- Direction\n"
         "    mode TEXT NOT NULL, -- Racing mode\n"
         "    laps INTEGER NOT NULL, -- Number of laps\n"
         "    result REAL NOT NULL -- Elapsed time for a race, possibly with autofinish\n"
@@ -5918,6 +5919,7 @@ void ServerLobby::storeResults()
     int player_count = race_manager->getNumPlayers();
     int laps_number = race_manager->getNumLaps();
     std::string track_name = race_manager->getTrackName();
+    std::string reverse_string = (race_manager->getReverseTrack() ? "reverse" : "normal");
     for (int i = 0; i < player_count; i++)
     {
         if (w->getKart(i)->isEliminated())
@@ -5926,10 +5928,10 @@ void ServerLobby::storeResults()
         double elapsed_time = race_manager->getKartRaceTime(i);
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
-            "(username, venue, mode, laps, result) "
+            "(username, venue, reverse, mode, laps, result) "
             "VALUES (\"%s\", \"%s\", \"%s\", %d, %f);",
             m_results_table_name.c_str(), username.c_str(), track_name.c_str(),
-            mode_name.c_str(), laps_number, elapsed_time
+            reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_time
         );
         easySQLQuery(query);
     }
