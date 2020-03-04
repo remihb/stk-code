@@ -5929,7 +5929,7 @@ void ServerLobby::storeResults()
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(username, venue, reverse, mode, laps, result) "
-            "VALUES (\"%s\", \"%s\", \"%s\", %d, %f);",
+            "VALUES (\"%s\", \"%s\", \"%s\", \"%s\", %d, %f);",
             m_results_table_name.c_str(), username.c_str(), track_name.c_str(),
             reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_time
         );
