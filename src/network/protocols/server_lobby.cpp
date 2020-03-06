@@ -2950,8 +2950,8 @@ void ServerLobby::checkRaceFinished()
     if (ServerConfig::m_store_results)
     {
         bool racing_mode = false;
-        racing_mode |= race_manager->getMinorMode() == RaceManager::MINOR_MODE_NORMAL_RACE;
-        racing_mode |= race_manager->getMinorMode() == RaceManager::MINOR_MODE_TIME_TRIAL;
+        racing_mode |= RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_NORMAL_RACE;
+        racing_mode |= RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_TIME_TRIAL;
         if (racing_mode)
             storeResults();
     }
@@ -5900,16 +5900,16 @@ void ServerLobby::updateGnuElimination()
     World* w = World::getWorld();
     assert(w);
     assert(m_gnu_remained != 0);
-    int player_count = race_manager->getNumPlayers();
+    int player_count = RaceManager::get()->getNumPlayers();
     const double INF = 1e9;
     std::vector<std::pair<double, std::string>> order;
     if (m_gnu_remained < 0)
     {
         for (int i = 0; i < player_count; i++)
         {
-            std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
+            std::string username = StringUtils::wideToUtf8(RaceManager::get()->getKartInfo(i).getPlayerName());
             double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
-                race_manager->getKartRaceTime(i));
+                RaceManager::get()->getKartRaceTime(i));
             order.emplace_back(elapsed_time, username);
             m_gnu_participants.push_back(username);
         }
@@ -5924,9 +5924,9 @@ void ServerLobby::updateGnuElimination()
         // the number of players is very small and I don't want maps
         for (int i = 0; i < player_count; i++)
         {
-            std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
+            std::string username = StringUtils::wideToUtf8(RaceManager::get()->getKartInfo(i).getPlayerName());
             double elapsed_time = (w->getKart(i)->isEliminated() ? INF :
-                race_manager->getKartRaceTime(i));
+                RaceManager::get()->getKartRaceTime(i));
             for (int j = 0; j < m_gnu_remained; j++)
             {
                 if (m_gnu_participants[j] == username)
@@ -5964,17 +5964,17 @@ void ServerLobby::storeResults()
 #ifdef ENABLE_SQLITE3
     World* w = World::getWorld();
     assert(w);
-    std::string mode_name = race_manager->getMinorModeName();
-    int player_count = race_manager->getNumPlayers();
-    int laps_number = race_manager->getNumLaps();
-    std::string track_name = race_manager->getTrackName();
-    std::string reverse_string = (race_manager->getReverseTrack() ? "reverse" : "normal");
+    std::string mode_name = RaceManager::get()->getMinorModeName();
+    int player_count = RaceManager::get()->getNumPlayers();
+    int laps_number = RaceManager::get()->getNumLaps();
+    std::string track_name = RaceManager::get()->getTrackName();
+    std::string reverse_string = (RaceManager::get()->getReverseTrack() ? "reverse" : "normal");
     for (int i = 0; i < player_count; i++)
     {
         if (w->getKart(i)->isEliminated())
             continue;
-        std::string username = StringUtils::wideToUtf8(race_manager->getKartInfo(i).getPlayerName());
-        double elapsed_time = race_manager->getKartRaceTime(i);
+        std::string username = StringUtils::wideToUtf8(RaceManager::get()->getKartInfo(i).getPlayerName());
+        double elapsed_time = RaceManager::get()->getKartRaceTime(i);
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(username, venue, reverse, mode, laps, result) "
