@@ -53,7 +53,7 @@ private:
     std::atomic<ConnectState> m_state;
 
     void getClientServerInfo();
-    void registerWithSTKServer();
+    bool registerWithSTKServer();
     bool tryConnect(int timeout, int retry, bool another_port = false,
                     bool ipv6 = false);
     static ENetAddress m_server_address;
@@ -62,14 +62,11 @@ private:
     static bool m_done_intecept;
     bool detectPort();
 public:
-    static std::weak_ptr<Online::Request> m_previous_unjoin;
              ConnectToServer(std::shared_ptr<Server> server);
     virtual ~ConnectToServer();
     virtual void setup() OVERRIDE;
     virtual void asynchronousUpdate() OVERRIDE;
     virtual void update(int ticks) OVERRIDE;
-    static std::string enetAddressToString(const ENetAddress& addr);
-    static ENetAddress toENetAddress(uint32_t ip, uint16_t port);
 };   // class ConnectToServer
 
 #endif // CONNECT_TO_SERVER_HPP

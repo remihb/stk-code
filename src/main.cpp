@@ -222,6 +222,10 @@
 #include "network/network.hpp"
 #include "network/network_config.hpp"
 #include "network/network_string.hpp"
+#include "network/protocols/connect_to_server.hpp"
+#include "network/protocols/client_lobby.hpp"
+#include "network/protocols/server_lobby.hpp"
+#include "network/race_event_manager.hpp"
 #include "network/rewind_manager.hpp"
 #include "network/rewind_queue.hpp"
 #include "network/server.hpp"
@@ -256,7 +260,7 @@
 #include "utils/log.hpp"
 #include "utils/mini_glm.hpp"
 #include "utils/profiler.hpp"
-#include "utils/separate_process.hpp"
+#include "utils/stk_process.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
 
@@ -529,14 +533,14 @@ void setupRaceStart()
         Log::warn("main", "Kart '%s' is unknown so will use the "
             "default kart.",
             UserConfigParams::m_default_kart.c_str());
-        race_manager->setPlayerKart(0,
+        RaceManager::get()->setPlayerKart(0,
                            UserConfigParams::m_default_kart.getDefaultValue());
     }
     else
     {
         // Set up race manager appropriately
-        if (race_manager->getNumPlayers() > 0)
-            race_manager->setPlayerKart(0, UserConfigParams::m_default_kart);
+        if (RaceManager::get()->getNumPlayers() > 0)
+            RaceManager::get()->setPlayerKart(0, UserConfigParams::m_default_kart);
     }
 
     // ASSIGN should make sure that only input from assigned devices
@@ -992,15 +996,15 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
     if(CommandLine::has("--soccer-ai-stats"))
     {
         UserConfigParams::m_arena_ai_stats=true;
-        race_manager->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
+        RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
         std::vector<std::string> l;
         for (int i = 0; i < 8; i++)
             l.push_back("tux");
-        race_manager->setDefaultAIKartList(l);
-        race_manager->setNumKarts(9);
-        race_manager->setMaxGoal(30);
-        race_manager->setTrack("soccer_field");
-        race_manager->setDifficulty(RaceManager::Difficulty(3));
+        RaceManager::get()->setDefaultAIKartList(l);
+        RaceManager::get()->setNumKarts(9);
+        RaceManager::get()->setMaxGoal(30);
+        RaceManager::get()->setTrack("soccer_field");
+        RaceManager::get()->setDifficulty(RaceManager::Difficulty(3));
         UserConfigParams::m_no_start_screen = true;
         UserConfigParams::m_race_now = true;
         UserConfigParams::m_sfx = false;
@@ -1012,14 +1016,14 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         if (!CommandLine::has("--track", &track))
             track = "temple";
         UserConfigParams::m_arena_ai_stats=true;
-        race_manager->setMinorMode(RaceManager::MINOR_MODE_3_STRIKES);
+        RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_3_STRIKES);
         std::vector<std::string> l;
         for (int i = 0; i < 8; i++)
             l.push_back("tux");
-        race_manager->setDefaultAIKartList(l);
-        race_manager->setTrack(track);
-        race_manager->setNumKarts(8);
-        race_manager->setDifficulty(RaceManager::Difficulty(3));
+        RaceManager::get()->setDefaultAIKartList(l);
+        RaceManager::get()->setTrack(track);
+        RaceManager::get()->setNumKarts(8);
+        RaceManager::get()->setDifficulty(RaceManager::Difficulty(3));
         UserConfigParams::m_no_start_screen = true;
         UserConfigParams::m_race_now = true;
         UserConfigParams::m_sfx = false;
@@ -1118,12 +1122,12 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         {
             Log::warn("main", "Invalid difficulty '%s', use easy.\n",
                       s.c_str());
-            race_manager->setDifficulty(RaceManager::Difficulty(0));
+            RaceManager::get()->setDifficulty(RaceManager::Difficulty(0));
             ServerConfig::m_server_difficulty = 0;
         }
         else
         {
-            race_manager->setDifficulty(RaceManager::Difficulty(n));
+            RaceManager::get()->setDifficulty(RaceManager::Difficulty(n));
             ServerConfig::m_server_difficulty = n;
         }
     }   // --difficulty
@@ -1136,30 +1140,30 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         case 0:
         {
             ServerConfig::m_server_mode = 3;
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_NORMAL_RACE);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_NORMAL_RACE);
             break;
         }
         case 1:
         {
             ServerConfig::m_server_mode = 4;
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_TIME_TRIAL);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_TIME_TRIAL);
             break;
         }
         case 2:
         {
             ServerConfig::m_server_mode = 7;
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_FREE_FOR_ALL);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_FREE_FOR_ALL);
             break;
         }
         case 3:
         {
             ServerConfig::m_server_mode = 6;
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
             break;
         }
         case 4:
         {
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_FOLLOW_LEADER);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_FOLLOW_LEADER);
             break;
         }
         default:
@@ -1168,8 +1172,8 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
     }   // --mode
 
     const bool is_soccer =
-        race_manager->getMinorMode() == RaceManager::MINOR_MODE_SOCCER;
-    const bool is_battle = race_manager->isBattleMode();
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_SOCCER;
+    const bool is_battle = RaceManager::get()->isBattleMode();
 
     if (!has_server_config)
     {
@@ -1481,7 +1485,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
             // up upon player creation.
             if (StateManager::get()->activePlayerCount() > 0)
             {
-                race_manager->setPlayerKart(0, s);
+                RaceManager::get()->setPlayerKart(0, s);
             }
             Log::verbose("main", "You chose to use kart '%s'.",
                          s.c_str());
@@ -1496,21 +1500,21 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
     if(CommandLine::has("--ai", &s))
     {
         const std::vector<std::string> l=StringUtils::split(std::string(s),',');
-        race_manager->setDefaultAIKartList(l);
+        RaceManager::get()->setDefaultAIKartList(l);
         // Add 1 for the player kart
-        race_manager->setNumKarts((int)l.size()+1);
+        RaceManager::get()->setNumKarts((int)l.size()+1);
     }   // --ai
 
     if(CommandLine::has("--aiNP", &s))
     {
         const std::vector<std::string> l=StringUtils::split(std::string(s),',');
-        race_manager->setDefaultAIKartList(l);
-        race_manager->setNumKarts((int)l.size());
+        RaceManager::get()->setDefaultAIKartList(l);
+        RaceManager::get()->setNumKarts((int)l.size());
     }   // --aiNP
 
     if(CommandLine::has("--track", &s) || CommandLine::has("-t", &s))
     {
-        race_manager->setTrack(s);
+        RaceManager::get()->setTrack(s);
         Log::verbose("main", "You chose to start in track '%s'.",
                      s.c_str());
 
@@ -1523,19 +1527,19 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         {
             //if it's arena, don't create AI karts
             const std::vector<std::string> l;
-            race_manager->setDefaultAIKartList(l);
+            RaceManager::get()->setDefaultAIKartList(l);
             // Add 1 for the player kart
-            race_manager->setNumKarts(1);
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_3_STRIKES);
+            RaceManager::get()->setNumKarts(1);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_3_STRIKES);
         }
         else if (t->isSoccer())
         {
             //if it's soccer, don't create AI karts
             const std::vector<std::string> l;
-            race_manager->setDefaultAIKartList(l);
+            RaceManager::get()->setDefaultAIKartList(l);
             // Add 1 for the player kart
-            race_manager->setNumKarts(1);
-            race_manager->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
+            RaceManager::get()->setNumKarts(1);
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_SOCCER);
         }
     }   // --track
 
@@ -1543,17 +1547,17 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
     if (CommandLine::has("--cutscene", &s))
     {
         UserConfigParams::m_no_start_screen = true; // Purple menu background otherwise
-        race_manager->setTrack(s);
+        RaceManager::get()->setTrack(s);
         StateManager::get()->enterGameState();
-        race_manager->setMinorMode(RaceManager::MINOR_MODE_CUTSCENE);
-        race_manager->setNumKarts(0);
-        race_manager->setNumPlayers(0);
-        race_manager->setNumLaps(999);
+        RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_CUTSCENE);
+        RaceManager::get()->setNumKarts(0);
+        RaceManager::get()->setNumPlayers(0);
+        RaceManager::get()->setNumLaps(999);
     } // --cutscene
 
     if(CommandLine::has("--gp", &s))
     {
-        race_manager->setMajorMode(RaceManager::MAJOR_MODE_GRAND_PRIX);
+        RaceManager::get()->setMajorMode(RaceManager::MAJOR_MODE_GRAND_PRIX);
         const GrandPrixData *gp = grand_prix_manager->getGrandPrix(s);
 
         if (!gp)
@@ -1561,7 +1565,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
             Log::warn("main", "There is no GP named '%s'.", s.c_str());
             return 0;
         }
-        race_manager->setGrandPrix(*gp);
+        RaceManager::get()->setGrandPrix(*gp);
     }   // --gp
 
     if(CommandLine::has("--numkarts", &n) ||CommandLine::has("-k", &n))
@@ -1573,7 +1577,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
                       stk_config->m_max_karts);
             UserConfigParams::m_default_num_karts = stk_config->m_max_karts;
         }
-        race_manager->setNumKarts( UserConfigParams::m_default_num_karts );
+        RaceManager::get()->setNumKarts( UserConfigParams::m_default_num_karts );
         Log::verbose("main", "%d karts will be used.",
                      (int)UserConfigParams::m_default_num_karts);
     }   // --numkarts
@@ -1598,7 +1602,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         else
         {
             Log::verbose("main", "You chose to have %d laps.", laps);
-            race_manager->setNumLaps(laps);
+            RaceManager::get()->setNumLaps(laps);
         }
     }   // --laps
 
@@ -1614,7 +1618,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
             Log::verbose("main", "Profiling %d laps.",n);
             UserConfigParams::m_no_start_screen = true;
             ProfileWorld::setProfileModeLaps(n);
-            race_manager->setNumLaps(n);
+            RaceManager::get()->setNumLaps(n);
         }
     }   // --profile-laps
     
@@ -1633,7 +1637,7 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         Log::verbose("main", "Profiling: %d seconds.", n);
         UserConfigParams::m_no_start_screen = true;
         ProfileWorld::setProfileModeTime((float)n);
-        race_manager->setNumLaps(999999); // profile end depends on time
+        RaceManager::get()->setNumLaps(999999); // profile end depends on time
     }   // --profile-time
 
     if(CommandLine::has("--history"))
@@ -1730,13 +1734,19 @@ void clearGlobalVariables()
 {
     // In android sometimes global variables is not reset when restart the app
     // we clear it here as much as possible
-    race_manager = NULL;
+    STKProcess::reset();
+    StateManager::clear();
+    NetworkConfig::clear();
+    STKHost::clear();
+    RaceManager::clear();
+    ProjectileManager::clear();
+    RaceEventManager::clear();
     music_manager = NULL;
     irr_driver = NULL;
 #ifdef ENABLE_WIIUSE
     wiimote_manager = NULL;
 #endif
-    World::setWorld(NULL);
+    World::clear();
     GUIEngine::resetGlobalVariables();
 }   // clearGlobalVariables
 
@@ -1819,7 +1829,7 @@ void initRest()
     material_manager        = new MaterialManager      ();
     track_manager           = new TrackManager         ();
     kart_properties_manager = new KartPropertiesManager();
-    projectile_manager      = new ProjectileManager    ();
+    ProjectileManager::create();
     powerup_manager         = new PowerupManager       ();
     attachment_manager      = new AttachmentManager    ();
     highscore_manager       = new HighscoreManager     ();
@@ -1850,19 +1860,19 @@ void initRest()
     GUIEngine::addLoadingIcon( irr_driver->getTexture(FileManager::GUI_ICON,
                                                       "cup_gold.png"    ) );
 
-    race_manager            = new RaceManager          ();
+    RaceManager::create();
     // default settings for Quickstart
-    race_manager->setNumPlayers(1);
-    race_manager->setNumLaps   (3);
-    race_manager->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
-    race_manager->setMinorMode (RaceManager::MINOR_MODE_NORMAL_RACE);
-    race_manager->setDifficulty(
+    RaceManager::get()->setNumPlayers(1);
+    RaceManager::get()->setNumLaps   (3);
+    RaceManager::get()->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
+    RaceManager::get()->setMinorMode (RaceManager::MINOR_MODE_NORMAL_RACE);
+    RaceManager::get()->setDifficulty(
                  (RaceManager::Difficulty)(int)UserConfigParams::m_difficulty);
 
     if (!track_manager->getTrack(UserConfigParams::m_last_track))
         UserConfigParams::m_last_track.revertToDefaults();
 
-    race_manager->setTrack(UserConfigParams::m_last_track);
+    RaceManager::get()->setTrack(UserConfigParams::m_last_track);
 
 }   // initRest
 
@@ -2107,7 +2117,7 @@ int main(int argc, char *argv[])
 
         GUIEngine::addLoadingIcon( irr_driver->getTexture(FileManager::GUI_ICON,
                                                           "gui_lock.png"  ) );
-        projectile_manager->loadData();
+        ProjectileManager::get()->loadData();
 
         // Both item_manager and powerup_manager load models and therefore
         // textures from the model directory. To avoid reading the
@@ -2331,8 +2341,8 @@ int main(int argc, char *argv[])
             history->Load();
             if (!History::m_online_history_replay)
             {
-                race_manager->setupPlayerKartInfo();
-                race_manager->startNew(false);
+                RaceManager::get()->setupPlayerKartInfo();
+                RaceManager::get()->startNew(false);
                 main_loop->run();
                 // The run() function will only return if the user aborts.
                 Log::flushBuffers();
@@ -2349,17 +2359,17 @@ int main(int argc, char *argv[])
                 // Quickstart (-N)
                 // ===============
                 // all defaults are set in InitTuxkart()
-                race_manager->setupPlayerKartInfo();
-                race_manager->startNew(false);
+                RaceManager::get()->setupPlayerKartInfo();
+                RaceManager::get()->startNew(false);
             }
         }
         else  // profile
         {
             // Profiling
             // =========
-            race_manager->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
-            race_manager->setupPlayerKartInfo();
-            race_manager->startNew(false);
+            RaceManager::get()->setMajorMode (RaceManager::MAJOR_MODE_SINGLE);
+            RaceManager::get()->setupPlayerKartInfo();
+            RaceManager::get()->startNew(false);
         }
 
         main_loop->run();
@@ -2453,13 +2463,13 @@ static void cleanSuperTuxKart()
     irr_driver->updateConfigIfRelevant();
     AchievementsManager::destroy();
     Referee::cleanup();
-    if(race_manager)            delete race_manager;
+    RaceManager::destroy();
     if(grand_prix_manager)      delete grand_prix_manager;
     if(highscore_manager)       delete highscore_manager;
     if(attachment_manager)      delete attachment_manager;
     ItemManager::removeTextures();
     if(powerup_manager)         delete powerup_manager;
-    if(projectile_manager)      delete projectile_manager;
+    ProjectileManager::destroy();
     if(kart_properties_manager) delete kart_properties_manager;
     if(track_manager)           delete track_manager;
     if(material_manager)        delete material_manager;

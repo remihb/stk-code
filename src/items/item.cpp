@@ -150,7 +150,7 @@ void ItemState::collected(const AbstractKart *kart)
         m_ticks_till_return = stk_config->time2Ticks(2.0f);
     }
 
-    if (race_manager->isBattleMode())
+    if (RaceManager::get()->isBattleMode())
     {
         m_ticks_till_return *= 3;
     }
@@ -202,7 +202,7 @@ Item::Item(ItemType type, const Vec3& xyz, const Vec3& normal,
     m_graphical_type    = getGrahpicalType();
 
     m_node = NULL;
-    if (!GUIEngine::isNoGraphics())
+    if (mesh && !GUIEngine::isNoGraphics())
     {
         LODNode* lodnode =
             new LODNode("item", irr_driver->getSceneManager()->getRootSceneNode(),

@@ -33,6 +33,7 @@
 #include "network/protocols/server_lobby.hpp"
 #include "network/protocol_manager.hpp"
 #include "network/server_config.hpp"
+#include "network/child_loop.hpp"
 #include "network/stk_ipv6.hpp"
 #include "network/stk_peer.hpp"
 #include "utils/log.hpp"
@@ -71,31 +72,37 @@
 #include <string>
 #include <utility>
 
-STKHost *STKHost::m_stk_host       = NULL;
+STKHost *STKHost::m_stk_host[PT_COUNT];
 bool     STKHost::m_enable_console = false;
 
-std::shared_ptr<LobbyProtocol> STKHost::create(SeparateProcess* p)
+std::shared_ptr<LobbyProtocol> STKHost::create(ChildLoop* cl)
 {
-    assert(m_stk_host == NULL);
+    ProcessType pt = STKProcess::getType();
+    assert(m_stk_host[pt] == NULL);
     std::shared_ptr<LobbyProtocol> lp;
     if (NetworkConfig::get()->isServer())
     {
         std::shared_ptr<ServerLobby> sl =
             LobbyProtocol::create<ServerLobby>();
-        m_stk_host = new STKHost(true/*server*/);
+        m_stk_host[pt] = new STKHost(true/*server*/);
         sl->initServerStatsTable();
         lp = sl;
     }
     else
     {
-        m_stk_host = new STKHost(false/*server*/);
+        m_stk_host[pt] = new STKHost(false/*server*/);
     }
     // Separate process for client-server gui if exists
-    m_stk_host->m_separate_process = p;
-    if (!m_stk_host->m_network)
+    m_stk_host[pt]->m_client_loop = cl;
+    if (cl)
     {
-        delete m_stk_host;
-        m_stk_host = NULL;
+        m_stk_host[pt]->m_client_loop_thread = std::thread(
+            std::bind(&ChildLoop::run, cl));
+    }
+    if (!m_stk_host[pt]->m_network)
+    {
+        delete m_stk_host[pt];
+        m_stk_host[pt] = NULL;
     }
     return lp;
 }   // create
@@ -256,9 +263,7 @@ STKHost::STKHost(bool server)
     init();
     m_host_id = std::numeric_limits<uint32_t>::max();
 
-    ENetAddress addr;
-    addr.host = STKHost::HOST_ANY;
-
+    ENetAddress addr = {};
     if (server)
     {
         setIPv6Socket(ServerConfig::m_ipv6_server ? 1 : 0);
@@ -344,6 +349,11 @@ void STKHost::init()
  */
 STKHost::~STKHost()
 {
+    // Abort the server loop earlier so it can be stopped in background as
+    // soon as possible
+    if (m_client_loop)
+        m_client_loop->abort();
+
     NetworkConfig::get()->clearActivePlayersForClient();
     requestShutdown();
     if (m_network_console.joinable())
@@ -364,7 +374,11 @@ STKHost::~STKHost()
     }
     delete m_network;
     enet_deinitialize();
-    delete m_separate_process;
+    if (m_client_loop)
+    {
+        m_client_loop_thread.join();
+        delete m_client_loop;
+    }
 }   // ~STKHost
 
 //-----------------------------------------------------------------------------
@@ -723,7 +737,8 @@ void STKHost::setErrorMessage(const irr::core::stringw &message)
 void STKHost::startListening()
 {
     m_exit_timeout.store(std::numeric_limits<uint64_t>::max());
-    m_listening_thread = std::thread(std::bind(&STKHost::mainLoop, this));
+    m_listening_thread = std::thread(std::bind(&STKHost::mainLoop, this,
+        STKProcess::getType()));
 }   // startListening
 
 // ----------------------------------------------------------------------------
@@ -743,11 +758,16 @@ void STKHost::stopListening()
  *  This function tries to get data from network low-level functions as
  *  often as possible. When something is received, it generates an
  *  event and passes it to the Network Manager.
- *  \param self : used to pass the ENet host to the function.
+ *  \param pt : Used to register to different singleton.
  */
-void STKHost::mainLoop()
+void STKHost::mainLoop(ProcessType pt)
 {
-    VS::setThreadName("STKHost");
+    std::string thread_name = "STKHost";
+    if (pt == PT_CHILD)
+        thread_name += "_child";
+    VS::setThreadName(thread_name.c_str());
+
+    STKProcess::init(pt);
     Log::info("STKHost", "Listening has been started.");
     ENetEvent event;
     ENetHost* host = m_network->getENetHost();
@@ -758,8 +778,7 @@ void STKHost::mainLoop()
     if ((NetworkConfig::get()->isLAN() && is_server) ||
         NetworkConfig::get()->isPublicServer())
     {
-        ENetAddress eaddr;
-        eaddr.host = STKHost::HOST_ANY;
+        ENetAddress eaddr = {};
         eaddr.port = stk_config->m_server_discovery_port;
         direct_socket = new Network(1, 1, 0, 0, &eaddr);
         if (direct_socket->getENetHost() == NULL)
@@ -774,7 +793,6 @@ void STKHost::mainLoop()
     uint64_t last_ping_time = StkTime::getMonoTimeMs();
     uint64_t last_update_speed_time = StkTime::getMonoTimeMs();
     uint64_t last_ping_time_update_for_client = StkTime::getMonoTimeMs();
-    uint64_t last_disconnect_time_update = StkTime::getMonoTimeMs();
     std::map<std::string, uint64_t> ctp;
     while (m_exit_timeout.load() > StkTime::getMonoTimeMs())
     {
@@ -812,15 +830,6 @@ void STKHost::mainLoop()
             }
         }   // if discovery host
 
-        if (isIPv6Socket() &&
-            last_disconnect_time_update < StkTime::getMonoTimeMs())
-        {
-            // Check per 20 second, client needs to be handled too in case
-            // the address changed in intercept callback
-            // (see ConnectToServer::interceptCallback)
-            last_disconnect_time_update = StkTime::getMonoTimeMs() + 20000;
-            removeDisconnectedMappedAddress();
-        }
         if (is_server)
         {
             std::unique_lock<std::mutex> peer_lock(m_peers_mutex);
@@ -873,7 +882,7 @@ void STKHost::mainLoop()
                             std::lock_guard<std::mutex> lock(m_enet_cmd_mutex);
                             m_enet_cmd.emplace_back(p.second->getENetPeer(),
                                 (ENetPacket*)NULL, PDI_KICK_HIGH_PING,
-                                ECT_DISCONNECT);
+                                ECT_DISCONNECT, p.first->address);
                         }
                         else if (!p.second->hasWarnedForHighPing())
                         {
@@ -955,13 +964,32 @@ void STKHost::mainLoop()
             peer_lock.unlock();
         }
 
-        std::list<std::tuple<ENetPeer*, ENetPacket*, uint32_t,
-            ENetCommandType> > copied_list;
+        std::vector<std::tuple<ENetPeer*, ENetPacket*, uint32_t,
+            ENetCommandType, ENetAddress> > copied_list;
         std::unique_lock<std::mutex> lock(m_enet_cmd_mutex);
         std::swap(copied_list, m_enet_cmd);
         lock.unlock();
         for (auto& p : copied_list)
         {
+            ENetPeer* peer = std::get<0>(p);
+            ENetAddress& ea = std::get<4>(p);
+            ENetAddress& ea_peer_now = peer->address;
+            ENetPacket* packet = std::get<1>(p);
+            // Enet will reuse a disconnected peer so we check here to avoid
+            // sending to wrong peer
+            if (peer->state != ENET_PEER_STATE_CONNECTED ||
+#ifdef ENABLE_IPV6
+                (enet_ip_not_equal(ea_peer_now.host, ea.host) &&
+                ea_peer_now.port != ea.port))
+#else
+                (ea_peer_now.host != ea.host && ea_peer_now.port != ea.port))
+#endif
+            {
+                if (packet != NULL)
+                    enet_packet_destroy(packet);
+                continue;
+            }
+
             switch (std::get<3>(p))
             {
             case ECT_SEND_PACKET:
@@ -969,24 +997,22 @@ void STKHost::mainLoop()
                 // If enet_peer_send failed, destroy the packet to
                 // prevent leaking, this can only be done if the packet
                 // is copied instead of shared sending to all peers
-                ENetPacket* packet = std::get<1>(p);
-                if (enet_peer_send(
-                    std::get<0>(p), (uint8_t)std::get<2>(p), packet) < 0)
+                if (enet_peer_send(peer, (uint8_t)std::get<2>(p), packet) < 0)
                 {
                     enet_packet_destroy(packet);
                 }
                 break;
             }
             case ECT_DISCONNECT:
-                enet_peer_disconnect(std::get<0>(p), std::get<2>(p));
+                enet_peer_disconnect(peer, std::get<2>(p));
                 break;
             case ECT_RESET:
                 // Flush enet before reset (so previous command is send)
                 enet_host_flush(host);
-                enet_peer_reset(std::get<0>(p));
+                enet_peer_reset(peer);
                 // Remove the stk peer of it
                 std::lock_guard<std::mutex> lock(m_peers_mutex);
-                m_peers.erase(std::get<0>(p));
+                m_peers.erase(peer);
                 break;
             }
         }
@@ -1271,25 +1297,6 @@ std::shared_ptr<STKPeer> STKHost::getServerPeerForClient() const
     return m_peers.begin()->second;
 }   // getServerPeerForClient
 
-// ----------------------------------------------------------------------------
-/** \brief Tells if a peer is known and connected.
- *  \return True if the peer is known and connected, false elseway.
- */
-bool STKHost::isConnectedTo(const ENetAddress& peer)
-{
-    ENetHost *host = m_network->getENetHost();
-    for (unsigned int i = 0; i < host->peerCount; i++)
-    {
-        if (peer.host == host->peers[i].address.host &&
-            peer.port == host->peers[i].address.port &&
-            host->peers[i].state == ENET_PEER_STATE_CONNECTED)
-        {
-            return true;
-        }
-    }
-    return false;
-}   // isConnectedTo
-
 //-----------------------------------------------------------------------------
 /** Sends data to all validated peers currently in server
  *  \param data Data to sent.
@@ -1544,14 +1551,8 @@ void STKHost::updatePlayers(unsigned* ingame, unsigned* waiting,
   *  creation screen. */
 bool STKHost::isClientServer() const
 {
-    return NetworkConfig::get()->isClient() && m_separate_process != NULL;
+    return m_client_loop != NULL;
 }   // isClientServer
-
-// ----------------------------------------------------------------------------
-bool STKHost::hasServerAI() const
-{
-    return NetworkConfig::get()->isServer() && m_separate_process != NULL;
-}   // hasServerAI
 
 // ----------------------------------------------------------------------------
 /** Return an valid public IPv4 or IPv6 address with port, empty if both are

@@ -39,25 +39,7 @@ STKPeer::STKPeer(ENetPeer *enet_peer, STKHost* host, uint32_t host_id)
        : m_address(enet_peer->address), m_host(host)
 {
     m_addons_scores.fill(-1);
-    uint32_t addr = htonl(enet_peer->address.host);
-#ifdef ENABLE_IPV6
-    if (isIPv6Socket())
-    {
-        // This will return the mapped IPv4 address too for IPv6 socket
-        // So we can sendto directly with it
-        struct sockaddr_in6 in6 = {};
-        getIPV6FromMappedAddress(&enet_peer->address, &in6);
-        m_socket_address.reset(new SocketAddress());
-        m_socket_address->setSockAddrIn(AF_INET6, (sockaddr*)&in6, sizeof(in6));
-        if (m_socket_address->isIPv6())
-            m_ipv6_address = m_socket_address->toString(false/*show_port*/);
-    }
-    else
-#endif
-    {
-        m_socket_address.reset(
-            new SocketAddress(addr, enet_peer->address.port));
-    }
+    m_socket_address.reset(new SocketAddress(m_address));
     m_enet_peer           = enet_peer;
     m_host_id             = host_id;
     m_connected_time      = StkTime::getMonoTimeMs();
@@ -83,12 +65,9 @@ void STKPeer::disconnect()
 {
     if (m_disconnected.load())
         return;
-    if (m_enet_peer->state != ENET_PEER_STATE_CONNECTED ||
-        (m_enet_peer->address.host != m_address.host &&
-        m_enet_peer->address.port != m_address.port))
-        return;
     m_disconnected.store(true);
-    m_host->addEnetCommand(m_enet_peer, NULL, PDI_NORMAL, ECT_DISCONNECT);
+    m_host->addEnetCommand(m_enet_peer, NULL, PDI_NORMAL, ECT_DISCONNECT,
+        m_address);
 }   // disconnect
 
 //-----------------------------------------------------------------------------
@@ -98,12 +77,9 @@ void STKPeer::kick()
 {
     if (m_disconnected.load())
         return;
-    if (m_enet_peer->state != ENET_PEER_STATE_CONNECTED ||
-        (m_enet_peer->address.host != m_address.host &&
-        m_enet_peer->address.port != m_address.port))
-        return;
     m_disconnected.store(true);
-    m_host->addEnetCommand(m_enet_peer, NULL, PDI_KICK, ECT_DISCONNECT);
+    m_host->addEnetCommand(m_enet_peer, NULL, PDI_KICK, ECT_DISCONNECT,
+        m_address);
 }   // kick
 
 //-----------------------------------------------------------------------------
@@ -113,12 +89,8 @@ void STKPeer::reset()
 {
     if (m_disconnected.load())
         return;
-    if (m_enet_peer->state != ENET_PEER_STATE_CONNECTED ||
-        (m_enet_peer->address.host != m_address.host &&
-        m_enet_peer->address.port != m_address.port))
-        return;
     m_disconnected.store(true);
-    m_host->addEnetCommand(m_enet_peer, NULL, 0, ECT_RESET);
+    m_host->addEnetCommand(m_enet_peer, NULL, 0, ECT_RESET, m_address);
 }   // reset
 
 //-----------------------------------------------------------------------------
@@ -130,12 +102,6 @@ void STKPeer::reset()
 void STKPeer::sendPacket(NetworkString *data, bool reliable, bool encrypted)
 {
     if (m_disconnected.load())
-        return;
-    // Enet will reuse a disconnected peer so we check here to avoid sending
-    // to wrong peer
-    if (m_enet_peer->state != ENET_PEER_STATE_CONNECTED ||
-        (m_enet_peer->address.host != m_address.host &&
-        m_enet_peer->address.port != m_address.port))
         return;
 
     ENetPacket* packet = NULL;
@@ -162,7 +128,7 @@ void STKPeer::sendPacket(NetworkString *data, bool reliable, bool encrypted)
         }
         m_host->addEnetCommand(m_enet_peer, packet,
                 encrypted ? EVENT_CHANNEL_NORMAL : EVENT_CHANNEL_UNENCRYPTED,
-                ECT_SEND_PACKET);
+                ECT_SEND_PACKET, m_address);
     }
 }   // sendPacket
 

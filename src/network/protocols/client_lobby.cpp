@@ -47,6 +47,7 @@
 #include "network/protocols/connect_to_server.hpp"
 #include "network/protocols/game_protocol.hpp"
 #include "network/protocols/game_events_protocol.hpp"
+#include "network/protocols/server_lobby.hpp"
 #include "network/protocol_manager.hpp"
 #include "network/race_event_manager.hpp"
 #include "network/server.hpp"
@@ -87,7 +88,7 @@ engine.
 
 */
 
-ClientLobby::ClientLobby(const ENetAddress& a, std::shared_ptr<Server> s)
+ClientLobby::ClientLobby(std::shared_ptr<Server> s)
            : LobbyProtocol()
 {
     m_auto_started = false;
@@ -95,7 +96,6 @@ ClientLobby::ClientLobby(const ENetAddress& a, std::shared_ptr<Server> s)
     m_server_auto_game_time = false;
     m_received_server_result = false;
     m_state.store(NONE);
-    m_server_address = a;
     m_server = s;
     setHandleDisconnections(true);
     m_disconnected_msg[PDI_TIMEOUT] = _("Server connection timed out.");
@@ -121,7 +121,6 @@ ClientLobby::~ClientLobby()
         NetworkConfig::get()->setServerDetails(request,
             "clear-user-joined-server");
         request->queue();
-        ConnectToServer::m_previous_unjoin = request;
     }
 }   // ClientLobby
 
@@ -137,7 +136,8 @@ void ClientLobby::setup()
     if (!GUIEngine::isNoGraphics())
         TracksScreen::getInstance()->resetVote();
     LobbyProtocol::setup();
-    m_state.store(NONE);
+    // The client lobby is only created when connected to server
+    m_state.store(LINKED);
 }   // setup
 
 //-----------------------------------------------------------------------------
@@ -279,15 +279,15 @@ void ClientLobby::addAllPlayers(Event* event)
 
     uint32_t random_seed = data.getUInt32();
     ItemManager::updateRandomSeed(random_seed);
-    if (race_manager->isBattleMode())
+    if (RaceManager::get()->isBattleMode())
     {
         int hit_capture_limit = data.getUInt32();
         float time_limit = data.getFloat();
         m_game_setup->setHitCaptureTime(hit_capture_limit, time_limit);
         uint16_t flag_return_timeout = data.getUInt16();
-        race_manager->setFlagReturnTicks(flag_return_timeout);
+        RaceManager::get()->setFlagReturnTicks(flag_return_timeout);
         unsigned flag_deactivated_time = data.getUInt16();
-        race_manager->setFlagDeactivatedTicks(flag_deactivated_time);
+        RaceManager::get()->setFlagDeactivatedTicks(flag_deactivated_time);
     }
     configRemoteKart(players, isSpectator() ? 1 :
         (int)NetworkConfig::get()->getNetworkPlayers().size());
@@ -359,12 +359,6 @@ void ClientLobby::update(int ticks)
 {
     switch (m_state.load())
     {
-    case NONE:
-        if (STKHost::get()->isConnectedTo(m_server_address))
-        {
-            m_state.store(LINKED);
-        }
-        break;
     case LINKED:
     {
         NetworkConfig::get()->clearServerCapabilities();
@@ -440,7 +434,7 @@ void ClientLobby::update(int ticks)
     }
     break;
     case RACE_FINISHED:
-        if (!RaceEventManager::getInstance()->protocolStopped() ||
+        if (!RaceEventManager::get()->protocolStopped() ||
             !GameProtocol::emptyInstance())
             return;
         if (!m_received_server_result)
@@ -483,6 +477,7 @@ void ClientLobby::update(int ticks)
     case SELECTING_ASSETS:
     case RACING:
     case EXITING:
+    case NONE:
         break;
     }
 }   // update
@@ -578,9 +573,9 @@ void ClientLobby::disconnectedPlayer(Event* event)
     // If in-game world exists the kart rewinder will know which player
     // disconnects
     bool in_game_world = World::getWorld() &&
-        RaceEventManager::getInstance() &&
-        RaceEventManager::getInstance()->isRunning() &&
-        !RaceEventManager::getInstance()->isRaceOver();
+        RaceEventManager::get() &&
+        RaceEventManager::get()->isRunning() &&
+        !RaceEventManager::get()->isRaceOver();
 
     if (!in_game_world)
         SFXManager::get()->quickSound("appear");
@@ -627,7 +622,11 @@ void ClientLobby::connectionAccepted(Event* event)
         MessageQueue::add(MessageQueue::MT_GENERIC, msg);
     }
 
-    STKHost::get()->setMyHostId(data.getUInt32());
+    uint32_t host_id = data.getUInt32();
+    STKHost::get()->setMyHostId(host_id);
+    if (auto sl = LobbyProtocol::getByType<ServerLobby>(PT_CHILD))
+        sl->setClientServerHostId(host_id);
+
     assert(!NetworkConfig::get()->isAddingNetworkPlayers());
     uint32_t server_version = data.getUInt32();
     NetworkConfig::get()->setJoinedServerVersion(server_version);
@@ -682,8 +681,8 @@ void ClientLobby::handleServerInfo(Event* event)
 
     u_data = data.getUInt8();
     const core::stringw& difficulty_name =
-        race_manager->getDifficultyName((RaceManager::Difficulty)u_data);
-    race_manager->setDifficulty((RaceManager::Difficulty)u_data);
+        RaceManager::get()->getDifficultyName((RaceManager::Difficulty)u_data);
+    RaceManager::get()->setDifficulty((RaceManager::Difficulty)u_data);
     //I18N: In the networking lobby
     total_lines += _("Difficulty: %s", difficulty_name);
     total_lines += L"\n";
@@ -697,9 +696,9 @@ void ClientLobby::handleServerInfo(Event* event)
     u_data = data.getUInt8();
     u_data = data.getUInt8();
     auto game_mode = ServerConfig::getLocalGameMode(u_data);
-    race_manager->setMinorMode(game_mode.first);
+    RaceManager::get()->setMinorMode(game_mode.first);
     // We use single mode in network even it's grand prix
-    race_manager->setMajorMode(RaceManager::MAJOR_MODE_SINGLE);
+    RaceManager::get()->setMajorMode(RaceManager::MAJOR_MODE_SINGLE);
 
     //I18N: In the networking lobby
     core::stringw mode_name = ServerConfig::getModeName(u_data);
@@ -967,16 +966,18 @@ void ClientLobby::startGame(Event* event)
     nim->restoreCompleteState(event->data());
 
     core::stringw err_msg = _("Failed to start the network game.");
+    // Different stk process thread may have different stk host
+    STKHost* stk_host = STKHost::get();
     joinStartGameThread();
-    m_start_game_thread = std::thread([start_time, this, err_msg]()
+    m_start_game_thread = std::thread([start_time, stk_host, this, err_msg]()
         {
-            const uint64_t cur_time = STKHost::get()->getNetworkTimer();
+            const uint64_t cur_time = stk_host->getNetworkTimer();
             if (!(start_time > cur_time))
             {
                 Log::error("ClientLobby", "Network timer is too slow to catch "
                     "up, you must have a poor network.");
-                STKHost::get()->setErrorMessage(err_msg);
-                STKHost::get()->requestShutdown();
+                stk_host->setErrorMessage(err_msg);
+                stk_host->requestShutdown();
                 return;
             }
             int sleep_time = (int)(start_time - cur_time);
@@ -1085,9 +1086,9 @@ void ClientLobby::raceFinished(Event* event)
         data.decodeStringW(&kart_name);
         lw->setFastestLapTicks(t);
         lw->setFastestKartName(kart_name);
-        race_manager->configGrandPrixResultFromNetwork(data);
+        RaceManager::get()->configGrandPrixResultFromNetwork(data);
     }
-    else if (race_manager->modeHasLaps())
+    else if (RaceManager::get()->modeHasLaps())
     {
         int t = data.getUInt32();
         core::stringw kart_name;
@@ -1133,7 +1134,7 @@ void ClientLobby::raceFinished(Event* event)
     }
 
     // stop race protocols
-    RaceEventManager::getInstance()->stop();
+    RaceEventManager::get()->stop();
     ProtocolManager::lock()->findAndTerminate(PROTOCOL_GAME_EVENTS);
     ProtocolManager::lock()->findAndTerminate(PROTOCOL_CONTROLLER_EVENTS);
     m_state.store(RACE_FINISHED);
@@ -1154,9 +1155,9 @@ void ClientLobby::backToLobby(Event *event)
     m_auto_started = false;
     m_state.store(CONNECTED);
 
-    if (RaceEventManager::getInstance())
+    if (RaceEventManager::get())
     {
-        RaceEventManager::getInstance()->stop();
+        RaceEventManager::get()->stop();
         ProtocolManager::lock()->findAndTerminate(PROTOCOL_GAME_EVENTS);
     }
     auto gp = GameProtocol::lock();
@@ -1184,6 +1185,12 @@ void ClientLobby::backToLobby(Event *event)
     case BLR_ONE_PLAYER_IN_RANKED_MATCH:
         // I18N: Error message shown if only 1 player remains in network
         msg = _("Only 1 player remaining, returning to lobby.");
+        break;
+    case BLR_SERVER_ONWER_QUITED_THE_GAME:
+        // I18N: Error message shown when all players will go back to lobby
+        // when server owner quited the game
+        if (!STKHost::get()->isClientServer())
+            msg = _("Server owner quit the game");
         break;
     default:
         break;
@@ -1240,7 +1247,7 @@ void ClientLobby::liveJoinAcknowledged(Event* event)
     nim->restoreCompleteState(data);
     w->restoreCompleteState(data);
 
-    if (race_manager->supportsLiveJoining() && data.size() > 0)
+    if (RaceManager::get()->supportsLiveJoining() && data.size() > 0)
     {
         // Get and update the players list 1 more time in case the was
         // player connection or disconnection
@@ -1254,7 +1261,7 @@ void ClientLobby::liveJoinAcknowledged(Event* event)
                 continue;
             k->reset();
             // Only need to change non local player karts
-            RemoteKartInfo& rki = race_manager->getKartInfo(i);
+            RemoteKartInfo& rki = RaceManager::get()->getKartInfo(i);
             rki.copyFrom(players[i], players[i]->getLocalPlayerId());
             if (rki.isReserved())
             {
@@ -1329,7 +1336,7 @@ void ClientLobby::handleKartInfo(Event* event)
     std::string country_code;
     data.decodeString(&country_code);
 
-    RemoteKartInfo& rki = race_manager->getKartInfo(kart_id);
+    RemoteKartInfo& rki = RaceManager::get()->getKartInfo(kart_id);
     rki.setPlayerName(player_name);
     rki.setHostId(host_id);
     rki.setDefaultKartColor(kart_color);
@@ -1341,7 +1348,7 @@ void ClientLobby::handleKartInfo(Event* event)
     addLiveJoiningKart(kart_id, rki, live_join_util_ticks);
 
     core::stringw msg;
-    if (race_manager->teamEnabled())
+    if (RaceManager::get()->teamEnabled())
     {
         if (w->getKartTeam(kart_id) == KART_TEAM_RED)
         {
@@ -1442,9 +1449,9 @@ void ClientLobby::changeSpectateTarget(PlayerAction action, int value,
 
     World::KartList karts = World::getWorld()->getKarts();
     bool sort_kart_for_position =
-        race_manager->getMinorMode() == RaceManager::MINOR_MODE_FREE_FOR_ALL ||
-        race_manager->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG ||
-        race_manager->modeHasLaps();
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_FREE_FOR_ALL ||
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG ||
+        RaceManager::get()->modeHasLaps();
     if (sort_kart_for_position)
     {
         std::sort(karts.begin(), karts.end(), []

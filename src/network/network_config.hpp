@@ -23,11 +23,13 @@
 #define HEADER_NETWORK_CONFIG
 
 #include "race/race_manager.hpp"
+#include "utils/stk_process.hpp"
 #include "utils/no_copy.hpp"
 
 #include "irrString.h"
 #include <array>
 #include <atomic>
+#include <cstring>
 #include <memory>
 #include <set>
 #include <tuple>
@@ -55,9 +57,9 @@ public:
     };
 private:
     /** The singleton instance. */
-    static NetworkConfig *m_network_config;
+    static NetworkConfig *m_network_config[PT_COUNT];
 
-    enum NetworkType
+    enum NetworkType : int
     {
         NETWORK_NONE, NETWORK_WAN, NETWORK_LAN
     };
@@ -65,7 +67,7 @@ private:
     std::atomic<IPType> m_ip_type;
 
     /** Keeps the type of network connection: none (yet), LAN or WAN. */
-    NetworkType m_network_type;
+    std::atomic<NetworkType> m_network_type;
 
     /** If set it allows clients to connect directly to this server without
      *  using the stk server in between. It requires obviously that this
@@ -73,7 +75,7 @@ private:
     bool m_is_public_server;
 
     /** True if this host is a server, false otherwise. */
-    bool m_is_server;
+    std::atomic_bool m_is_server;
 
     /** True if a client should connect to the first server it finds and
      *  immediately start a race. */
@@ -122,18 +124,28 @@ public:
     /** Singleton get, which creates this object if necessary. */
     static NetworkConfig *get()
     {
-        if (!m_network_config)
-            m_network_config = new NetworkConfig();
-        return m_network_config;
+        ProcessType type = STKProcess::getType();
+        if (!m_network_config[type])
+            m_network_config[type] = new NetworkConfig();
+        return m_network_config[type];
     }   // get
-
+    // ------------------------------------------------------------------------
+    static NetworkConfig* getByType(ProcessType type)
+    {
+        return m_network_config[type];
+    }   // get
     // ------------------------------------------------------------------------
     static void destroy()
     {
-        delete m_network_config;   // It's ok to delete NULL
-        m_network_config = NULL;
+        ProcessType type = STKProcess::getType();
+        delete m_network_config[type];   // It's ok to delete NULL
+        m_network_config[type] = NULL;
     }   // destroy
-
+    // ------------------------------------------------------------------------
+    static void clear()
+    {
+        memset(m_network_config, 0, sizeof(m_network_config));
+    }   // clear
     // ------------------------------------------------------------------------
     /** Sets if this instance is a server or client. */
     void setIsServer(bool b)

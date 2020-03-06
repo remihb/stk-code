@@ -432,8 +432,8 @@ void NetworkingLobby::onUpdate(float delta)
 
         // You can live join or spectator if u have the current play track
         // and network timer is synchronized, and no game protocols exist
-        bool no_gep = !RaceEventManager::getInstance() ||
-            RaceEventManager::getInstance()->protocolStopped();
+        bool no_gep = !RaceEventManager::get() ||
+            RaceEventManager::get()->protocolStopped();
         bool no_gp = GameProtocol::emptyInstance();
         if (t &&
             STKHost::get()->getNetworkTimerSynchronizer()->isSynchronised() &&
@@ -449,7 +449,7 @@ void NetworkingLobby::onUpdate(float delta)
 
         if (m_client_live_joinable)
         {
-            if (race_manager->supportsLiveJoining())
+            if (RaceManager::get()->supportsLiveJoining())
             {
                 m_start_button->setVisible(true);
                 m_start_button->setLabel(m_live_join_text);
@@ -687,7 +687,7 @@ void NetworkingLobby::eventCallback(Widget* widget, const std::string& name,
         if (cl)
         {
             new ServerConfigurationDialog(
-                race_manager->isSoccerMode() &&
+                RaceManager::get()->isSoccerMode() &&
                 cl->getGameSetup()->isSoccerGoalTarget());
         }
     }

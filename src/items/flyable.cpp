@@ -156,7 +156,7 @@ void Flyable::createPhysics(float forw_offset, const Vec3 &velocity,
     m_shape = shape;
     createBody(m_mass, trans, m_shape, restitution);
     m_user_pointer.set(this);
-    Physics::getInstance()->addBody(getBody());
+    Physics::get()->addBody(getBody());
 
     m_body->setGravity(gravity);
     if (gravity.length2() != 0.0f && m_do_terrain_info)
@@ -237,7 +237,7 @@ void Flyable::removePhysics()
     }
     if (m_body.get())
     {
-        Physics::getInstance()->removeBody(m_body.get());
+        Physics::get()->removeBody(m_body.get());
         m_body.reset();
     }
 }   // removePhysics
@@ -609,7 +609,7 @@ void Flyable::explode(AbstractKart *kart_hit, PhysicalObject *object,
                     if (m_owner->getWorldKartId() != kart->getWorldKartId())
                         PlayerManager::addKartHit(kart->getWorldKartId());
                     PlayerManager::increaseAchievement(AchievementsStatus::ALL_HITS, 1);
-                    if (race_manager->isLinearRaceMode())
+                    if (RaceManager::get()->isLinearRaceMode())
                         PlayerManager::increaseAchievement(AchievementsStatus::ALL_HITS_1RACE, 1);
                 }
             }
@@ -761,7 +761,7 @@ void Flyable::computeError()
             "doesn't exist on server, remove it.",
             typeid(*this).name(), StringUtils::wideToUtf8(
             m_owner->getController()->getName()).c_str(), m_created_ticks);
-        projectile_manager->removeByUID(uid);
+        ProjectileManager::get()->removeByUID(uid);
     }
 }   // computeError
 

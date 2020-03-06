@@ -67,7 +67,7 @@ void ArenaAI::reset()
     m_steering_angle = 0.0f;
     m_on_node.clear();
 
-    m_cur_difficulty = race_manager->getDifficulty();
+    m_cur_difficulty = RaceManager::get()->getDifficulty();
     AIBaseController::reset();
 }   // reset
 
@@ -460,7 +460,7 @@ void ArenaAI::useItems(const float dt)
             // has a swatter attachment. If so, use bubblegum
             // as shield
             if ( (!m_kart->isShielded() &&
-                   projectile_manager->projectileIsClose(m_kart,
+                   ProjectileManager::get()->projectileIsClose(m_kart,
                                     m_ai_properties->m_shield_incoming_radius)  ) ||
                  (dist_to_kart < 15.0f &&
                   (m_closest_kart->getAttachment()->
