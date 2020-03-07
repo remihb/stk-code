@@ -254,6 +254,7 @@ private:
 
     bool m_gnu_elimination;
     int m_gnu_remained;
+    std::string m_gnu_kart;
     std::vector<std::string> m_gnu_participants;
 
     // connection management

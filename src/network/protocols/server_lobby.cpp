@@ -1655,7 +1655,7 @@ void ServerLobby::asynchronousUpdate()
                     }
                     if (gnu_eliminated)
                     {
-                        players[i]->setKartName("gnu");
+                        players[i]->setKartName(m_gnu_kart);
                     }
                     else
                     {
@@ -2686,7 +2686,7 @@ void ServerLobby::startSelection(const Event *event)
         bool has_gnu = false;
         for (auto it = all_k.begin(); it != all_k.end(); it++)
         {
-            has_gnu |= (*it == "gnu");
+            has_gnu |= (*it == m_gnu_kart);
         }
 
         // The same NetworkString but without any non-Gnu karts
@@ -2701,7 +2701,7 @@ void ServerLobby::startSelection(const Event *event)
         ns->addUInt16((uint16_t)(has_gnu ? 1 : 0)).addUInt16((uint16_t)all_t.size());
         if (has_gnu)
         {
-            ns->encodeString(std::string("gnu"));
+            ns->encodeString(std::string(m_gnu_kart));
         }
         for (const std::string& track : all_t)
         {
@@ -5782,6 +5782,11 @@ void ServerLobby::handleServerCommand(Event* event,
         } else if (false/* one player */) {
 
         } else {
+            if (argv.size() > 1 && m_available_kts.first.count(argv[1]) > 0) {
+                m_gnu_kart = argv[1];
+            } else {
+                m_gnu_kart = "gnu";
+            }
             NetworkString* chat = getNetworkString();
             m_gnu_elimination = true;
             m_gnu_remained = -1;
