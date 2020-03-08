@@ -176,7 +176,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         ((std::string) ServerConfig::m_help);
 
     m_available_commands = "help commands music kick to public "
-        "gnu nognu standings "
+        "gnu nognu standings record"
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
@@ -5813,7 +5813,9 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (m_gnu_elimination) {
+        }
+        else if (m_gnu_elimination)
+        {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
@@ -5821,9 +5823,13 @@ void ServerLobby::handleServerCommand(Event* event,
                     L"Gnu Elimination mode was already enabled!");
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
-        } else if (false/* one player */) {
+        }
+        else if (false/* one player */)
+        {
 
-        } else {
+        }
+        else
+        {
             if (argv.size() > 1 && m_available_kts.first.count(argv[1]) > 0) {
                 m_gnu_kart = argv[1];
             } else {
@@ -5852,7 +5858,9 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
             return;
-        } else if (!m_gnu_elimination) {
+        }
+        else if (!m_gnu_elimination)
+        {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
@@ -5860,7 +5868,9 @@ void ServerLobby::handleServerCommand(Event* event,
                     L"Gnu Elimination mode was already off!");
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
-        } else {
+        }
+        else
+        {
             NetworkString* chat = getNetworkString();
             m_gnu_elimination = false;
             m_gnu_remained = 0;
@@ -5926,6 +5936,93 @@ void ServerLobby::handleServerCommand(Event* event,
         chat->setSynchronous(true);
         m_message_receivers[peer.get()].clear();
         chat->encodeString16(L"Your messages are now public");
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (argv[0] == "record")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+#ifdef ENABLE_SQLITE3
+        if (argv.size() < 5)
+        {
+            chat->encodeString16(L"Usage: /record (track id) "
+                "(normal/time-trial) (normal/reverse) (laps)\n"
+                "Receives the server record for the race settings if any");
+        } else {
+            bool error = false;
+            std::string track_name = argv[1];
+            std::string mode_name = (argv[2] == "t" || argv[2] == "tt"
+                || argv[2] == "time-trial" || argv[2] == "timetrial" ?
+                "time-trial" : "normal");
+            std::string reverse_name = (argv[3] == "r" ||
+                argv[3] == "rev" || argv[3] == "reverse" ? "reverse" : 
+                "normal");
+            int laps_count = -1;
+            if (!StringUtils::parseString<int>(argv[4], &laps_count))
+                error = true;
+            if (!error && laps_count < 0)
+                error = true;
+            if (error)
+            {
+                chat->encodeString16(L"Invalid lap count");
+            }
+            else
+            {
+                std::string records_table_name = ServerConfig::m_records_table_name;
+                if (!records_table_name.empty())
+                {
+                    std::string get_query = StringUtils::insertValues("SELECT username, "
+                        "result FROM %s INNER JOIN "
+                        "(SELECT venue as v, reverse as r, mode as m, laps as l, "
+                        "min(result) as min_res FROM %s group by v, r, m, l) "
+                        "ON venue = v and reverse = r and mode = m and laps = l "
+                        "and result = min_res "
+                        "WHERE venue = \"%s\" and reverse = \"%s\" "
+                        "and mode = \"%s\" and laps = %d;",
+                        records_table_name.c_str(), records_table_name.c_str(),
+                        track_name.c_str(), reverse_name.c_str(), mode_name.c_str(),
+                        laps_count);
+                    auto ret = vectorSQLQuery(get_query, 2);
+                    if (!ret.first)
+                    {
+                        chat->encodeString16(L"Failed to make a query");
+                    }
+                    else if (ret.second[0].size() > 0)
+                    {
+                        double best_result = 1e18;
+                        if (!StringUtils::parseString<double>(
+                            ret.second[1][0], &best_result))
+                        {
+                            chat->encodeString16(L"A strange error occured, "
+                                "please take a screenshot "
+                                "and contact the server owner.");
+                        }
+                        else
+                        {
+                            std::string message = StringUtils::insertValues(
+                                "The record is %s by %s",
+                                StringUtils::timeToString(best_result),
+                                ret.second[0][0]);
+                            chat->encodeString16(
+                                StringUtils::utf8ToWide(message));
+                        }
+                    }
+                    else
+                    {
+                        chat->encodeString16(L"No time set yet. Or there is a typo.");
+                    }
+                }
+                else 
+                {
+                    chat->encodeString16(L"No table storing records!");
+                }
+            }
+        }
+#else
+        chat->encodeString16(L"This command is not supported.");
+#endif
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }
@@ -6089,7 +6186,7 @@ void ServerLobby::storeResults()
             message = StringUtils::insertValues(
                 "%s has just beaten a server record: %s\nPrevious record: %s by %s",
                 best_cur_player_name, StringUtils::timeToString(best_cur_time),
-                best_result, best_user);
+                StringUtils::timeToString(best_result), best_user);
         }
         chat->encodeString16(StringUtils::utf8ToWide(message));
         sendMessageToPeers(chat);
