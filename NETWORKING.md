@@ -225,6 +225,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- When true, stores race results in a separate table for each server. -->
     <store-results value="false" />
 
+    <!-- When non-empty, server is telling whether a player has beaten a server record, records are taken from the table specified in this field. So it can be the results table for this server or for all servers hosted on the machine.-->
+    <records-table-name value="" />
+
     <!-- A string given to a peer if it has incompatible data, so that it can know why it cannot enter, empty to disable. -->
     <incompatible-advice value="Well, you have incompatible data!" />
 

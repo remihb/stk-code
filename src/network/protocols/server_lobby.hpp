@@ -103,6 +103,10 @@ private:
     bool easySQLQuery(const std::string& query,
         std::function<void(sqlite3_stmt* stmt)> bind_function = nullptr) const;
 
+    std::pair<bool, std::vector<std::vector<std::string>>>
+        vectorSQLQuery(const std::string& query, int columns,
+        std::function<void(sqlite3_stmt* stmt)> bind_function) const;
+
     void checkTableExists(const std::string& table, bool& result);
 
     std::string ip2Country(const SocketAddress& addr) const;

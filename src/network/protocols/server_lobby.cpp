@@ -1164,6 +1164,48 @@ bool ServerLobby::easySQLQuery(const std::string& query,
 }   // easySQLQuery
 
 //-----------------------------------------------------------------------------
+std::pair<bool, std::vector<std::vector<std::string>>>
+ServerLobby::vectorSQLQuery(const std::string& query,
+    int columns, std::function<void(sqlite3_stmt* stmt)> bind_function) const
+{
+    std::vector<std::vector<std::string>> ans(columns);
+    if (!m_db)
+        return {false, {}};
+    sqlite3_stmt* stmt = NULL;
+    int ret = sqlite3_prepare_v2(m_db, query.c_str(), -1, &stmt, 0);
+    if (ret == SQLITE_OK)
+    {
+        if (bind_function)
+            bind_function(stmt);
+        ret = sqlite3_step(stmt);
+        while (sqlite3_column_text(stmt, 0))
+        {
+            for (int i = 0; i < columns; i++)
+            {
+                ans[i].push_back(std::string((char*)sqlite3_column_text(stmt, i)));
+            }
+            ret = sqlite3_step(stmt);
+        }
+        ret = sqlite3_finalize(stmt);
+        if (ret != SQLITE_OK)
+        {
+            Log::error("ServerLobby",
+                "Error finalize database for vector query %s: %s",
+                query.c_str(), sqlite3_errmsg(m_db));
+            return {false, {}};
+        }
+    }
+    else
+    {
+        Log::error("ServerLobby",
+            "Error preparing database for vector query %s: %s",
+            query.c_str(), sqlite3_errmsg(m_db));
+        return {false, {}};
+    }
+    return {true, ans};
+}   // vectorSQLQuery
+
+//-----------------------------------------------------------------------------
 /* Write true to result if table name exists in database. */
 void ServerLobby::checkTableExists(const std::string& table, bool& result)
 {
@@ -5969,17 +6011,57 @@ void ServerLobby::storeResults()
 #ifdef ENABLE_SQLITE3
     World* w = World::getWorld();
     assert(w);
+    std::string records_table_name = ServerConfig::m_records_table_name;
     std::string mode_name = RaceManager::get()->getMinorModeName();
     int player_count = RaceManager::get()->getNumPlayers();
     int laps_number = RaceManager::get()->getNumLaps();
     std::string track_name = RaceManager::get()->getTrackName();
-    std::string reverse_string = (RaceManager::get()->getReverseTrack() ? "reverse" : "normal");
+    std::string reverse_string = 
+        (RaceManager::get()->getReverseTrack() ? "reverse" : "normal");
+
+    bool record_fetched = false;
+    bool record_exists = false;
+    double best_result = 0.0;
+    std::string best_user = "";
+
+    if (!records_table_name.empty())
+    {
+        std::string get_query = StringUtils::insertValues("SELECT username, "
+            "result FROM %s INNER JOIN "
+            "(SELECT venue as v, reverse as r, mode as m, laps as l, "
+            "min(result) as min_res FROM %s group by v, r, m, l) "
+            "ON venue = v and reverse = r and mode = m and laps = l "
+            "and result = min_res "
+            "WHERE venue = \"%s\" and reverse = \"%s\" "
+            "and mode = \"%s\" and laps = %d;",
+            records_table_name.c_str(), records_table_name.c_str(),
+            track_name.c_str(), reverse_string.c_str(), mode_name.c_str(),
+            laps_number);
+        auto ret = vectorSQLQuery(get_query, 2);
+        record_fetched = ret.first;
+        if (record_fetched && ret.second[0].size() > 0){
+            record_exists = true;
+            best_user = ret.second[0][0];
+            parseString<double>(ret.second[1][0], &best_result);
+        }
+    }
+
+    int best_cur_player_idx = -1;
+    std::string best_cur_player_name = "";
+    double best_cur_time = 1e18;
     for (int i = 0; i < player_count; i++)
     {
         if (w->getKart(i)->isEliminated())
             continue;
-        std::string username = StringUtils::wideToUtf8(RaceManager::get()->getKartInfo(i).getPlayerName());
+        std::string username = StringUtils::wideToUtf8(
+            RaceManager::get()->getKartInfo(i).getPlayerName());
         double elapsed_time = RaceManager::get()->getKartRaceTime(i);
+        if (best_cur_player_idx == -1 || elapsed_time < best_cur_time)
+        {
+            best_cur_player_idx = i;
+            best_cur_time = elapsed_time;
+            best_cur_player_name = username;
+        }
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(username, venue, reverse, mode, laps, result) "
@@ -5988,6 +6070,29 @@ void ServerLobby::storeResults()
             reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_time
         );
         easySQLQuery(query);
+    }
+    if (record_fetched && best_cur_player_idx != -1)
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string message;
+        if (!record_exists)
+        {
+            message = StringUtils::insertValues(
+                "%s has just set a server record: %s\nThis is the first time set.",
+                best_cur_player_name, StringUtils::timeToString(best_cur_time));
+        }
+        else if (best_result > best_cur_time)
+        {
+            message = StringUtils::insertValues(
+                "%s has just beaten a server record: %s\nPrevious record: %s by %s",
+                best_cur_player_name, StringUtils::timeToString(best_cur_time),
+                best_result, best_user);
+        }
+        chat->encodeString16(StringUtils::utf8ToWide(message));
+        sendMessageToPeers(chat);
+        delete chat;
     }
 #endif
 }  // storeResults

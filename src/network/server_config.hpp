@@ -498,6 +498,13 @@ namespace ServerConfig
         "When true, stores race results in a separate table for each "
         "server."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_records_table_name
+        SERVER_CFG_DEFAULT(BoolServerConfigParam("", "records-table-name",
+        "When non-empty, server is telling whether a player has beaten "
+        "a server record, records are taken from the table specified "
+        "in this field. So it can be the results table for this server "
+        "or for all servers hosted on the machine."));
+
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "incompatible-advice",
