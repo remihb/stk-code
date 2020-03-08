@@ -6042,7 +6042,8 @@ void ServerLobby::storeResults()
         if (record_fetched && ret.second[0].size() > 0){
             record_exists = true;
             best_user = ret.second[0][0];
-            parseString<double>(ret.second[1][0], &best_result);
+            if (!StringUtils::parseString<double>(ret.second[1][0], &best_result))
+                record_fetched = false;
         }
     }
 

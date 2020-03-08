@@ -499,7 +499,7 @@ namespace ServerConfig
         "server."));
 
     SERVER_CFG_PREFIX StringServerConfigParam m_records_table_name
-        SERVER_CFG_DEFAULT(BoolServerConfigParam("", "records-table-name",
+        SERVER_CFG_DEFAULT(StringServerConfigParam("", "records-table-name",
         "When non-empty, server is telling whether a player has beaten "
         "a server record, records are taken from the table specified "
         "in this field. So it can be the results table for this server "
