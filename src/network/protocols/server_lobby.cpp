@@ -6187,6 +6187,9 @@ void ServerLobby::storeResults()
                 "%s has just beaten a server record: %s\nPrevious record: %s by %s",
                 best_cur_player_name, StringUtils::timeToString(best_cur_time),
                 StringUtils::timeToString(best_result), best_user);
+        } else {
+            delete chat;
+            return;
         }
         chat->encodeString16(StringUtils::utf8ToWide(message));
         sendMessageToPeers(chat);
