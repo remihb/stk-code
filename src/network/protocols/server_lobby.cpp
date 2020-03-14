@@ -250,7 +250,9 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         m_restricting_config = false;
     else
     {
-        std::vector<std::string> available_tracks = StringUtils::split(ServerConfig::m_only_played_tracks_string, ' ', false);
+        std::vector<std::string> available_tracks =
+            StringUtils::split(ServerConfig::m_only_played_tracks_string,
+            ' ', false);
         int start = 0;
         if (available_tracks[0] == "not")
         {
@@ -262,7 +264,8 @@ ServerLobby::ServerLobby() : LobbyProtocol()
             m_config_available_tracks.insert(available_tracks[i]);
         }
     }
-    m_must_have_tracks = StringUtils::split(ServerConfig::m_must_have_tracks_string, ' ', false);
+    m_must_have_tracks = StringUtils::split(
+        ServerConfig::m_must_have_tracks_string, ' ', false);
 
     m_rs_state.store(RS_NONE);
     m_last_success_poll_time.store(StkTime::getMonoTimeMs() + 30000);
@@ -433,7 +436,8 @@ void ServerLobby::initServerStatsTable()
     // Extra default table _results:
     // Server owner need to initialise this table himself, check NETWORKING.md
     m_results_table_name = std::string("v") + StringUtils::toString(
-        ServerConfig::m_server_db_version) + "_" + ServerConfig::m_server_uid + "_results";
+        ServerConfig::m_server_db_version) + "_" +
+        ServerConfig::m_server_uid + "_results";
     query = StringUtils::insertValues(
         "CREATE TABLE IF NOT EXISTS %s (\n"
         "    time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Timestamp of the result\n"
@@ -708,7 +712,9 @@ void ServerLobby::updateTracksForMode()
         auto it = m_available_kts.second.begin();
         while (it != m_available_kts.second.end())
         {
-            if (m_inverted_config_restriction ^ (m_config_available_tracks.find(*it) == m_config_available_tracks.end()))
+            if (m_inverted_config_restriction ^
+                (m_config_available_tracks.find(*it) ==
+                    m_config_available_tracks.end()))
                 erase_tracks.insert(*it);
             it++;
         }
@@ -855,7 +861,8 @@ void ServerLobby::handleChat(Event* event)
                 }
                 for (auto& profile : p->getPlayerProfiles())
                 {
-                    if (can_receive.find(profile->getName()) != can_receive.end())
+                    if (can_receive.find(profile->getName()) !=
+                        can_receive.end())
                     {
                         return true;
                     }
@@ -1184,7 +1191,8 @@ ServerLobby::vectorSQLQuery(const std::string& query,
         {
             for (int i = 0; i < columns; i++)
             {
-                ans[i].push_back(std::string((char*)sqlite3_column_text(stmt, i)));
+                ans[i].push_back(std::string(
+                    (char*)sqlite3_column_text(stmt, i)));
             }
             ret = sqlite3_step(stmt);
         }
@@ -1681,7 +1689,8 @@ void ServerLobby::asynchronousUpdate()
             // Add placeholder players for live join
             addLiveJoinPlaceholder(players);
             // If player chose random / hasn't chose any kart
-            bool possible_gnu_enforcement = m_gnu_elimination && m_gnu_remained >= 0;
+            bool possible_gnu_enforcement =
+                m_gnu_elimination && m_gnu_remained >= 0;
             for (unsigned i = 0; i < players.size(); i++)
             {
                 if (players[i]->getKartName().empty())
@@ -2742,7 +2751,8 @@ void ServerLobby::startSelection(const Event *event)
            .addUInt8(ServerConfig::m_auto_game_time_ratio > 0.0f ? 1 : 0)
            .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
 
-        ns->addUInt16((uint16_t)(has_gnu ? 1 : 0)).addUInt16((uint16_t)all_t.size());
+        ns->addUInt16((uint16_t)(has_gnu ? 1 : 0)).addUInt16(
+            (uint16_t)all_t.size());
         if (has_gnu)
         {
             ns->encodeString(std::string(m_gnu_kart));
@@ -2759,7 +2769,8 @@ void ServerLobby::startSelection(const Event *event)
                 {
                     if (std::find(
                         remaining_begin, remaining_end,
-                        StringUtils::wideToUtf8(profile->getName())) != remaining_end)
+                        StringUtils::wideToUtf8(profile->getName()))
+                        != remaining_end)
                     {
                         return false;
                     }
@@ -2994,8 +3005,10 @@ void ServerLobby::checkRaceFinished()
     if (ServerConfig::m_store_results)
     {
         bool racing_mode = false;
-        racing_mode |= RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_NORMAL_RACE;
-        racing_mode |= RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_TIME_TRIAL;
+        racing_mode |= RaceManager::get()->getMinorMode() ==
+            RaceManager::MINOR_MODE_NORMAL_RACE;
+        racing_mode |= RaceManager::get()->getMinorMode() ==
+            RaceManager::MINOR_MODE_TIME_TRIAL;
         if (racing_mode)
             storeResults();
     }
@@ -3489,8 +3502,10 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer) const
             NetworkString* incompatible_reason = getNetworkString();
             incompatible_reason->addUInt8(LE_CHAT);
             incompatible_reason->setSynchronous(true);
-            incompatible_reason->encodeString16(StringUtils::utf8ToWide(advice));
-            peer->sendPacket(incompatible_reason, true/*reliable*/, false/*encrypted*/);
+            incompatible_reason->encodeString16(
+                StringUtils::utf8ToWide(advice));
+            peer->sendPacket(incompatible_reason,
+                true/*reliable*/, false/*encrypted*/);
             Log::info("ServerLobby", "Sent advice");
             delete incompatible_reason;
         }
