@@ -176,12 +176,14 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         ((std::string) ServerConfig::m_help);
 
     m_available_commands = "help commands music kick to public "
-        "gnu nognu standings record"
+        "gnu nognu standings record "
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
     m_gnu_elimination = false;
     m_gnu_remained = 0;
+
+    initAvailableModes();
 
     std::vector<int> all_k =
         kart_properties_manager->getKartsInGroup("standard");
@@ -5098,6 +5100,20 @@ void ServerLobby::handleServerConfiguration(Event* event)
     NetworkString& data = event->data();
     int new_difficulty = data.getUInt8();
     int new_game_mode = data.getUInt8();
+    if (m_available_difficulties.count(new_difficulty) == 0 || 
+        m_available_modes.count(new_game_mode) == 0)
+    {
+        Log::error("ServerLobby", "Mode %d and/or difficulty %d are not permitted.");
+        auto peer = event->getPeerSP();
+        NetworkString* chat = getNetworkString();
+        // I don't know for now which type to choose...
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        chat->encodeString16(L"Mode or difficulty are not permitted on this server");
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+        return;
+    }
     bool new_soccer_goal_target = data.getUInt8() == 1;
     auto modes = ServerConfig::getLocalGameMode(new_game_mode);
     if (modes.second == RaceManager::MAJOR_MODE_GRAND_PRIX)
@@ -6197,4 +6213,32 @@ void ServerLobby::storeResults()
     }
 #endif
 }  // storeResults
+//-----------------------------------------------------------------------------
+void ServerLobby::initAvailableModes()
+{
+    std::vector<std::string> statements =
+        StringUtils::split(ServerConfig::m_available_modes, ' ', false);
+
+    for (const std::string& s: statements)
+    {
+        if (s.length() <= 1) {
+            continue;
+        }
+        bool difficulty = s[0] == 'd';
+        if (difficulty)
+        {
+            for (unsigned i = 1; i < s.length(); i++)
+            {
+                m_available_difficulties.insert(s[i] - '0');
+            }
+        }
+        else
+        {
+            for (unsigned i = 1; i < s.length(); i++)
+            {
+                m_available_modes.insert(s[i] - '0');
+            }
+        }
+    }
+}  // initAvailableModes
 //-----------------------------------------------------------------------------

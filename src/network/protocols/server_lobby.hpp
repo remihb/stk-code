@@ -257,9 +257,16 @@ private:
     std::map<STKPeer*, std::set<irr::core::stringw>> m_message_receivers;
 
     bool m_gnu_elimination;
+
     int m_gnu_remained;
+
     std::string m_gnu_kart;
+
     std::vector<std::string> m_gnu_participants;
+
+    std::set<int> m_available_difficulties;
+
+    std::set<int> m_available_modes;
 
     // connection management
     void clientDisconnected(Event* event);
@@ -414,6 +421,7 @@ public:
     void storeResults();
     uint32_t getServerIdOnline() const           { return m_server_id_online; }
     void setClientServerHostId(uint32_t id)   { m_client_server_host_id = id; }
+    void initAvailableModes();
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP

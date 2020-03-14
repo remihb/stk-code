@@ -141,6 +141,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- If true, the server owner can config the difficulty and game mode in the GUI of lobby. This option cannot be used with owner-less or grand prix server, and will be automatically turned on if the server was created using the in-game GUI. The changed difficulty and game mode will not be saved in this config file. -->
     <server-configurable value="false" />
 
+    <!-- Description of modes and difficulties that can be set on a configurable server. Doesn't affect initial mode and doesn't affect unconfigurable servers. Use the format "d0123 m012345678". -->
+    <available-modes value="d0123 m012345678" />
+
     <!-- If true, players can live join or spectate the in-progress game. Currently live joining is only available if the current game mode used in server is FFA, CTF or soccer, also no addon karts will be available for players to choose, and official-karts-threshold will be made 1.0. -->
     <live-players value="true" />
 

@@ -307,6 +307,13 @@ namespace ServerConfig
         "was created using the in-game GUI. The changed difficulty and game "
         "mode will not be saved in this config file."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_available_modes
+        SERVER_CFG_DEFAULT(StringServerConfigParam("d0123 m012345678", "available-modes",
+        "Description of modes and difficulties that can be set "
+        "on a configurable server. Doesn't affect initial mode "
+        "and doesn't affect unconfigurable servers. Use the "
+        "format \"d0123 m012345678\"."));
+
     SERVER_CFG_PREFIX BoolServerConfigParam m_live_players
         SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "live-players",
         "If true, players can live join or spectate the in-progress game. "
