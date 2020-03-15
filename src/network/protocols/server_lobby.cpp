@@ -6034,13 +6034,12 @@ void ServerLobby::handleServerCommand(Event* event,
                 if (!records_table_name.empty())
                 {
                     std::string get_query = StringUtils::insertValues("SELECT username, "
-                        "result FROM %s INNER JOIN "
+                        "result FROM %s LEFT JOIN "
                         "(SELECT venue as v, reverse as r, mode as m, laps as l, "
                         "min(result) as min_res FROM %s group by v, r, m, l) "
                         "ON venue = v and reverse = r and mode = m and laps = l "
-                        "and result = min_res "
                         "WHERE venue = \"%s\" and reverse = \"%s\" "
-                        "and mode = \"%s\" and laps = %d;",
+                        "and mode = \"%s\" and laps = %d and result = min_res;",
                         records_table_name.c_str(), records_table_name.c_str(),
                         track_name.c_str(), reverse_name.c_str(), mode_name.c_str(),
                         laps_count);
