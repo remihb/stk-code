@@ -362,7 +362,7 @@ void loadServerLobbyFromConfig()
     if (m_owner_less)
     {
         if (m_sleeping_server) {
-            m_min_start_game_players = 123456;
+            m_min_start_game_players = m_server_max_players;
         } else {
             if (m_min_start_game_players > m_server_max_players)
                 m_min_start_game_players = 1;
