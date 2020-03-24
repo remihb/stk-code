@@ -6038,8 +6038,8 @@ void ServerLobby::handleServerCommand(Event* event,
                         "(SELECT venue as v, reverse as r, mode as m, laps as l, "
                         "min(result) as min_res FROM %s group by v, r, m, l) "
                         "ON venue = v and reverse = r and mode = m and laps = l "
-                        "WHERE venue = \"%s\" and reverse = \"%s\" "
-                        "and mode = \"%s\" and laps = %d and result = min_res;",
+                        "WHERE venue = '%s' and reverse = '%s' "
+                        "and mode = '%s' and laps = %d and result = min_res;",
                         records_table_name.c_str(), records_table_name.c_str(),
                         track_name.c_str(), reverse_name.c_str(), mode_name.c_str(),
                         laps_count);
@@ -6188,8 +6188,8 @@ void ServerLobby::storeResults()
             "min(result) as min_res FROM %s group by v, r, m, l) "
             "ON venue = v and reverse = r and mode = m and laps = l "
             "and result = min_res "
-            "WHERE venue = \"%s\" and reverse = \"%s\" "
-            "and mode = \"%s\" and laps = %d;",
+            "WHERE venue = '%s' and reverse = '%s' "
+            "and mode = '%s' and laps = %d;",
             records_table_name.c_str(), records_table_name.c_str(),
             track_name.c_str(), reverse_string.c_str(), mode_name.c_str(),
             laps_number);
@@ -6222,7 +6222,7 @@ void ServerLobby::storeResults()
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(username, venue, reverse, mode, laps, result) "
-            "VALUES (\"%s\", \"%s\", \"%s\", \"%s\", %d, %f);",
+            "VALUES ('%s', '%s', '%s', '%s', %d, %f);",
             m_results_table_name.c_str(), username.c_str(), track_name.c_str(),
             reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_time
         );
