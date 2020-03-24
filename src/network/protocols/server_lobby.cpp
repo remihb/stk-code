@@ -4017,6 +4017,20 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
         }
     );
 #endif
+    if (m_gnu_elimination)
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        std::string gnu_warning = StringUtils::insertValues(
+            "Gnu Elimination is played right now on this server, "
+            "you will be forced to use kart %d until it ends. "
+            "Use /standings to see the results.",
+            m_gnu_kart);
+        chat->encodeString16(StringUtils::utf8ToWide(gnu_warning));
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
 }   // handleUnencryptedConnection
 
 //-----------------------------------------------------------------------------
