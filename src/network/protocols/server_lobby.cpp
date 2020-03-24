@@ -5901,8 +5901,19 @@ void ServerLobby::handleServerCommand(Event* event,
             m_gnu_participants.clear();
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
-            chat->encodeString16(
-                    L"Gnu Elimination starts now! Use /standings after each race for results.");
+            if (m_gnu_kart == "gnu")
+            {
+                chat->encodeString16(
+                    L"Gnu Elimination starts now! Use /standings "
+                    "after each race for results.");
+            }
+            else
+            {
+                chat->encodeString16(StringUtils::utf8ToWide(
+                    StringUtils::insertValues("Gnu Elimination starts now "
+                        "(elimination kart: %s)! Use /standings "
+                        "after each race for results.", m_gnu_kart)));
+            }
             sendMessageToPeers(chat);
             delete chat;
         }
@@ -5980,7 +5991,7 @@ void ServerLobby::handleServerCommand(Event* event,
             chat->addUInt8(LE_CHAT);
             chat->setSynchronous(true);
             m_message_receivers[peer.get()].clear();
-            for (int i = 1; i < argv.size(); ++i) {
+            for (unsigned i = 1; i < argv.size(); ++i) {
                 m_message_receivers[peer.get()].insert(
                     StringUtils::utf8ToWide(argv[i]));
             }
@@ -6120,7 +6131,7 @@ void ServerLobby::updateGnuElimination()
     }
     else
     {
-        for (int i = 0; i < m_gnu_participants.size(); i++)
+        for (unsigned i = 0; i < m_gnu_participants.size(); i++)
         {
             order.emplace_back(INF, m_gnu_participants[i]);
         }
