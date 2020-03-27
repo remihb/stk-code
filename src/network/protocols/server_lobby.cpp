@@ -5256,6 +5256,22 @@ void ServerLobby::handleServerConfiguration(Event* event)
     sendMessageToPeers(server_info);
     delete server_info;
     updatePlayerList();
+
+    if (m_gnu_elimination &&
+        RaceManager::get()->getMinorMode() != RaceManager::MINOR_MODE_NORMAL_RACE &&
+        RaceManager::get()->getMinorMode() != RaceManager::MINOR_MODE_TIME_TRIAL)
+    {
+        m_gnu_elimination = false;
+        m_gnu_remained = 0;
+        m_gnu_participants.clear();
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        chat->encodeString16(
+                L"Gnu Elimination is disabled because of non-racing mode");
+        sendMessageToPeers(chat);
+        delete chat;
+    }
 }   // handleServerConfiguration
 
 //-----------------------------------------------------------------------------
@@ -5911,9 +5927,17 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
         }
-        else if (false/* one player */)
+        else if (
+            RaceManager::get()->getMinorMode() != RaceManager::MINOR_MODE_NORMAL_RACE &&
+            RaceManager::get()->getMinorMode() != RaceManager::MINOR_MODE_TIME_TRIAL)
         {
-
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(
+                    L"Gnu Elimination is available only with racing modes");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
         }
         else
         {
