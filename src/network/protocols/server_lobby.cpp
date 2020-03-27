@@ -3326,6 +3326,11 @@ void ServerLobby::clientDisconnected(Event* event)
         Log::info("ServerLobby", "%s disconnected", name.c_str());
     }
 
+    unsigned players_number;
+    STKHost::get()->updatePlayers(NULL, NULL, &players_number);
+    if (players_number == 0)
+        resetToDefaultSettings();
+
     // Don't show waiting peer disconnect message to in game player
     STKHost::get()->sendPacketToAllPeersWith([waiting_peer_disconnected]
         (STKPeer* p)
@@ -5148,18 +5153,27 @@ void ServerLobby::handleServerConfiguration(Event* event)
         Log::warn("ServerLobby", "server-configurable is not enabled.");
         return;
     }
-    if (event->getPeerSP() != m_server_owner.lock())
+    if (event != NULL && event->getPeerSP() != m_server_owner.lock())
     {
         Log::warn("ServerLobby",
             "Client %d is not authorised to config server.",
             event->getPeer()->getHostId());
         return;
     }
-    NetworkString& data = event->data();
-    int new_difficulty = data.getUInt8();
-    int new_game_mode = data.getUInt8();
-    if (m_available_difficulties.count(new_difficulty) == 0 || 
-        m_available_modes.count(new_game_mode) == 0)
+    int new_difficulty = ServerConfig::m_server_difficulty;
+    int new_game_mode = ServerConfig::m_server_mode;
+    bool new_soccer_goal_target = ServerConfig::m_soccer_goal_target;
+    if (event != NULL)
+    {
+        NetworkString& data = event->data();
+        new_difficulty = data.getUInt8();
+        new_game_mode = data.getUInt8();
+        new_soccer_goal_target = data.getUInt8() == 1;
+    }
+    // Actually event == NULL implies no errors...
+    if (event != NULL &&
+        (m_available_difficulties.count(new_difficulty) == 0 || 
+        m_available_modes.count(new_game_mode) == 0))
     {
         Log::error("ServerLobby", "Mode %d and/or difficulty %d are not permitted.");
         auto peer = event->getPeerSP();
@@ -5172,7 +5186,6 @@ void ServerLobby::handleServerConfiguration(Event* event)
         delete chat;
         return;
     }
-    bool new_soccer_goal_target = data.getUInt8() == 1;
     auto modes = ServerConfig::getLocalGameMode(new_game_mode);
     if (modes.second == RaceManager::MAJOR_MODE_GRAND_PRIX)
     {
@@ -6309,4 +6322,10 @@ void ServerLobby::initAvailableModes()
         }
     }
 }  // initAvailableModes
+//-----------------------------------------------------------------------------
+void ServerLobby::resetToDefaultSettings()
+{
+    handleServerConfiguration(NULL);
+    // m_gnu_elimination = false;
+}  // resetToDefaultSettings
 //-----------------------------------------------------------------------------
