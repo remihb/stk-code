@@ -2572,6 +2572,9 @@ void ServerLobby::startSelection(const Event *event)
     auto peers = STKHost::get()->getPeers();
     for (auto peer : peers)
     {
+        if (ServerConfig::m_only_host_riding && m_server_owner.lock() != peer) {
+            continue;
+        }
         if (!peer->isValidated() || peer->isWaitingForGame())
             continue;
         peer->eraseServerKarts(m_available_kts.first, karts_erase);
@@ -2733,7 +2736,12 @@ void ServerLobby::startSelection(const Event *event)
         ns->encodeString(track);
     }
 
-    if (!m_gnu_elimination || m_gnu_remained < 0)
+    if (ServerConfig::m_only_host_riding) {
+        auto owner = m_server_owner.lock(); 
+        owner->sendPacket(ns, true/*reliable*/);
+        delete ns;
+    }
+    else if (!m_gnu_elimination || m_gnu_remained < 0)
     {
         sendMessageToPeers(ns, /*reliable*/true);
         delete ns;

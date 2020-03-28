@@ -518,6 +518,11 @@ namespace ServerConfig
         "A string given to a peer if it has incompatible data, so "
         "that it can know why it cannot enter, empty to disable."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_only_host_riding
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "only-host-riding",
+        "A temporary feature to make others only spectate. Not ideal. "
+        "Maybe not even working."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;
