@@ -256,6 +256,8 @@ private:
 
     std::map<STKPeer*, std::set<irr::core::stringw>> m_message_receivers;
 
+    std::set<STKPeer*> m_team_speakers;
+
     bool m_gnu_elimination;
 
     int m_gnu_remained;

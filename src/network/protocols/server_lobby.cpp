@@ -860,12 +860,21 @@ void ServerLobby::handleChat(Event* event)
         const bool game_started = m_state.load() != WAITING_FOR_START_GAME;
         STKPeer* sender = event->getPeer();
         auto can_receive = m_message_receivers[sender];
+        bool team_speak = m_team_speakers.find(sender) != m_team_speakers.end();
+        team_speak &= (
+            RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_SOCCER ||
+            RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG
+        );
+        std::set<KartTeam> teams;
+        for (auto& profile: sender->getPlayerProfiles())
+            teams.insert(profile->getTeam());
+
         STKHost::get()->sendPacketToAllPeersWith(
-            [game_started, sender_in_game, can_receive, sender](STKPeer* p)
+            [game_started, sender_in_game, can_receive,
+                sender, team_speak, teams](STKPeer* p)
             {
-                if (sender == p) {
+                if (sender == p)
                     return true;
-                }
                 if (game_started)
                 {
                     if (p->isWaitingForGame() && !sender_in_game)
@@ -873,9 +882,15 @@ void ServerLobby::handleChat(Event* event)
                     if (!p->isWaitingForGame() && sender_in_game)
                         return false;
                 }
-                if (can_receive.empty()) {
-                    return true;
+                if (team_speak)
+                {
+                    for (auto& profile: p->getPlayerProfiles())
+                        if (teams.count(profile->getTeam()) > 0)
+                            return true;
+                    return false;
                 }
+                if (can_receive.empty())
+                    return true;
                 for (auto& profile : p->getPlayerProfiles())
                 {
                     if (can_receive.find(profile->getName()) !=
@@ -6036,6 +6051,17 @@ void ServerLobby::handleServerCommand(Event* event,
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }
+    else if (argv[0] == "teamchat")
+    {
+        std::set<STKPeer*> m_team_speakers;
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        m_team_speakers.insert(peer.get());
+        chat->encodeString16(L"Your messages are now addressed to team only");
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
     else if (argv[0] == "to")
     {
         if (argv.size() == 1) {
@@ -6065,6 +6091,7 @@ void ServerLobby::handleServerCommand(Event* event,
         chat->addUInt8(LE_CHAT);
         chat->setSynchronous(true);
         m_message_receivers[peer.get()].clear();
+        m_team_speakers.erase(peer.get());
         chat->encodeString16(L"Your messages are now public");
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
