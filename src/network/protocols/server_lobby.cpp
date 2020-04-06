@@ -6053,12 +6053,11 @@ void ServerLobby::handleServerCommand(Event* event,
     }
     else if (argv[0] == "teamchat")
     {
-        std::set<STKPeer*> m_team_speakers;
         NetworkString* chat = getNetworkString();
         chat->addUInt8(LE_CHAT);
         chat->setSynchronous(true);
         m_team_speakers.insert(peer.get());
-        chat->encodeString16(L"Your messages are now addressed to team only");
+        chat->encodeString16(L"Your messages are now addressed to team only");        
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;
     }
