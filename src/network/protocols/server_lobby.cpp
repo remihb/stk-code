@@ -6028,6 +6028,30 @@ void ServerLobby::handleServerCommand(Event* event,
             delete chat;
         }
     }
+    else if (argv[0] == "tell")
+    {        
+        if (argv.size() == 1)
+        {
+            NetworkString* chat = getNetworkString();
+            chat->addUInt8(LE_CHAT);
+            chat->setSynchronous(true);
+            chat->encodeString16(L"Tell something non-empty");
+            peer->sendPacket(chat, true/*reliable*/);
+            delete chat;
+            return;
+        }
+        else
+        {
+            std::string ans;
+            for (unsigned i = 1; i < argv.size(); ++i)
+            {
+                if (i > 1)
+                    ans.push_back(' ');
+                ans += argv[i];
+            }
+            writeOwnReport(peer.get(), ans);
+        }
+    }
     else if (argv[0] == "standings")
     {
         // Log::info("ServerLobby", "Gnu Elimination: total %d participants", (int)m_gnu_participants.size());
@@ -6386,4 +6410,90 @@ void ServerLobby::resetToDefaultSettings()
     handleServerConfiguration(NULL);
     // m_gnu_elimination = false;
 }  // resetToDefaultSettings
+//-----------------------------------------------------------------------------
+void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
+{
+#ifdef ENABLE_SQLITE3
+    if (!m_db || !m_player_reports_table_exists)
+        return;
+    if (!reporter->hasPlayerProfiles())
+        return;
+    auto reporter_npp = reporter->getPlayerProfiles()[0];
+
+    if (info.empty())
+        return;
+
+    auto reporting_peer = reporter;
+    auto reporting_npp = reporting_peer->getPlayerProfiles()[0];
+
+    std::string query;
+    if (ServerConfig::m_ipv6_connection)
+    {
+        query = StringUtils::insertValues(
+            "INSERT INTO %s "
+            "(server_uid, reporter_ip, reporter_ipv6, reporter_online_id, reporter_username, "
+            "info, reporting_ip, reporting_ipv6, reporting_online_id, reporting_username) "
+            "VALUES (?, %u, \"%s\", %u, ?, ?, %u, \"%s\", %u, ?);",
+            ServerConfig::m_player_reports_table.c_str(),
+            !reporter->getAddress().isIPv6() ? reporter->getAddress().getIP() : 0,
+            reporter->getAddress().isIPv6() ? reporter->getAddress().toString(false) : "",
+            reporter_npp->getOnlineId(),
+            !reporting_peer->getAddress().isIPv6() ? reporting_peer->getAddress().getIP() : 0,
+            reporting_peer->getAddress().isIPv6() ? reporting_peer->getAddress().toString(false) : "",
+            reporting_npp->getOnlineId());
+    }
+    else
+    {
+        query = StringUtils::insertValues(
+            "INSERT INTO %s "
+            "(server_uid, reporter_ip, reporter_online_id, reporter_username, "
+            "info, reporting_ip, reporting_online_id, reporting_username) "
+            "VALUES (?, %u, %u, ?, ?, %u, %u, ?);",
+            ServerConfig::m_player_reports_table.c_str(),
+            reporter->getAddress().getIP(), reporter_npp->getOnlineId(),
+            reporting_peer->getAddress().getIP(), reporting_npp->getOnlineId());
+    }
+    bool written = easySQLQuery(query,
+        [reporter_npp, reporting_npp, info](sqlite3_stmt* stmt)
+        {
+            // SQLITE_TRANSIENT to copy string
+            if (sqlite3_bind_text(stmt, 1, ServerConfig::m_server_uid.c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    ServerConfig::m_server_uid.c_str());
+            }
+            if (sqlite3_bind_text(stmt, 2,
+                StringUtils::wideToUtf8(reporter_npp->getName()).c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    StringUtils::wideToUtf8(reporter_npp->getName()).c_str());
+            }
+            if (sqlite3_bind_text(stmt, 3,
+                info.c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    info.c_str());
+            }
+            if (sqlite3_bind_text(stmt, 4,
+                StringUtils::wideToUtf8(reporting_npp->getName()).c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    StringUtils::wideToUtf8(reporting_npp->getName()).c_str());
+            }
+        });
+    if (written)
+    {
+        NetworkString* success = getNetworkString();
+        success->setSynchronous(true);
+        success->addUInt8(LE_REPORT_PLAYER).addUInt8(1)
+            .encodeString(ServerConfig::m_server_name);
+        reporter->sendPacket(success, true/*reliable*/);
+        delete success;
+    }
+#endif
+}   // writeOwnReport
 //-----------------------------------------------------------------------------

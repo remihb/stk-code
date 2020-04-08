@@ -430,6 +430,7 @@ public:
     void setClientServerHostId(uint32_t id)   { m_client_server_host_id = id; }
     void initAvailableModes();
     void resetToDefaultSettings();
+    void writeOwnReport(STKPeer* reporter, const std::string& info);
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP
