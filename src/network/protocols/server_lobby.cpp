@@ -176,7 +176,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         ((std::string) ServerConfig::m_help);
 
     m_available_commands = "help commands music kick to public "
-        "gnu nognu standings record "
+        "teamchat gnu nognu standings record tell "
         "installaddon uninstalladdon liststkaddon listlocaladdon "
         "listserveraddon playerhasaddon playeraddonscore serverhasaddon";
 
@@ -944,7 +944,23 @@ void ServerLobby::kickHost(Event* event)
     std::shared_ptr<STKPeer> peer = STKHost::get()->findPeerByHostId(host_id);
     // Ignore kicking ai peer if ai handling is on
     if (peer && (!ServerConfig::m_ai_handling || !peer->isAIPeer()))
+    {
+        if (!peer->hasPlayerProfiles())
+        {
+            Log::info("ServerLobby", "Crown player kicks a player");
+        }
+        else
+        {
+            auto npp = peer->getPlayerProfiles()[0];
+            std::string player_name = StringUtils::wideToUtf8(npp->getName());
+            Log::info("ServerLobby", "Crown player kicks %s", player_name.c_str());
+        }
         peer->kick();
+        if (ServerConfig::m_track_kicks) {
+            std::string auto_report = "[ Auto report caused by kick ]";
+            writeOwnReport(peer.get(), event->getPeerSP().get(), auto_report);
+        }
+    }
 }   // kickHost
 
 //-----------------------------------------------------------------------------
@@ -5831,7 +5847,12 @@ void ServerLobby::handleServerCommand(Event* event,
         }
         else
         {
+            Log::info("ServerLobby", "Crown player kicks %s", player_name.c_str());
             player_peer->kick();
+            if (ServerConfig::m_track_kicks) {
+                std::string auto_report = "[ Auto report caused by kick ]";
+                writeOwnReport(player_peer.get(), peer.get(), auto_report);
+            }
         }
     }
     else if (StringUtils::startsWith(cmd, "playeraddonscore"))
@@ -6049,7 +6070,7 @@ void ServerLobby::handleServerCommand(Event* event,
                     ans.push_back(' ');
                 ans += argv[i];
             }
-            writeOwnReport(peer.get(), ans);
+            writeOwnReport(peer.get(), peer.get(), ans);
         }
     }
     else if (argv[0] == "standings")
@@ -6411,7 +6432,7 @@ void ServerLobby::resetToDefaultSettings()
     // m_gnu_elimination = false;
 }  // resetToDefaultSettings
 //-----------------------------------------------------------------------------
-void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
+void ServerLobby::writeOwnReport(STKPeer* reporter, STKPeer* reporting, const std::string& info)
 {
 #ifdef ENABLE_SQLITE3
     if (!m_db || !m_player_reports_table_exists)
@@ -6423,8 +6444,9 @@ void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
     if (info.empty())
         return;
 
-    auto reporting_peer = reporter;
-    auto reporting_npp = reporting_peer->getPlayerProfiles()[0];
+    if (!reporting->hasPlayerProfiles())
+        return;
+    auto reporting_npp = reporting->getPlayerProfiles()[0];
 
     std::string query;
     if (ServerConfig::m_ipv6_connection)
@@ -6438,8 +6460,8 @@ void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
             !reporter->getAddress().isIPv6() ? reporter->getAddress().getIP() : 0,
             reporter->getAddress().isIPv6() ? reporter->getAddress().toString(false) : "",
             reporter_npp->getOnlineId(),
-            !reporting_peer->getAddress().isIPv6() ? reporting_peer->getAddress().getIP() : 0,
-            reporting_peer->getAddress().isIPv6() ? reporting_peer->getAddress().toString(false) : "",
+            !reporting->getAddress().isIPv6() ? reporting->getAddress().getIP() : 0,
+            reporting->getAddress().isIPv6() ? reporting->getAddress().toString(false) : "",
             reporting_npp->getOnlineId());
     }
     else
@@ -6451,7 +6473,7 @@ void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
             "VALUES (?, %u, %u, ?, ?, %u, %u, ?);",
             ServerConfig::m_player_reports_table.c_str(),
             reporter->getAddress().getIP(), reporter_npp->getOnlineId(),
-            reporting_peer->getAddress().getIP(), reporting_npp->getOnlineId());
+            reporting->getAddress().getIP(), reporting_npp->getOnlineId());
     }
     bool written = easySQLQuery(query,
         [reporter_npp, reporting_npp, info](sqlite3_stmt* stmt)
@@ -6489,8 +6511,12 @@ void ServerLobby::writeOwnReport(STKPeer* reporter, const std::string& info)
     {
         NetworkString* success = getNetworkString();
         success->setSynchronous(true);
-        success->addUInt8(LE_REPORT_PLAYER).addUInt8(1)
-            .encodeString(ServerConfig::m_server_name);
+        if (reporter == reporting)
+            success->addUInt8(LE_REPORT_PLAYER).addUInt8(1)
+                .encodeString(ServerConfig::m_server_name);
+        else
+            success->addUInt8(LE_REPORT_PLAYER).addUInt8(1)
+                .encodeString(reporting_npp->getName());
         reporter->sendPacket(success, true/*reliable*/);
         delete success;
     }

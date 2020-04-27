@@ -512,6 +512,11 @@ namespace ServerConfig
         "in this field. So it can be the results table for this server "
         "or for all servers hosted on the machine."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_track_kicks
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "track-kicks",
+        "When true, stores the info about each forced kick in a database "
+        "(if it exists)."));        
+
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "incompatible-advice",
