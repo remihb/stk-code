@@ -349,6 +349,33 @@ void loadServerLobbyFromConfig()
 #endif
     }
 
+    if (m_soccer_tournament) {
+        m_server_mode = 6;
+        m_server_difficulty = 3;
+        m_fixed_lap_count = 10;
+        if (m_server_max_players < 7) {
+            m_server_max_players = 7;
+        }
+        m_voting_timeout = 15;
+        m_soccer_goal_target = false;
+        m_official_tracks_needed = false;
+        m_owner_less = false;
+        m_official_karts_threshold = 1.0f;
+        m_official_tracks_threshold = 0.0f;
+        m_addon_karts_threshold = 0;
+        m_addon_tracks_threshold = 0;
+        m_addon_arenas_threshold = 0;
+        m_addon_soccers_threshold = 0; // maybe 1 ?
+        m_must_have_tracks_string = "icy_soccer_field soccer_field lasdunassoccer";
+        m_team_choosing = true;
+        m_ranked = false;
+        m_server_configurable = false;
+        m_live_players = true;
+        m_sleeping_server = false;
+        m_free_teams = true;
+        m_validating_player = true;
+    }
+
     if (m_ranked)
     {
         m_validating_player = true;

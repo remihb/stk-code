@@ -271,6 +271,14 @@ private:
 
     std::set<int> m_available_modes;
 
+    std::set<std::string> m_tournament_red_players;
+
+    std::set<std::string> m_tournament_blue_players;
+    
+    std::set<std::string> m_tournament_referees;
+
+    int m_tournament_game;
+
     // connection management
     void clientDisconnected(Event* event);
     void connectionRequested(Event* event);
@@ -391,6 +399,10 @@ private:
     bool supportsAI();
     void updateGnuElimination();
     void updateAddons();
+    void initTournamentPlayers();
+    void changeColors();
+    void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;
+    void sendStringToAllPeers(std::string& s);
 public:
              ServerLobby();
     virtual ~ServerLobby();

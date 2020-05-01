@@ -515,7 +515,25 @@ namespace ServerConfig
     SERVER_CFG_PREFIX BoolServerConfigParam m_track_kicks
         SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "track-kicks",
         "When true, stores the info about each forced kick in a database "
-        "(if it exists)."));        
+        "(if it exists)."));
+
+    SERVER_CFG_PREFIX BoolServerConfigParam m_free_teams
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "free-teams",
+        "When true, the server allows changing teams freely."));
+
+    SERVER_CFG_PREFIX BoolServerConfigParam m_soccer_tournament
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "soccer-tournament",
+        "When true, the server has the functionality to host soccer "
+        "tournaments. Rules may change so better ask STK players about "
+        "the actual rules."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_players
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "soccer-tournament-players",
+        "List of players and judges. Use the format \"R red red "
+        "red B blue blue blue J judge judge\" where "
+        "the category is preceded by its letter. Categories can "
+        "be empty or absent and can go in any order."));
 
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
