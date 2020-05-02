@@ -61,6 +61,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
+#include <sstream>
 #include <iterator>
 
 // We use max priority for all server requests to avoid downloading of addons
@@ -2644,6 +2646,10 @@ void ServerLobby::startSelection(const Event *event)
         peer->eraseServerKarts(m_available_kts.first, karts_erase);
         peer->eraseServerTracks(m_available_kts.second, tracks_erase);
     }
+    if (ServerConfig::m_soccer_tournament && m_tournament_game % 2 == 0)
+    {
+        tracks_erase.insert("icy_soccer_field");
+    }
 
     for (const std::string& kart_erase : karts_erase)
     {
@@ -2653,6 +2659,19 @@ void ServerLobby::startSelection(const Event *event)
     {
         m_available_kts.second.erase(track_erase);
     }
+    if (ServerConfig::m_soccer_tournament && m_tournament_game % 2 == 1)
+    {
+        if (m_available_kts.second.count("icy_soccer_field"))
+        {
+            m_available_kts.second.clear();
+            m_available_kts.second.insert("icy_soccer_field");
+        }
+        else
+        {
+            m_available_kts.second.clear();
+        }
+    }
+
 
     unsigned max_player = 0;
     STKHost::get()->updatePlayers(&max_player);
@@ -2714,7 +2733,7 @@ void ServerLobby::startSelection(const Event *event)
     RandomGenerator rg;
     const auto& all_k = m_available_kts.first;
     const auto& all_t = m_available_kts.second;
-    if (!official_tracks.empty()) {
+    if (!official_tracks.empty() && !ServerConfig::m_soccer_tournament) {
         it = official_tracks.begin();
         std::advance(it, rg.get((int)official_tracks.size()));
     } else {
@@ -2877,31 +2896,31 @@ void ServerLobby::startSelection(const Event *event)
     }
     else if (ServerConfig::m_soccer_tournament)
     {
-        delete ns;
-        std::set<std::string> soccer_t;
-        for (auto& s: all_t)
-        {
-            if ((m_tournament_game == 2) ^ (s == "icy_soccer_field"))
-                soccer_t.insert(s);
-        }
-        ns = getNetworkString(1);
-        ns->setSynchronous(true);
-        ns->addUInt8(LE_START_SELECTION)
-           .addFloat(ServerConfig::m_voting_timeout)
-           .addUInt8(m_game_setup->isGrandPrixStarted() ? 1 : 0)
-           .addUInt8(ServerConfig::m_auto_game_time_ratio > 0.0f ? 1 : 0)
-           .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
+        // delete ns;
+        // std::set<std::string> soccer_t;
+        // for (auto& s: all_t)
+        // {
+        //     if ((m_tournament_game == 2) ^ (s == "icy_soccer_field"))
+        //         soccer_t.insert(s);
+        // }
+        // ns = getNetworkString(1);
+        // ns->setSynchronous(true);
+        // ns->addUInt8(LE_START_SELECTION)
+        //    .addFloat(ServerConfig::m_voting_timeout)
+        //    .addUInt8(m_game_setup->isGrandPrixStarted() ? 1 : 0)
+        //    .addUInt8(ServerConfig::m_auto_game_time_ratio > 0.0f ? 1 : 0)
+        //    .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
 
 
-        ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)soccer_t.size());
-        for (const std::string& kart : all_k)
-        {
-            ns->encodeString(kart);
-        }
-        for (const std::string& track : soccer_t)
-        {
-            ns->encodeString(track);
-        }
+        // ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)soccer_t.size());
+        // for (const std::string& kart : all_k)
+        // {
+        //     ns->encodeString(kart);
+        // }
+        // for (const std::string& track : soccer_t)
+        // {
+        //     ns->encodeString(track);
+        // }
 
 
         std::set<std::string> all_players;
@@ -6578,6 +6597,8 @@ void ServerLobby::storeResults()
         std::string username = StringUtils::wideToUtf8(
             RaceManager::get()->getKartInfo(i).getPlayerName());
         double elapsed_time = RaceManager::get()->getKartRaceTime(i);
+        std::stringstream elapsed_string;
+        elapsed_string << std::setprecision(4) << std::fixed << elapsed_time;
         if (best_cur_player_idx == -1 || elapsed_time < best_cur_time)
         {
             best_cur_player_idx = i;
@@ -6587,9 +6608,9 @@ void ServerLobby::storeResults()
         std::string query = StringUtils::insertValues(
             "INSERT INTO %s "
             "(username, venue, reverse, mode, laps, result) "
-            "VALUES ('%s', '%s', '%s', '%s', %d, %f);",
+            "VALUES ('%s', '%s', '%s', '%s', %d, '%s');",
             m_results_table_name.c_str(), username.c_str(), track_name.c_str(),
-            reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_time
+            reverse_string.c_str(), mode_name.c_str(), laps_number, elapsed_string.str()
         );
         easySQLQuery(query);
     }
