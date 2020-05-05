@@ -848,8 +848,12 @@ void ServerLobby::handleChat(Event* event)
         event->getPeer()->getConsecutiveMessages() >
         ServerConfig::m_chat_consecutive_interval / 2)
     {
-        std::string warn = "Spam detected";
-        sendStringToPeer(warn, event->getPeer());
+        NetworkString* chat = getNetworkString();
+        chat->setSynchronous(true);
+        core::stringw warn = "Spam detected";
+        chat->addUInt8(LE_CHAT).encodeString16(warn);
+        event->getPeer()->sendPacket(chat, true/*reliable*/);
+        delete chat;
         return;
     }
 
