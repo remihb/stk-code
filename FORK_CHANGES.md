@@ -28,4 +28,6 @@ This is only a short description.
 
 13. Allowed `/records` queries to server
 
-Of course, there are some further plans ~~which will be announced when they are implemented or when I realize they cannot~~.
+14. Allowed to have a server in soccer tournament mode.
+
+Of course, there are some further plans ~~which will be announced when they are implemented or when I realize they cannot be implemented~~.

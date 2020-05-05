@@ -848,12 +848,8 @@ void ServerLobby::handleChat(Event* event)
         event->getPeer()->getConsecutiveMessages() >
         ServerConfig::m_chat_consecutive_interval / 2)
     {
-        NetworkString* chat = getNetworkString();
-        chat->setSynchronous(true);
-        core::stringw warn = "Spam detected";
-        chat->addUInt8(LE_CHAT).encodeString16(warn);
-        event->getPeer()->sendPacket(chat, true/*reliable*/);
-        delete chat;
+        std::string warn = "Spam detected";
+        sendStringToPeer(warn, event->getPeer());
         return;
     }
 
@@ -1794,17 +1790,6 @@ void ServerLobby::asynchronousUpdate()
 
             // Reset for next state usage
             resetPeersReady();
-
-            for (auto p : m_peers_ready)
-            {
-                auto peer = p.first.lock();
-                if (!peer)
-                    continue;
-                std::string username = StringUtils::wideToUtf8(
-                        peer->getPlayerProfiles()[0]->getName());
-                Log::info("ServerLobby", "m_peers_ready: there is a peer %s", username.c_str());
-            }
-
 
             m_state = LOAD_WORLD;
             sendMessageToPeers(load_world_message);
@@ -3999,9 +3984,6 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
             }
             player->setTeam(cur_team);
         }
-        Log::info("ServerLobby", "Validated player utf8_name: %s, "
-            "online_name: %s", utf8_name.c_str(),
-            utf8_online_name.c_str());
         if (ServerConfig::m_soccer_tournament) {
             if (m_tournament_red_players.count(utf8_online_name)) 
                 player->setTeam(KART_TEAM_RED);
@@ -6207,7 +6189,6 @@ void ServerLobby::handleServerCommand(Event* event,
     }
     else if (argv[0] == "standings")
     {
-        // Log::info("ServerLobby", "Gnu Elimination: total %d participants", (int)m_gnu_participants.size());
         std::string result = "Gnu Elimination ";
         if (m_gnu_elimination)
             result += "is running";

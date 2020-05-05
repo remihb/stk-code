@@ -223,13 +223,25 @@ The current server configuration xml looks like this (this is only an example, j
     <sleeping-server value="false" />
 
     <!-- IP that should be used to connect to a server, set 0 for a default IP. You need this only if the server's IP shouldn't be used for some reason (e.g. blocking) and there is another IP ('good') that points to the same server. In this case, you should write a good IP here as a number. Only IPv4 is supported. -->
-    <sleeping-server value="false" />
+    <false-ip value="0" />
 
     <!-- When true, stores race results in a separate table for each server. -->
     <store-results value="false" />
 
     <!-- When non-empty, server is telling whether a player has beaten a server record, records are taken from the table specified in this field. So it can be the results table for this server or for all servers hosted on the machine.-->
     <records-table-name value="" />
+
+    <!-- When true, stores the info about each forced kick in a database (if it exists). -->
+    <track-kicks value="false" />
+
+    <!-- When true, the server allows changing teams freely. -->
+    <free-teams value="false" />
+
+    <!-- When true, the server has the functionality to host soccer tournaments. Rules may change so better ask STK players about the actual rules. -->
+    <soccer-tournament value="false" />
+
+    <!-- List of players and judges. Use the format "R red red red B blue blue blue J judge judge" where the category is preceded by its letter. Categories can be empty or absent and can go in any order. -->
+    <soccer-tournament-players value="" />
 
     <!-- A string given to a peer if it has incompatible data, so that it can know why it cannot enter, empty to disable. -->
     <incompatible-advice value="Well, you have incompatible data!" />
