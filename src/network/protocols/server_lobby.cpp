@@ -862,8 +862,19 @@ void ServerLobby::handleChat(Event* event)
 
     core::stringw message;
     event->data().decodeString16(&message, 360/*max_len*/);
+
+    KartTeam target_team = KART_TEAM_NONE;
+    if (event->data().size() > 0)
+        target_team = (KartTeam)event->data().getUInt8();
+
     if (message.size() > 0)
     {
+        // Red or blue square emoji
+        if (target_team == KART_TEAM_RED)
+            message = StringUtils::utf32ToWide({0x1f7e5, 0x20}) + message;
+        else if (target_team == KART_TEAM_BLUE)
+            message = StringUtils::utf32ToWide({0x1f7e6, 0x20}) + message;
+
         NetworkString* chat = getNetworkString();
         chat->setSynchronous(true);
         chat->addUInt8(LE_CHAT).encodeString16(message);
@@ -880,7 +891,7 @@ void ServerLobby::handleChat(Event* event)
             teams.insert(profile->getTeam());
 
         STKHost::get()->sendPacketToAllPeersWith(
-            [game_started, sender_in_game, can_receive,
+            [game_started, sender_in_game, target_team, can_receive,
                 sender, team_speak, teams](STKPeer* p)
             {
                 if (sender == p)
@@ -891,6 +902,17 @@ void ServerLobby::handleChat(Event* event)
                         return false;
                     if (!p->isWaitingForGame() && sender_in_game)
                         return false;
+                    if (target_team != KART_TEAM_NONE)
+                    {
+                        if (p->isSpectator())
+                            return false;
+                        for (auto& player : p->getPlayerProfiles())
+                        {
+                            if (player->getTeam() == target_team)
+                                return true;
+                        }
+                        return false;
+                    }
                 }
                 if (team_speak)
                 {

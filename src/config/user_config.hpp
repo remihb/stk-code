@@ -477,6 +477,9 @@ namespace UserConfigParams
     PARAM_PREFIX BoolUserConfigParam          m_karts_powerup_gui
             PARAM_DEFAULT(  BoolUserConfigParam(false, "karts-powerup-gui",
             &m_race_setup_group, "Show other karts' held powerups in race gui.") );
+    PARAM_PREFIX BoolUserConfigParam          m_soccer_player_list
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "soccer-player-list",
+            &m_race_setup_group, "Show player list icon in soccer mode.") );
 
     // ---- Wiimote data
     PARAM_PREFIX GroupUserConfigParam        m_wiimote_group
@@ -783,13 +786,29 @@ namespace UserConfigParams
         PARAM_DEFAULT(StringToUIntUserConfigParam("stun-servers-ipv4",
         "The stun servers that will be used to know the public address "
         "(ipv4 only) with port", {{ "stun-server", "address", "ping" }},
-        { }));
+            {
+                 { "stunv4.1.supertuxkart.net:3478", 0u },
+                 { "stunv4.2.supertuxkart.net:19302", 0u },
+                 { "stunv4.3.supertuxkart.net:19302", 0u },
+                 { "stunv4.4.supertuxkart.net:19302", 0u },
+                 { "stunv4.5.supertuxkart.net:19302", 0u },
+                 { "stunv4.6.supertuxkart.net:19302", 0u }
+             }
+         ));
 
     PARAM_PREFIX StringToUIntUserConfigParam m_stun_servers
         PARAM_DEFAULT(StringToUIntUserConfigParam("stun-servers-ipv6",
         "The stun servers that will be used to know the public address "
         "(including ipv6) with port", {{ "stun-server", "address", "ping" }},
-        { }));
+            {
+                 { "stun.stunprotocol.org:3478", 0u },
+                 { "stun.l.google.com:19302", 0u },
+                 { "stun1.l.google.com:19302", 0u },
+                 { "stun2.l.google.com:19302", 0u },
+                 { "stun3.l.google.com:19302", 0u },
+                 { "stun4.l.google.com:19302", 0u }
+             }
+         ));
 
     PARAM_PREFIX GroupUserConfigParam  m_network_group
         PARAM_DEFAULT(GroupUserConfigParam("Network", "Network Settings"));
