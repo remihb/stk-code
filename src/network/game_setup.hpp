@@ -125,6 +125,8 @@ public:
             m_tracks.size() != getTotalGrandPrixTracks();
     }
     // ------------------------------------------------------------------------
+    void cancelOneRace()                                  { m_tracks.pop_back(); }
+    // ------------------------------------------------------------------------
     void stopGrandPrix()                                  { m_tracks.clear(); }
     // ------------------------------------------------------------------------
     const std::vector<std::string>& getAllTracks() const   { return m_tracks; }

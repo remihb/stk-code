@@ -246,6 +246,11 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- A string given to a peer if it has incompatible data, so that it can know why it cannot enter, empty to disable. -->
     <incompatible-advice value="Well, you have incompatible data!" />
 
+    <!-- If true and no track is selected, then an addon track can be picked. -->
+    <random-selects-addons value="false" />
+
+    <!-- If non-empty, these tracks are played in the order until the list ends. Can be useful for grands prix. -->
+    <tracks-queue value="" />
 
 </server-config>
 

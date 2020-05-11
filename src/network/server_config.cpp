@@ -374,6 +374,7 @@ void loadServerLobbyFromConfig()
         m_sleeping_server = false;
         m_free_teams = true;
         m_validating_player = true;
+        m_random_selects_addons = true;
     }
 
     if (m_ranked)

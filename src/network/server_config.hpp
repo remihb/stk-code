@@ -546,6 +546,15 @@ namespace ServerConfig
         "A temporary feature to make others only spectate. Not ideal. "
         "Maybe not even working."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_random_selects_addons
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "random-selects-addons",
+        "If true and no track is selected, then an addon track can be picked."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_tracks_order
+        SERVER_CFG_DEFAULT(StringServerConfigParam("", "tracks-queue",
+        "If non-empty, these tracks are played in the order until "
+        "the list ends. Can be useful for grands prix."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

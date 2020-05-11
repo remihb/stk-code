@@ -33,6 +33,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <deque>
 
 #ifdef ENABLE_SQLITE3
 #include <sqlite3.h>
@@ -277,7 +278,13 @@ private:
     
     std::set<std::string> m_tournament_referees;
 
+    std::set<std::string> m_temp_banned;
+
+    std::deque<std::string> m_tracks_queue;
+
     int m_tournament_game;
+
+    int m_fixed_lap;
 
     // connection management
     void clientDisconnected(Event* event);
@@ -403,6 +410,11 @@ private:
     void changeColors();
     void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;
     void sendStringToAllPeers(std::string& s);
+    bool canRace(std::shared_ptr<STKPeer>& peer) const;
+    bool canRace(STKPeer* peer) const;
+    bool hasHostRights(std::shared_ptr<STKPeer>& peer) const;
+    bool hasHostRights(STKPeer* peer) const;
+    void loadTracksQueueFromConfig();
 public:
              ServerLobby();
     virtual ~ServerLobby();
