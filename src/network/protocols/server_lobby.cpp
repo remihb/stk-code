@@ -266,6 +266,7 @@ ServerLobby::ServerLobby() : LobbyProtocol()
         m_tournament_game = 0;
     }
     loadTracksQueueFromConfig();
+    loadCustomScoring();
 }   // ServerLobby
 
 //-----------------------------------------------------------------------------
@@ -2379,6 +2380,7 @@ void ServerLobby::update(int ticks)
         Log::info("ServerLobbyRoom", "Starting the race loading.");
         // This will create the world instance, i.e. load track and karts
         loadWorld();
+        updateWorldScoring();
         m_state = WAIT_FOR_WORLD_LOADED;
         break;
     case RACING:
@@ -2954,6 +2956,8 @@ void ServerLobby::startSelection(const Event *event)
 
     // Will be changed after the first vote received
     m_timeout.store(std::numeric_limits<int64_t>::max());
+    if (!m_game_setup->isGrandPrixStarted())
+        m_gp_scores.clear();
 }   // startSelection
 
 //-----------------------------------------------------------------------------
@@ -3113,8 +3117,25 @@ void ServerLobby::checkRaceFinished()
         int fastest_lap =
             static_cast<LinearWorld*>(World::getWorld())->getFastestLapTicks();
         m_result_ns->addUInt32(fastest_lap);
-        m_result_ns->encodeString(static_cast<LinearWorld*>(World::getWorld())
-            ->getFastestLapKartName());
+        irr::core::stringw fastest_kart_wide =
+            static_cast<LinearWorld*>(World::getWorld())
+            ->getFastestLapKartName();
+        m_result_ns->encodeString(fastest_kart_wide);
+        std::string fastest_kart = StringUtils::wideToUtf8(fastest_kart_wide);
+
+        int points_fl = 0;
+        int points_pole = 0;
+        WorldWithRank *wwr = dynamic_cast<WorldWithRank*>(World::getWorld());
+        if (wwr)
+        {
+            points_fl = wwr->getFastestLapPoints();
+            points_pole = wwr->getPolePoints();
+        }
+        else
+        {
+            Log::error("ServerLobby",
+                       "World with scores that is not a WorldWithRank??");
+        }
 
         // all gp tracks
         m_result_ns->addUInt8((uint8_t)m_game_setup->getTotalGrandPrixTracks())
@@ -3132,11 +3153,18 @@ void ServerLobby::checkRaceFinished()
             if (auto player =
                 RaceManager::get()->getKartInfo(i).getNetworkPlayerProfile().lock())
             {
-                last_score = player->getScore();
+                std::string username = StringUtils::wideToUtf8(player->getName());
+                last_score = m_gp_scores[username].score;
                 cur_score += last_score;
-                overall_time = overall_time + player->getOverallTime();
+                if (username == fastest_kart)
+                    cur_score += points_fl;
+
+                overall_time = overall_time + m_gp_scores[username].time;
                 player->setScore(cur_score);
                 player->setOverallTime(overall_time);
+
+                m_gp_scores[username].score = cur_score;
+                m_gp_scores[username].time = overall_time;
             }
             m_result_ns->addUInt32(last_score).addUInt32(cur_score)
                 .addFloat(overall_time);            
@@ -6303,25 +6331,25 @@ void ServerLobby::handleServerCommand(Event* event,
     }
     else if (argv[0] == "standings")
     {
-        std::string result = "Gnu Elimination ";
-        if (m_gnu_elimination)
-            result += "is running";
-        else
-            result += "is disabled";
-        result += ", standings:";
-        for (int i = 0; i < (int)m_gnu_participants.size(); i++)
+        if (argv.size() > 1)
         {
-            std::string line = "\n" + (i < m_gnu_remained ?
-                std::to_string(i + 1) : "[" + std::to_string(i + 1) + "]");
-            line += ". " + m_gnu_participants[i];
-            result += line;
+            if (argv[1] == "gp")
+                sendGrandPrixStandingsToPeer(peer);
+            else if (argv[1] == "gnu")
+                sendGnuStandingsToPeer(peer);
+            else
+            {
+                std::string msg = "Usage: /standings [gp | gnu]";
+                sendStringToPeer(msg, peer);
+            }
+            return;
         }
-        NetworkString* chat = getNetworkString();
-        chat->addUInt8(LE_CHAT);
-        chat->setSynchronous(true);
-        chat->encodeString16(StringUtils::utf8ToWide(result));
-        peer->sendPacket(chat, true/*reliable*/);
-        delete chat;
+        if (m_game_setup->isGrandPrix())
+        {
+            sendGrandPrixStandingsToPeer(peer);
+            return;
+        }
+        sendGnuStandingsToPeer(peer);
     }
     else if (argv[0] == "teamchat")
     {
@@ -6988,3 +7016,73 @@ void ServerLobby::loadTracksQueueFromConfig()
         m_tracks_queue.push_back(s);
 }   // loadTracksQueueFromConfig
 //-----------------------------------------------------------------------------
+void ServerLobby::sendGnuStandingsToPeer(std::shared_ptr<STKPeer> peer) const
+{
+    std::string result = "Gnu Elimination ";
+    if (m_gnu_elimination)
+        result += "is running";
+    else
+        result += "is disabled";
+    if (!m_gnu_participants.empty())
+        result += ", standings:";
+    for (int i = 0; i < (int)m_gnu_participants.size(); i++)
+    {
+        std::string line = "\n" + (i < m_gnu_remained ?
+            std::to_string(i + 1) : "[" + std::to_string(i + 1) + "]");
+        line += ". " + m_gnu_participants[i];
+        result += line;
+    }
+    sendStringToPeer(result, peer);
+}   // sendGnuStandingsToPeer
+//-----------------------------------------------------------------------------
+void ServerLobby::sendGrandPrixStandingsToPeer(std::shared_ptr<STKPeer> peer) const
+{
+    std::vector<std::pair<GPScore, std::string>> results;
+    for (auto& p: m_gp_scores)
+        results.emplace_back(p.second, p.first);
+    std::stable_sort(results.rbegin(), results.rend());
+    std::stringstream response;
+    response << "Grand Prix standings\n";
+    for (int i = 0; i < results.size(); i++)
+    {
+        response << (i + 1) << ". ";
+        response << "  " << results[i].second;
+        response << "  " << results[i].first.score;
+        response << "  " << "(" << StringUtils::timeToString(results[i].first.time) << ")";
+        response << "\n";
+    }
+    std::string answer = response.str();
+    sendStringToPeer(answer, peer);
+}   // sendGnuStandingsToPeer
+//-----------------------------------------------------------------------------
+void ServerLobby::loadCustomScoring()
+{
+    m_scoring_int_params.clear();
+    m_scoring_type = "";
+    std::string scoring = ServerConfig::m_gp_scoring;
+    if (!scoring.empty())
+    {
+        std::vector<std::string> params = StringUtils::split(scoring, ' ');
+        if (params.empty())
+            return;    
+        m_scoring_type = params[0];
+        for (unsigned i = 1; i < params.size(); i++)
+        {
+            int param;
+            if (!StringUtils::fromString(params[i], param))
+            {
+                Log::warn("ServerLobby", "Unable to parse integer from custom scoring data");
+                return;
+            }
+            m_scoring_int_params.push_back(param);
+        }
+    }
+}   // loadCustomScoring
+//-----------------------------------------------------------------------------   
+void ServerLobby::updateWorldScoring()
+{
+    WorldWithRank *wwr = dynamic_cast<WorldWithRank*>(World::getWorld());
+    if (wwr)
+        wwr->setCustomScoringSystem(m_scoring_type, m_scoring_int_params);
+}   // updateWorldScoring
+//-----------------------------------------------------------------------------   

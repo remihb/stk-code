@@ -51,6 +51,23 @@ namespace Online
     class Request;
 }
 
+// I know it should be in a more suitable place, but for now I have no idea
+// how to make this with the current system. Sorry. Hope to refactor later.
+
+struct GPScore
+{
+    int score = 0;
+    double time = 0.;
+    bool operator < (const GPScore& rhs) const
+    {
+        return (score < rhs.score || (score == rhs.score && time > rhs.time));
+    }
+    bool operator > (const GPScore& rhs) const
+    {
+        return (score > rhs.score || (score == rhs.score && time < rhs.time));
+    }
+};
+
 class ServerLobby : public LobbyProtocol
 {
 public:
@@ -282,9 +299,15 @@ private:
 
     std::deque<std::string> m_tracks_queue;
 
+    std::map<std::string, GPScore> m_gp_scores;
+
     int m_tournament_game;
 
     int m_fixed_lap;
+
+    std::vector<int> m_scoring_int_params;
+
+    std::string m_scoring_type;
 
     // connection management
     void clientDisconnected(Event* event);
@@ -415,6 +438,10 @@ private:
     bool hasHostRights(std::shared_ptr<STKPeer>& peer) const;
     bool hasHostRights(STKPeer* peer) const;
     void loadTracksQueueFromConfig();
+    void sendGnuStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
+    void sendGrandPrixStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
+    void loadCustomScoring();
+    void updateWorldScoring();
 public:
              ServerLobby();
     virtual ~ServerLobby();

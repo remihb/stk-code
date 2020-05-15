@@ -252,6 +252,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- If non-empty, these tracks are played in the order until the list ends. Can be useful for grands prix. -->
     <tracks-queue value="" />
 
+    <!-- A custom Grand Prix scoring system to be used, empty for default. -->
+    <grand-prix-scoring value="" />
+
 </server-config>
 
 ```

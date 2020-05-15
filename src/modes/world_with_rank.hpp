@@ -48,6 +48,12 @@ protected:
      *  0 based, so using race-position - 1. */
     std::vector<int> m_score_for_position;
 
+    bool m_custom_scoring;
+
+    std::vector<int> m_custom_scoring_params;
+
+    std::string m_custom_scoring_type;
+
 #ifdef DEBUG
     /** Used for debugging to help detect if the same kart position
      *  is used more than once. */
@@ -68,7 +74,9 @@ protected:
     void updateSectorForKarts();
 
 public:
-                  WorldWithRank() : World() {}
+                  WorldWithRank() : World() {
+                       m_custom_scoring = false;
+                  }
     virtual      ~WorldWithRank();
     /** call just after instanciating. can't be moved to the contructor as child
         classes must be instanciated, otherwise polymorphism will fail and the
@@ -101,6 +109,15 @@ public:
     bool isOnRoad(unsigned int kart_index) const;
     // ------------------------------------------------------------------------
     int getSectorForKart(const AbstractKart *kart) const;
+    // ------------------------------------------------------------------------
+    void setCustomScoringSystem(std::string& type, std::vector<int>& params);
+    // ------------------------------------------------------------------------
+    void refreshCustomScores(int num_karts);
+    // ------------------------------------------------------------------------
+    int getFastestLapPoints() const;
+    // ------------------------------------------------------------------------
+    int getPolePoints() const;
+    // ------------------------------------------------------------------------
 
 };   // WorldWithRank
 

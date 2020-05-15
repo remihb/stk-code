@@ -555,6 +555,11 @@ namespace ServerConfig
         "If non-empty, these tracks are played in the order until "
         "the list ends. Can be useful for grands prix."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_gp_scoring
+        SERVER_CFG_DEFAULT(StringServerConfigParam("", "grand-prix-scoring",
+        "A custom Grand Prix scoring system to be used, "
+        "empty for default."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

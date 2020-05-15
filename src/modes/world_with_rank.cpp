@@ -50,7 +50,10 @@ void WorldWithRank::init()
     m_position_used.resize(m_karts.size());
     m_position_setting_initialised = false;
 #endif
-    stk_config->getAllScores(&m_score_for_position, getNumKarts());
+    if (!m_custom_scoring)
+        stk_config->getAllScores(&m_score_for_position, getNumKarts());
+    else
+        refreshCustomScores(getNumKarts());
 
     Track *track = Track::getCurrentTrack();
     // Don't init track sector if navmesh is not found in arena
@@ -59,7 +62,6 @@ void WorldWithRank::init()
 
     for (unsigned int i = 0; i < m_karts.size(); i++)
         m_kart_track_sector.push_back(new TrackSector());
-
 }   // init
 
 //-----------------------------------------------------------------------------
@@ -213,9 +215,14 @@ unsigned int WorldWithRank::getRescuePositionIndex(AbstractKart *kart)
  */
 int WorldWithRank::getScoreForPosition(int p)
 {
-    assert(p-1 >= 0);
-    assert(p - 1 <(int) m_score_for_position.size());
-    return m_score_for_position[p - 1];
+    assert(p - 1 >= 0);
+    assert(p - 1 < (int)m_score_for_position.size());
+    if (!m_custom_scoring)
+        return m_score_for_position[p - 1];
+    else
+    {
+        return m_score_for_position[p - 1]; // oh really?
+    }
 }   // getScoreForPosition
 
 //-----------------------------------------------------------------------------
@@ -260,3 +267,53 @@ void WorldWithRank::updateSectorForKarts()
             getTrackSector(i)->update(m_karts[i]->getXYZ());
     }
 }   // updateSectorForKarts
+//-----------------------------------------------------------------------------
+
+void WorldWithRank::setCustomScoringSystem(std::string& type, std::vector<int>& params)
+{
+    m_custom_scoring = true;
+    m_custom_scoring_type = type;
+    m_custom_scoring_params = params;
+    refreshCustomScores(getNumKarts());
+}   // setCustomScoringSystem
+//-----------------------------------------------------------------------------
+
+void WorldWithRank::refreshCustomScores(int num_karts)
+{
+    if (m_custom_scoring_type == "inc")
+    {
+        m_score_for_position.clear();
+        for (unsigned i = 2; i < m_custom_scoring_params.size(); i++)
+            m_score_for_position.push_back(m_custom_scoring_params[i]);
+        sort(m_score_for_position.begin(), m_score_for_position.end());
+        for (unsigned i = 1; i < m_score_for_position.size(); i++)
+            m_score_for_position[i] += m_score_for_position[i - 1];
+        reverse(m_score_for_position.begin(), m_score_for_position.end());
+        m_score_for_position.resize(num_karts, 0);
+    }
+    else if (m_custom_scoring_type == "fixed")
+    {
+
+        m_score_for_position.clear();
+        for (unsigned i = 2; i < m_custom_scoring_params.size(); i++)
+            m_score_for_position.push_back(m_custom_scoring_params[i]);
+        m_score_for_position.resize(num_karts, 0);
+    }
+}   // refreshCustomScores
+//-----------------------------------------------------------------------------
+
+int WorldWithRank::getFastestLapPoints() const
+{
+    if (!m_custom_scoring)
+        return 0;
+    return m_custom_scoring_params[1];
+}   // getFastestLapPoints
+//-----------------------------------------------------------------------------
+
+int WorldWithRank::getPolePoints() const
+{
+    if (!m_custom_scoring)
+        return 0;
+    return m_custom_scoring_params[0];
+}   // getPolePoints
+//-----------------------------------------------------------------------------
