@@ -2853,6 +2853,8 @@ void ServerLobby::startSelection(const Event *event)
             || ServerConfig::m_auto_game_time_ratio > 0.0f) ? 1 : 0)
        .addUInt8(ServerConfig::m_track_voting ? 1 : 0);
 
+    const auto& all_k = m_available_kts.first;
+    const auto& all_t = m_available_kts.second;
     ns->addUInt16((uint16_t)all_k.size()).addUInt16((uint16_t)all_t.size());
     for (const std::string& kart : all_k)
     {
