@@ -179,6 +179,10 @@ private:
      *  with data in server first. */
     std::pair<std::set<std::string>, std::set<std::string> > m_available_kts;
 
+    /** Available karts and tracks for all clients, this will be initialized
+     *  with data in server first. */
+    std::pair<std::set<std::string>, std::set<std::string> > m_entering_kts;
+
     /** Keeps track of the server state. */
     std::atomic_bool m_server_has_loaded_world;
 
@@ -308,6 +312,10 @@ private:
     std::vector<int> m_scoring_int_params;
 
     std::string m_scoring_type;
+
+    std::set<STKPeer*> m_default_always_spectate_peers;
+
+    std::set<std::string> m_usernames_white_list;
 
     // connection management
     void clientDisconnected(Event* event);
@@ -442,6 +450,7 @@ private:
     void sendGrandPrixStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
     void loadCustomScoring();
     void updateWorldScoring();
+    void loadWhiteList();
 public:
              ServerLobby();
     virtual ~ServerLobby();

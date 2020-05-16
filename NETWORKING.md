@@ -255,6 +255,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- A custom Grand Prix scoring system to be used, empty for default. -->
     <grand-prix-scoring value="" />
 
+    <!-- For a private server, a list of players who can enter with any password. Works only for online accounts. -->
+    <white-list value="kimden" />
+
 </server-config>
 
 ```

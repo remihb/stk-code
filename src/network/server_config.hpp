@@ -560,6 +560,12 @@ namespace ServerConfig
         "A custom Grand Prix scoring system to be used, "
         "empty for default."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_white_list
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "white-list",
+        "For a private server, a list of players who can enter with "
+        "any password. Works only for online accounts."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;
