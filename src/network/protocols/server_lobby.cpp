@@ -4080,8 +4080,12 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
     {
         core::stringw name;
         data.decodeStringW(&name);
+        // 30 to make it consistent with stk-addons max user name length
         if (name.empty())
             name = L"unnamed";
+        else if (name.size() > 30)
+            name = name.subString(0, 30);
+
         std::string utf8_name = StringUtils::wideToUtf8(name);
         float default_kart_color = data.getFloat();
         HandicapLevel handicap = (HandicapLevel)data.getUInt8();
@@ -4389,9 +4393,23 @@ void ServerLobby::updatePlayerList(bool update_when_reset_server)
         .addUInt8((uint8_t)all_profiles.size());
     for (auto profile : all_profiles)
     {
-        pl->addUInt32(profile->getHostId()).addUInt32(profile->getOnlineId())
-            .addUInt8(profile->getLocalPlayerId())
-            .encodeString(profile->getName());
+        // get OS information
+        auto version_os = StringUtils::extractVersionOS(profile->getPeer()->getUserVersion());
+        std::string os_type_str = version_os.second;
+        // if mobile OS
+        if (os_type_str == "iOS" || os_type_str == "Android")
+        { // Add a Mobile emoji for mobile OS
+            pl->addUInt32(profile->getHostId()).addUInt32(profile->getOnlineId())
+                .addUInt8(profile->getLocalPlayerId())
+                .encodeString(StringUtils::utf32ToWide({0x1F4F1}) + profile->getName());
+        }
+        else
+        {
+            pl->addUInt32(profile->getHostId()).addUInt32(profile->getOnlineId())
+                .addUInt8(profile->getLocalPlayerId())
+                .encodeString(profile->getName());
+        }
+
         std::shared_ptr<STKPeer> p = profile->getPeer();
         uint8_t boolean_combine = 0;
         if (p && p->isWaitingForGame())
