@@ -4397,7 +4397,8 @@ void ServerLobby::updatePlayerList(bool update_when_reset_server)
         auto version_os = StringUtils::extractVersionOS(profile->getPeer()->getUserVersion());
         std::string os_type_str = version_os.second;
         // if mobile OS
-        if (os_type_str == "iOS" || os_type_str == "Android")
+        if (ServerConfig::m_expose_mobile && 
+            (os_type_str == "iOS" || os_type_str == "Android"))
         { // Add a Mobile emoji for mobile OS
             pl->addUInt32(profile->getHostId()).addUInt32(profile->getOnlineId())
                 .addUInt8(profile->getLocalPlayerId())
