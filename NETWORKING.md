@@ -258,6 +258,12 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- For a private server, a list of players who can enter with any password. Works only for online accounts. -->
     <white-list value="kimden" />
 
+    <!-- If true, all mobile peers get a corresponding icon into the name. -->
+    <expose-mobile value="true" />
+
+    <!-- Specifies how to count own goals: standard - last touching player is counted, no-own-goals - last touching player of scoring team is counted if existing, advanced - as standard for now. -->
+    <soccer-goals-policy value="standard" />
+
 </server-config>
 
 ```

@@ -449,7 +449,7 @@ private:
     void sendGnuStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
     void sendGrandPrixStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
     void loadCustomScoring();
-    void updateWorldScoring();
+    void updateWorldSettings();
     void loadWhiteList();
 public:
              ServerLobby();

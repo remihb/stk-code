@@ -23,6 +23,7 @@
 #include "config/user_config.hpp"
 #include "io/file_manager.hpp"
 #include "graphics/irr_driver.hpp"
+#include "guiengine/message_queue.hpp"
 #include "karts/abstract_kart_animation.hpp"
 #include "karts/kart_model.hpp"
 #include "karts/kart_properties.hpp"
@@ -43,6 +44,7 @@
 #include "tracks/track_object_manager.hpp"
 #include "tracks/track_sector.hpp"
 #include "utils/constants.hpp"
+#include "utils/translation.hpp"
 #include "utils/string_utils.hpp"
 
 #include <IMeshSceneNode.h>
@@ -281,6 +283,13 @@ void SoccerWorld::init()
     m_goal_target  = RaceManager::get()->getMaxGoal();
     m_goal_sound   = SFXManager::get()->createSoundSource("goal_scored");
 
+
+    m_red_ball_hitter = -1;
+    m_blue_ball_hitter = -1;
+    m_red_hit_ticks = -1;
+    m_blue_hit_ticks = -1;
+    m_scoring_policy = GoalScoringPolicy::STANDARD;
+
     Track *track = Track::getCurrentTrack();
     if (track->hasNavMesh())
     {
@@ -494,28 +503,63 @@ void SoccerWorld::onCheckGoalTriggered(bool first_goal)
         }
 
         ScorerData sd = {};
-        sd.m_id = m_ball_hitter;
-        sd.m_correct_goal = isCorrectGoal(m_ball_hitter, first_goal);
-        sd.m_kart = getKart(m_ball_hitter)->getIdent();
-        sd.m_player = getKart(m_ball_hitter)->getController()
+
+        if (m_scoring_policy == GoalScoringPolicy::STANDARD)
+        {
+            sd.m_id = m_ball_hitter;
+        }
+        else if (m_scoring_policy == GoalScoringPolicy::NO_OWN_GOALS)
+        {
+            int hitter = (first_goal ? m_red_ball_hitter : m_blue_ball_hitter);
+            if (hitter < 0)
+                hitter = m_ball_hitter;
+            sd.m_id = hitter;
+        }
+        else if (m_scoring_policy == GoalScoringPolicy::ADVANCED)
+        {
+            // will be changed when we come up with something better
+            sd.m_id = m_ball_hitter;
+        }
+        m_red_hit_ticks = -1;
+        m_blue_hit_ticks = -1;
+        m_red_ball_hitter = -1;
+        m_blue_ball_hitter = -1;
+        sd.m_correct_goal = isCorrectGoal(sd.m_id, first_goal);
+        sd.m_kart = getKart(sd.m_id)->getIdent();
+        sd.m_player = getKart(sd.m_id)->getController()
             ->getName(false/*include_handicap_string*/);
-        sd.m_handicap_level = getKart(m_ball_hitter)->getHandicap();
-        if (RaceManager::get()->getKartGlobalPlayerId(m_ball_hitter) > -1)
+        sd.m_handicap_level = getKart(sd.m_id)->getHandicap();
+        if (RaceManager::get()->getKartGlobalPlayerId(sd.m_id) > -1)
         {
             sd.m_country_code =
-                RaceManager::get()->getKartInfo(m_ball_hitter).getCountryCode();
+                RaceManager::get()->getKartInfo(sd.m_id).getCountryCode();
         }
+        std::string team_name = (first_goal ? "red team" : "blue team");
+        std::string player_name = StringUtils::wideToUtf8(sd.m_player);
         if (sd.m_correct_goal)
         {
-            m_karts[m_ball_hitter]->getKartModel()
+            Log::info("SoccerWorld", "[Goal] %s scored a goal for %s",
+                player_name.c_str(), team_name.c_str());
+            m_karts[sd.m_id]->getKartModel()
                 ->setAnimation(KartModel::AF_WIN_START, true/* play_non_loop*/);
         }
-
         else if (!sd.m_correct_goal)
         {
-            m_karts[m_ball_hitter]->getKartModel()
+            Log::info("SoccerWorld", "[Goal] %s scored an own goal for %s",
+                player_name.c_str(), team_name.c_str());
+            m_karts[sd.m_id]->getKartModel()
                 ->setAnimation(KartModel::AF_LOSE_START, true/* play_non_loop*/);
         }
+
+#ifndef SERVER_ONLY
+        // show a message once a goal is made
+        core::stringw msg;
+        if (sd.m_correct_goal)
+            msg = _("%s scored a goal!", sd.m_player);
+        else
+            msg = _("Oops, %s made an own goal!", sd.m_player);
+        MessageQueue::add(MessageQueue::MT_GENERIC, msg);
+#endif
 
         if (first_goal)
         {
@@ -623,6 +667,14 @@ void SoccerWorld::handlePlayerGoalFromServer(const NetworkString& ns)
         m_blue_scorers.push_back(sd);
     }
 
+    // show a message once a goal is made
+    core::stringw msg;
+    if (sd.m_correct_goal)
+        msg = _("%s scored a goal!", sd.m_player);
+    else
+        msg = _("Oops, %s made an own goal!", sd.m_player);
+    MessageQueue::add(MessageQueue::MT_GENERIC, msg);
+
     if (ticks_now >= ticks_back_to_own_goal && !isStartPhase())
     {
         Log::warn("SoccerWorld", "Server ticks %d is too close to client ticks "
@@ -688,6 +740,17 @@ void SoccerWorld::resetKartsToSelfGoals()
 void SoccerWorld::setBallHitter(unsigned int kart_id)
 {
     m_ball_hitter = kart_id;
+    KartTeam team = getKartTeam(kart_id);
+    if (team == KART_TEAM_RED)
+    {
+        m_red_ball_hitter = kart_id;
+        m_red_hit_ticks = m_time_ticks;
+    }
+    else if (team == KART_TEAM_BLUE)
+    {
+        m_blue_ball_hitter = kart_id;
+        m_blue_hit_ticks = m_time_ticks;
+    }
 }   // setBallHitter
 
 //-----------------------------------------------------------------------------

@@ -566,6 +566,16 @@ namespace ServerConfig
         "For a private server, a list of players who can enter with "
         "any password. Works only for online accounts."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_expose_mobile
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "expose-mobile",
+        "If true, all mobile peers get a corresponding icon into the name."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_goals_policy
+        SERVER_CFG_DEFAULT(StringServerConfigParam("standard",
+        "soccer-goals-policy",
+        "Specifies how to count own goals: standard - last touching player "
+        "is counted, no-own-goals - last touching player of scoring team "
+        "is counted if existing, advanced - as standard for now."));
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

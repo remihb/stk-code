@@ -97,6 +97,20 @@ private:
     int m_ball_invalid_timer;
     int m_ball_hitter;
 
+    int m_red_hit_ticks;
+    int m_blue_hit_ticks;
+
+    int m_red_ball_hitter;
+    int m_blue_ball_hitter;
+
+    enum GoalScoringPolicy {
+        STANDARD = 0,
+        NO_OWN_GOALS = 1,
+        ADVANCED = 2
+    };
+
+    GoalScoringPolicy m_scoring_policy;
+
     /** Goals data of each team scored */
     std::vector<ScorerData> m_red_scorers;
     std::vector<ScorerData> m_blue_scorers;
@@ -249,6 +263,9 @@ public:
     // ------------------------------------------------------------------------
     AbstractKart* getKartAtDrawingPosition(unsigned int p) const OVERRIDE
                                 { return getKart(m_team_icon_draw_id[p - 1]); }
+    // ------------------------------------------------------------------------
+    void setGoalScoringPolicy(int value)
+                                { m_scoring_policy = (GoalScoringPolicy)value;}
 };   // SoccerWorld
 
 

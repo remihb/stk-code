@@ -27,6 +27,7 @@
 #include "karts/kart_properties.hpp"
 #include "karts/kart_properties_manager.hpp"
 #include "modes/capture_the_flag.hpp"
+#include "modes/soccer_world.hpp"
 #include "modes/linear_world.hpp"
 #include "network/crypto.hpp"
 #include "network/event.hpp"
@@ -2414,7 +2415,7 @@ void ServerLobby::update(int ticks)
         Log::info("ServerLobbyRoom", "Starting the race loading.");
         // This will create the world instance, i.e. load track and karts
         loadWorld();
-        updateWorldScoring();
+        updateWorldSettings();
         m_state = WAIT_FOR_WORLD_LOADED;
         break;
     case RACING:
@@ -5965,8 +5966,7 @@ void ServerLobby::handleServerCommand(Event* event,
             return;
         }
 
-        if (argv.size() != 2 || (argv[1] != "0" && argv[1] != "1") ||
-            m_state.load() != WAITING_FOR_START_GAME)
+        if (argv.size() != 2 || (argv[1] != "0" && argv[1] != "1"))
         {
             NetworkString* chat = getNetworkString();
             chat->addUInt8(LE_CHAT);
@@ -5975,6 +5975,17 @@ void ServerLobby::handleServerCommand(Event* event,
             chat->encodeString16(StringUtils::utf8ToWide(msg));
             peer->sendPacket(chat, true/*reliable*/);
             delete chat;
+            return;
+        }
+
+        if (m_state.load() != WAITING_FOR_START_GAME)
+        {
+            std::string username = StringUtils::wideToUtf8(
+                peer->getPlayerProfiles()[0]->getName());
+            if (argv[1] == "1")
+                m_default_always_spectate_peers.insert(peer.get());
+            else
+                m_default_always_spectate_peers.erase(peer.get());
             return;
         }
 
@@ -7215,12 +7226,25 @@ void ServerLobby::loadCustomScoring()
     }
 }   // loadCustomScoring
 //-----------------------------------------------------------------------------   
-void ServerLobby::updateWorldScoring()
+void ServerLobby::updateWorldSettings()
 {
     WorldWithRank *wwr = dynamic_cast<WorldWithRank*>(World::getWorld());
     if (wwr)
         wwr->setCustomScoringSystem(m_scoring_type, m_scoring_int_params);
-}   // updateWorldScoring
+    SoccerWorld *sw = dynamic_cast<SoccerWorld*>(World::getWorld());
+    if (sw)
+    {
+        std::string policy = ServerConfig::m_soccer_goals_policy;
+        if (policy == "standard")
+            sw->setGoalScoringPolicy(0);
+        else if (policy == "no-own-goals")
+            sw->setGoalScoringPolicy(1);
+        else if (policy == "advanced")
+            sw->setGoalScoringPolicy(2);
+        else
+            Log::warn("ServerLobby", "Soccer goals policy %s does not exist", policy.c_str());
+    }
+}   // updateWorldSettings
 //-----------------------------------------------------------------------------   
 void ServerLobby::loadWhiteList()
 {
