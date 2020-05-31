@@ -451,6 +451,10 @@ private:
     void loadCustomScoring();
     void updateWorldSettings();
     void loadWhiteList();
+    void changeLimitForTournament(bool goal_target);
+    bool tournamentGoalsLimit(int game) const;
+    bool tournamentColorsSwapped(int game) const;
+    bool tournamentHasIcy(int game) const;
 public:
              ServerLobby();
     virtual ~ServerLobby();

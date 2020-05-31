@@ -353,20 +353,20 @@ void loadServerLobbyFromConfig()
         m_server_mode = 6;
         m_server_difficulty = 3;
         m_fixed_lap_count = 10;
-        if (m_server_max_players < 7) {
-            m_server_max_players = 7;
+        if (m_server_max_players < 9) {
+            m_server_max_players = 9;
         }
         m_voting_timeout = 15;
         m_soccer_goal_target = false;
         m_official_tracks_needed = false;
-        m_owner_less = false;
+        // m_owner_less = false;
         m_official_karts_threshold = 1.0f;
         m_official_tracks_threshold = 0.0f;
         m_addon_karts_threshold = 0;
         m_addon_tracks_threshold = 0;
         m_addon_arenas_threshold = 0;
         m_addon_soccers_threshold = 0; // maybe 1 ?
-        m_must_have_tracks_string = "icy_soccer_field soccer_field lasdunassoccer";
+        m_must_have_tracks_string = "icy_soccer_field soccer_field lasdunassoccer addon_tournament-field";
         m_team_choosing = true;
         m_ranked = false;
         m_server_configurable = false;
@@ -375,6 +375,15 @@ void loadServerLobbyFromConfig()
         m_free_teams = true;
         m_validating_player = true;
         m_random_selects_addons = true;
+        if (m_owner_less)
+        {
+            m_min_start_game_players = 1;
+            m_start_game_counter = 1000001;
+        }
+        else
+        {
+
+        }
     }
 
     if (m_ranked)

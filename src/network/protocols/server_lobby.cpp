@@ -1655,7 +1655,8 @@ void ServerLobby::asynchronousUpdate()
                     updatePlayerList();
                 m_timeout.store(std::numeric_limits<int64_t>::max());
             }
-            if (m_timeout.load() < (int64_t)StkTime::getMonoTimeMs() ||
+            if ((!ServerConfig::m_soccer_tournament &&
+                m_timeout.load() < (int64_t)StkTime::getMonoTimeMs()) ||
                 (checkPeersReady(true/*ignore_ai_peer*/) &&
                 (int)players >= ServerConfig::m_min_start_game_players))
             {
@@ -2640,10 +2641,20 @@ void ServerLobby::startSelection(const Event *event)
         }
         if (ServerConfig::m_owner_less)
         {
-            m_peers_ready.at(event->getPeerSP()) =
-                !m_peers_ready.at(event->getPeerSP());
-            updatePlayerList();
-            return;
+            auto peer = event->getPeerSP();
+            if (!canRace(peer))
+            {
+                std::string msg = "You cannot play so pressing ready has no action";
+                sendStringToPeer(msg, peer);
+                return;
+            }
+            else
+            {
+                m_peers_ready.at(event->getPeerSP()) =
+                    !m_peers_ready.at(event->getPeerSP());
+                updatePlayerList();
+                return;
+            }
         }
         if (event->getPeerSP() != m_server_owner.lock())
         {
@@ -2730,7 +2741,7 @@ void ServerLobby::startSelection(const Event *event)
             peer->setWaitingForGame(true);
     }
 
-    if (ServerConfig::m_soccer_tournament && m_tournament_game % 2 == 0)
+    if (ServerConfig::m_soccer_tournament && !tournamentHasIcy(m_tournament_game))
     {
         tracks_erase.insert("icy_soccer_field");
     }
@@ -2745,7 +2756,7 @@ void ServerLobby::startSelection(const Event *event)
     }
     if (ServerConfig::m_soccer_tournament)
     {
-        if (m_tournament_game % 2 == 1)
+        if (tournamentHasIcy(m_tournament_game))
         {
             if (m_available_kts.second.count("icy_soccer_field"))
             {
@@ -4115,7 +4126,7 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
                 player->setTeam(KART_TEAM_RED);
             else if (m_tournament_blue_players.count(utf8_online_name))
                 player->setTeam(KART_TEAM_BLUE);
-            if (m_tournament_game & 2)
+            if (tournamentColorsSwapped(m_tournament_game))
             {
                 if (player->getTeam() == KART_TEAM_BLUE)
                     player->setTeam(KART_TEAM_RED);
@@ -5939,18 +5950,22 @@ bool ServerLobby::supportsAI()
 bool ServerLobby::checkPeersReady(bool ignore_ai_peer) const
 {
     bool all_ready = true;
+    bool someone_races = false;
     for (auto p : m_peers_ready)
     {
         auto peer = p.first.lock();
         if (!peer)
             continue;
+        if (!canRace(peer))
+            continue;
         if (ignore_ai_peer && peer->isAIPeer())
             continue;
+        someone_races = true;
         all_ready = all_ready && p.second;
         if (!all_ready)
             return false;
     }
-    return true;
+    return someone_races;
 }   // checkPeersReady
 
 //-----------------------------------------------------------------------------
@@ -6680,10 +6695,13 @@ void ServerLobby::handleServerCommand(Event* event,
                 }
                 m_fixed_lap = length;
             }
-            if ((m_tournament_game ^ old_game) & 2)
+            if (tournamentColorsSwapped(m_tournament_game) ^ tournamentColorsSwapped(old_game))
                 changeColors();
+            if (tournamentGoalsLimit(m_tournament_game) ^ tournamentGoalsLimit(old_game))
+                changeLimitForTournament(tournamentGoalsLimit(m_tournament_game));
             std::string msg = StringUtils::insertValues(
-                "Ready to start game %d for %d minutes", m_tournament_game, m_fixed_lap);
+                "Ready to start game %d for %d ", m_tournament_game, m_fixed_lap)
+                + (tournamentGoalsLimit(m_tournament_game) ? "goals" : "minutes");
             sendStringToAllPeers(msg);
         }
         else if (argv[0] == "role")
@@ -7273,3 +7291,53 @@ void ServerLobby::loadWhiteList()
         m_usernames_white_list.insert(s);
 }   // loadWhiteList
 //-----------------------------------------------------------------------------   
+void ServerLobby::changeLimitForTournament(bool goal_target)
+{
+    m_game_setup->setSoccerGoalTarget(goal_target);
+    NetworkString* server_info = getNetworkString();
+    server_info->setSynchronous(true);
+    server_info->addUInt8(LE_SERVER_INFO);
+    m_game_setup->addServerInfo(server_info);
+    sendMessageToPeers(server_info);
+    delete server_info;
+    updatePlayerList();
+}   // changeLimitForTournament
+//-----------------------------------------------------------------------------
+/*
+Tournament states are defined by taking the number of game modulo 8.
+Below for each state the limit, colors (for first and second teams) and 
+icy / non-icy (listed as "addon") arena choice, are isted:
+0: time, red blue, addon
+1: time, red blue, icy
+2: time, blue red, addon
+3: time, blue red, icy
+4: goals, red blue, icy
+5: goals, red blue, addon
+6: goals, blue red, icy
+7: goals, blue red, addon
+*/
+//-----------------------------------------------------------------------------
+bool ServerLobby::tournamentGoalsLimit(int game) const
+{
+    int rem = game % 8;
+    if (rem < 0)
+        rem += 8;
+    return (rem >> 2) & 1;
+}   // tournamentGoalsLimit
+//-----------------------------------------------------------------------------
+bool ServerLobby::tournamentColorsSwapped(int game) const
+{
+    int rem = game % 8;
+    if (rem < 0)
+        rem += 8;
+    return (rem >> 1) & 1;
+}   // tournamentColorsSwapped
+//-----------------------------------------------------------------------------
+bool ServerLobby::tournamentHasIcy(int game) const
+{
+    int rem = game % 8;
+    if (rem < 0)
+        rem += 8;
+    return (rem ^ (rem >> 2)) & 1;
+}   // tournamentHasIcy
+//-----------------------------------------------------------------------------
