@@ -35,6 +35,7 @@ option(USE_SYSTEM_WIIUSE "Use system WiiUse instead of the built-in version, whe
 option(USE_SQLITE3 "Use sqlite to manage server stats and ban list." ON)
 
 option(USE_CRYPTO_OPENSSL "Use OpenSSL instead of Nettle for cryptography in STK." ON)
+option(WEB_SUPPORT "Website integration tools" OFF)
 CMAKE_DEPENDENT_OPTION(BUILD_RECORDER "Build opengl recorder" ON
     "NOT SERVER_ONLY;NOT APPLE" OFF)
 CMAKE_DEPENDENT_OPTION(USE_SYSTEM_SQUISH "Use system Squish library instead of the built-in version, when available." ON
@@ -451,6 +452,11 @@ if(USE_SQLITE3)
         include_directories("${SQLITE3_INCLUDEDIR}")
         MESSAGE(STATUS "Use system libsqlite3: ${SQLITE3_LIBRARY}")
     endif()
+endif()
+
+# Web support
+if(WEB_SUPPORT)
+    add_definitions(-DENABLE_WEB_SUPPORT)
 endif()
 
 # Set some compiler options

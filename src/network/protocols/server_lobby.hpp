@@ -273,6 +273,8 @@ private:
 
     std::set<std::string> m_config_available_tracks;
 
+    std::map<std::string, std::vector<std::string>> m_config_track_limitations;
+
     irr::core::stringw m_help_message;
 
     std::string m_available_commands;
@@ -316,6 +318,14 @@ private:
     std::set<STKPeer*> m_default_always_spectate_peers;
 
     std::set<std::string> m_usernames_white_list;
+
+    bool m_allowed_to_start;
+
+#ifdef ENABLE_WEB_SUPPORT
+    std::set<std::string> m_web_tokens;
+
+    std::atomic<int> m_token_generation_tries;
+#endif
 
     // connection management
     void clientDisconnected(Event* event);
@@ -455,6 +465,10 @@ private:
     bool tournamentGoalsLimit(int game) const;
     bool tournamentColorsSwapped(int game) const;
     bool tournamentHasIcy(int game) const;
+#ifdef ENABLE_WEB_SUPPORT
+    void loadAllTokens();
+    std::string getToken();
+#endif
 public:
              ServerLobby();
     virtual ~ServerLobby();
@@ -492,9 +506,11 @@ public:
     void storeResults();
     uint32_t getServerIdOnline() const           { return m_server_id_online; }
     void setClientServerHostId(uint32_t id)   { m_client_server_host_id = id; }
+    void initAvailableTracks();
     void initAvailableModes();
     void resetToDefaultSettings();
     void writeOwnReport(STKPeer* reporter, STKPeer* reporting, const std::string& info);
+    int getTrackMaxPlayers(std::string& name) const;
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP

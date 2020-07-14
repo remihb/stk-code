@@ -124,6 +124,8 @@ protected:
     std::set<std::string> m_client_capabilities;
 
     std::array<int, AS_TOTAL> m_addons_scores;
+
+    std::atomic_bool m_angry_host;
 public:
     STKPeer(ENetPeer *enet_peer, STKHost* host, uint32_t host_id);
     // ------------------------------------------------------------------------
@@ -305,7 +307,11 @@ public:
     void setAlwaysSpectate(bool val)          { m_always_spectate.store(val); }
     // ------------------------------------------------------------------------
     bool alwaysSpectate() const            { return m_always_spectate.load(); }
-
+    // ------------------------------------------------------------------------
+    bool isAngryHost() const                    { return m_angry_host.load(); }
+    // ------------------------------------------------------------------------
+    void setAngryHost(bool val)                    { m_angry_host.store(val); }
+    // ------------------------------------------------------------------------
 };   // STKPeer
 
 #endif // STK_PEER_HPP
