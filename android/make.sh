@@ -223,7 +223,7 @@ if [ -z "$BUILD_TOOLS_VER" ]; then
     BUILD_TOOLS_DIRS=`ls -1 "$SDK_PATH/build-tools" | sort -V -r`
    
     for DIR in $BUILD_TOOLS_DIRS; do
-        if [ "$DIR" = `echo $DIR | sed 's/[^0-9,.]//g'` ]; then
+        if [ "$DIR" = "`echo $DIR | sed 's/[^0-9,.]//g'`" ]; then
             BUILD_TOOLS_VER="$DIR"
             break
         fi
@@ -568,11 +568,14 @@ cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HID
        "$DIRNAME/src/main/java/"
 cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/HIDDeviceUSB.java" \
        "$DIRNAME/src/main/java/"
+cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLActivity.java" \
+       "$DIRNAME/src/main/java/"
+cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLAudioManager.java" \
+       "$DIRNAME/src/main/java/"
 cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDLControllerManager.java" \
        "$DIRNAME/src/main/java/"
-
-sed -i "s/import org.supertuxkart.*.SuperTuxKartActivity;/import $PACKAGE_NAME.SuperTuxKartActivity;/g" \
-       "$DIRNAME/src/main/java/SDLControllerManager.java"
+cp -f "$DIRNAME/../lib/sdl2/android-project/app/src/main/java/org/libsdl/app/SDL.java" \
+       "$DIRNAME/src/main/java/"
 
 cp "banner.png" "$DIRNAME/res/drawable/banner.png"
 cp "$APP_ICON" "$DIRNAME/res/drawable/icon.png"

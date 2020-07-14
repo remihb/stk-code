@@ -20,7 +20,7 @@
 #include "input/gamepad_config.hpp"
 
 #ifdef ANDROID
-#include "graphics/irr_driver.hpp"
+#include <SDL_system.h>
 #endif
 #include "io/xml_node.hpp"
 #include "utils/log.hpp"
@@ -34,7 +34,6 @@
 #ifndef SERVER_ONLY
 #include "input/sdl_controller.hpp"
 #include <array>
-#include <SDL.h>
 
 static_assert(SDL_CONTROLLER_BUTTON_MAX - 1 == SDL_CONTROLLER_BUTTON_DPAD_RIGHT, "non continous name");
 enum AxisWithDirection
@@ -491,7 +490,7 @@ void GamepadConfig::initSDLMapping()
     // For android tv we default to dpad if it has direction pad, because it
     // cannot rebind control using touchscreen, and dpad direction seems more
     // reliable
-    if (!irr_driver->getDevice()->supportsTouchDevice() && has_direction)
+    if (SDL_IsAndroidTV() && has_direction)
         use_axes_direction = false;
 #endif
     if (use_axes_direction)

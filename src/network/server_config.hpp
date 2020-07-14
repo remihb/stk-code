@@ -592,6 +592,11 @@ namespace ServerConfig
         "Allows server owner (not crowned player!) to go to power mode "
         "to kick players using GUI and not be kicked, empty to disable."));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_ai_anywhere
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "ai-anywhere",
+        "If true this server will allow AI instance to be connected from "
+        "anywhere. (other than LAN network only)"));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

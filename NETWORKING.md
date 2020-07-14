@@ -12,6 +12,8 @@ You are required to have an stk online account first, go [here](https://online.s
 
 It is recommended you have a saved user in your computer to allow hosting multiple servers simultaneously with the same account, if you have a fresh STK installation, first run:
 
+If you intend to keep your server always on (24x7) you are required to implement port forward / direct connection with NAT penetration in your network, we will regularly remove any servers not following this rule.
+
 `supertuxkart --init-user --login=your_registered_name --password=your_password`
 
 After that you should see `Done saving user, leaving` in terminal if it successfully logged in.
@@ -264,6 +266,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- Specifies how to count own goals: standard - last touching player is counted, no-own-goals - last touching player of scoring team is counted if existing, advanced - as standard for now. -->
     <soccer-goals-policy value="standard" />
 
+    <!-- If true this server will allow AI instance to be connected from anywhere. (other than LAN network only) -->
+    <ai-anywhere value="false" />
+
 </server-config>
 
 ```
@@ -282,7 +287,9 @@ Everything is basically the same as WAN one, except you don't need an stk online
 
 `supertuxkart --server-config=your_config.xml --lan-server=your_server_name --network-console`
 
-In LAN network it is required that the server and server discovery port is connectable by clients directly, no NAT penetration will be done in LAN.
+For LAN server it is required that the server and server discovery port is connectable by clients directly, no NAT penetration will be done in LAN.
+
+LAN server can be connected too by typing your server public address (with port) in ```Enter server address``` dialog without relying on stk-addons.
 
 ------
 After the first time configuration, you can just start the server with the command:

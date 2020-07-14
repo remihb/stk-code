@@ -160,6 +160,11 @@
 #  include <signal.h>
 #  include <unistd.h>
 #endif
+
+#ifdef ANDROID
+#include <SDL_system.h>
+#endif
+
 #include <stdexcept>
 #include <cstdio>
 #include <string>
@@ -1748,12 +1753,12 @@ void initRest()
     delete tmp_skin;
     GUIEngine::setSkin(NULL);
 
-    GUIEngine::init(device, driver, StateManager::get());
-
-    GUIEngine::renderLoading(true, true, false);
     input_manager = new InputManager();
     // Get into menu mode initially.
     input_manager->setMode(InputManager::MENU);
+    // Input manager set first so it recieves SDL joystick event
+    GUIEngine::init(device, driver, StateManager::get());
+    GUIEngine::renderLoading(true, true, false);
 
     stk_config->initMusicFiles();
     // This only initialises the non-network part of the add-ons manager. The
@@ -1924,7 +1929,9 @@ void main_abort()
 #endif
 
 // ----------------------------------------------------------------------------
-#ifdef IOS_STK
+#if defined(ANDROID)
+int android_main(int argc, char *argv[])
+#elif defined(IOS_STK)
 int ios_main(int argc, char *argv[])
 #else
 int main(int argc, char *argv[])
@@ -2166,22 +2173,25 @@ int main(int argc, char *argv[])
                 }
                 Log::warn("main", "Screen size is too small!");
             }
-            
+            else
+            {
+                irr_driver->getDevice()->setWindowMinimumSize(480, 480);
+            }
             #ifdef MOBILE_STK
             if (UserConfigParams::m_multitouch_controls == MULTITOUCH_CONTROLS_UNDEFINED)
             {
-                #ifdef ANDROID
-                int32_t touch = AConfiguration_getTouchscreen(
-                                                    global_android_app->config);
-                if (touch != ACONFIGURATION_TOUCHSCREEN_NOTOUCH)
+                bool android_tv = false;
+#ifdef ANDROID
+                // For some android tv sdl returns a touch screen device even it
+                // doesn't have
+                android_tv = SDL_IsAndroidTV();
+#endif
+                if (!android_tv && irr_driver->getDevice()->supportsTouchDevice())
                 {
-                #endif
                     InitAndroidDialog* init_android = new InitAndroidDialog(
                                                                     0.6f, 0.6f);
                     GUIEngine::DialogQueue::get()->pushDialog(init_android);
-                #ifdef ANDROID
                 }
-                #endif
             }
             #endif
 
@@ -2391,7 +2401,13 @@ int main(int argc, char *argv[])
 
     delete file_manager;
 
+#ifdef IOS_STK
+    // App store may not like this, but this can happen if player uses keyboard to quit stk
+    exit(0);
+    return 0;
+#else
     return 0 ;
+#endif
 }   // main
 
 // ============================================================================

@@ -16,6 +16,10 @@
 #include <string>
 #include <vector>
 
+#if !defined(SERVER_ONLY) && defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
+#include "SDL_events.h"
+#endif
+
 using namespace irr;
 using namespace gui;
 
@@ -136,11 +140,14 @@ namespace GUIEngine
         virtual void setComposingText(const std::u32string& ct) { m_composing_text = ct; }
         virtual void clearComposingText() { m_composing_text.clear(); }
         virtual const core::position2di& getICPos() const { return m_ic_pos; }
+#if !defined(SERVER_ONLY) && defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
+        void handleSDLEvent(SDL_Event& event);
+#endif
     protected:
         //! sets the area of the given line
         void setTextRect(s32 line);
         //! adds a letter to the edit box
-        void inputChar(char32_t c);
+        virtual void inputChar(char32_t c);
         //! calculates the current scroll position
         void calculateScrollPos();
         //! send some gui event to parent

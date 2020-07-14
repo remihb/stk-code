@@ -23,7 +23,6 @@
 #include "config/user_config.hpp"
 #include "io/file_manager.hpp"
 #include "graphics/irr_driver.hpp"
-#include "guiengine/message_queue.hpp"
 #include "karts/abstract_kart_animation.hpp"
 #include "karts/kart_model.hpp"
 #include "karts/kart_properties.hpp"
@@ -558,7 +557,8 @@ void SoccerWorld::onCheckGoalTriggered(bool first_goal)
             msg = _("%s scored a goal!", sd.m_player);
         else
             msg = _("Oops, %s made an own goal!", sd.m_player);
-        MessageQueue::add(MessageQueue::MT_GENERIC, msg);
+        if (m_race_gui)
+            m_race_gui->addMessage(msg, NULL, 3.0f);
 #endif
 
         if (first_goal)
@@ -667,20 +667,26 @@ void SoccerWorld::handlePlayerGoalFromServer(const NetworkString& ns)
         m_blue_scorers.push_back(sd);
     }
 
-    // show a message once a goal is made
-    core::stringw msg;
-    if (sd.m_correct_goal)
-        msg = _("%s scored a goal!", sd.m_player);
-    else
-        msg = _("Oops, %s made an own goal!", sd.m_player);
-    MessageQueue::add(MessageQueue::MT_GENERIC, msg);
-
     if (ticks_now >= ticks_back_to_own_goal && !isStartPhase())
     {
         Log::warn("SoccerWorld", "Server ticks %d is too close to client ticks "
             "%d when goal", ticks_back_to_own_goal, ticks_now);
         return;
     }
+
+    // show a message once a goal is made
+    core::stringw msg;
+    if (sd.m_correct_goal)
+        msg = _("%s scored a goal!", sd.m_player);
+    else
+        msg = _("Oops, %s made an own goal!", sd.m_player);
+    float time = stk_config->ticks2Time(ticks_back_to_own_goal - ticks_now);
+    // May happen if this message is added when spectate started
+    if (time > 3.0f)
+        time = 3.0f;
+    if (m_race_gui)
+        m_race_gui->addMessage(msg, NULL, time);
+
     m_ticks_back_to_own_goal = ticks_back_to_own_goal;
     for (unsigned i = 0; i < m_karts.size(); i++)
     {
