@@ -9,6 +9,8 @@ The SuperTuxKart homepage can be found at <https://supertuxkart.net/>. There is 
 
 Latest release binaries can be found [here](https://sourceforge.net/projects/supertuxkart/files/SuperTuxKart/1.0/).
 
+**You are viewing a modified version of STK**, most important changes are listed [here](/FORK_CHANGES.md).
+
 ## Hardware Requirements
 To run SuperTuxKart, make sure that your computer's specifications are equal or higher than the following specifications:
 
