@@ -6761,8 +6761,7 @@ void ServerLobby::handleServerCommand(Event* event,
             tokens_table_name.c_str(), username.c_str(), token.c_str()
         );
         if (easySQLQuery(query))
-            msg += "\nRetype it to log in with your STK account. "
-                "Do not tell it to anyone!";
+            msg += "\nRetype it on the website to connect your STK account. ";
         else
             msg = "An error occurred, please try again.";
 #else
