@@ -199,6 +199,9 @@ void TextBoxWidget::unfocused(const int playerID, Widget* new_focus)
 
 void TextBoxWidget::elementRemoved()
 {
+    // If text box is destroyed without moving mouse out of its focus, the
+    // reference will be kept so we clear it manually
+    GUIEngine::getGUIEnv()->removeHovered(m_element);
     // normally at this point normal widgets have been deleted by irrlicht already.
     // but this is a custom widget and the gui env does not appear to want to
     // manage it. so we free it manually
@@ -368,6 +371,11 @@ ANDROID_HANDLE_ACTION_NEXT_CALLBACK(ANDROID_PACKAGE_CALLBACK_NAME)
                     Android_toggleOnScreenKeyboard(false, 1/*clear_text*/, 0/*y*/);
                 }
                 return;
+            }
+            else
+            {
+                // Required for some general text field dialog
+                eb->sendGuiEvent(EGET_EDITBOX_ENTER);
             }
 
             // As it's action "next", check if below widget is a text box, if

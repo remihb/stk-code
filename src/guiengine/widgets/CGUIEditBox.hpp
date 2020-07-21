@@ -140,9 +140,7 @@ namespace GUIEngine
         virtual void setComposingText(const std::u32string& ct) { m_composing_text = ct; }
         virtual void clearComposingText() { m_composing_text.clear(); }
         virtual const core::position2di& getICPos() const { return m_ic_pos; }
-#if !defined(SERVER_ONLY) && defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
-        void handleSDLEvent(SDL_Event& event);
-#endif
+        void sendGuiEvent(EGUI_EVENT_TYPE type);
     protected:
         //! sets the area of the given line
         void setTextRect(s32 line);
@@ -151,7 +149,6 @@ namespace GUIEngine
         //! calculates the current scroll position
         void calculateScrollPos();
         //! send some gui event to parent
-        void sendGuiEvent(EGUI_EVENT_TYPE type);
         //! set text markers
         void setTextMarkers(s32 begin, s32 end);
         void updateCursorDistance();

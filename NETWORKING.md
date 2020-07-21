@@ -131,7 +131,7 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- Automatically end linear race game after 1st player finished for some time (currently his finished time * 0.25 + 15.0). -->
     <auto-end value="false" />
 
-    <!-- Enable team choosing in lobby in team game (soccer and CTF). If owner-less is enabled and live-players is not enabled, than this option is always disabled. -->
+    <!-- Enable team choosing in lobby in team game (soccer and CTF). If owner-less is enabled and live-spectate is not enabled, than this option is always disabled. -->
     <team-choosing value="true" />
 
     <!-- If strict-players is on, no duplicated online id or split screen players are allowed, which can prevent someone using more than 1 network AI with this server. -->
@@ -146,8 +146,8 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- Description of modes and difficulties that can be set on a configurable server. Doesn't affect initial mode and doesn't affect unconfigurable servers. Use the format "d0123 m012345678". -->
     <available-modes value="d0123 m012345678" />
 
-    <!-- If true, players can live join or spectate the in-progress game. Currently live joining is only available if the current game mode used in server is FFA, CTF or soccer, also no addon karts will be available for players to choose, and official-karts-threshold will be made 1.0. -->
-    <live-players value="true" />
+    <!-- If true, players can live join or spectate the in-progress game. Currently live joining is only available if the current game mode used in server is FFA, CTF or soccer, also official-karts-threshold will be made 1.0. If false addon karts will use their original hitbox other than tux, all players having it restriction applies. -->
+    <live-spectate value="true" />
 
     <!-- Time in seconds when a flag is dropped a by player in CTF returning to its own base. -->
     <flag-return-timeout value="20" />
@@ -170,10 +170,10 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- Value used by server to automatically estimate each game time. For races, it decides the lap of each race in network game, if more than 0.0f, the number of lap of each track vote in linear race will be determined by max(1.0f, auto-game-time-ratio * default lap of that track). For soccer if more than 0.0f, for time limit game it will be auto-game-time-ratio * soccer-time-limit in UserConfig, for goal limit game it will be auto-game-time-ratio * numgoals in UserConfig, -1 to disable for all. -->
     <auto-game-time-ratio value="-1" />
 
-    <!-- Maximum ping allowed for a player (in ms), it's recommended to use default value if live-players is on. -->
+    <!-- Maximum ping allowed for a player (in ms), it's recommended to use default value if live-spectate is on. -->
     <max-ping value="300" />
 
-    <!-- Tolerance of jitter in network allowed (in ms), it's recommended to use default value if live-players is on. -->
+    <!-- Tolerance of jitter in network allowed (in ms), it's recommended to use default value if live-spectate is on. -->
     <jitter-tolerance value="100" />
 
     <!-- Kick players whose ping is above max-ping. -->

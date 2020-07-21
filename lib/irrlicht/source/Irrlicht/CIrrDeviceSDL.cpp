@@ -61,7 +61,7 @@ CIrrDeviceSDL::CIrrDeviceSDL(const SIrrlichtCreationParameters& param)
 	// noparachute prevents SDL from catching fatal errors.
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
 	SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
-	u32 init_flags = SDL_INIT_TIMER| SDL_INIT_VIDEO| SDL_INIT_GAMECONTROLLER;
+	u32 init_flags = SDL_INIT_TIMER | SDL_INIT_VIDEO;
 #if SDL_VERSION_ATLEAST(2, 0, 9)
 	init_flags |= SDL_INIT_SENSOR;
 #endif
@@ -500,8 +500,6 @@ void CIrrDeviceSDL::createDriver()
 
 // In input_manager.cpp
 extern "C" void handle_joystick(SDL_Event& event);
-// In CGUIEditBox.cpp
-extern "C" void handle_textinput(SDL_Event& event);
 // In main_loop.cpp
 extern "C" void pause_mainloop();
 extern "C" void resume_mainloop();
@@ -742,10 +740,34 @@ bool CIrrDeviceSDL::run()
 				}
 			}
 			break;
-
+		case SDL_TEXTEDITING:
+			{
+				irrevent.EventType = irr::EET_SDL_TEXT_EVENT;
+				irrevent.SDLTextEvent.Type = SDL_event.type;
+				const size_t size = sizeof(irrevent.SDLTextEvent.Text);
+				const size_t other_size = sizeof(SDL_event.edit.text);
+				static_assert(sizeof(size) == sizeof(other_size), "Wrong size");
+				memcpy(irrevent.SDLTextEvent.Text, SDL_event.edit.text, size);
+				irrevent.SDLTextEvent.Start = SDL_event.edit.start;
+				irrevent.SDLTextEvent.Length = SDL_event.edit.length;
+				postEventFromUser(irrevent);
+			}
+			break;
+		case SDL_TEXTINPUT:
+			{
+				irrevent.EventType = irr::EET_SDL_TEXT_EVENT;
+				irrevent.SDLTextEvent.Type = SDL_event.type;
+				const size_t size = sizeof(irrevent.SDLTextEvent.Text);
+				const size_t other_size = sizeof(SDL_event.text.text);
+				static_assert(sizeof(size) == sizeof(other_size), "Wrong size");
+				memcpy(irrevent.SDLTextEvent.Text, SDL_event.text.text, size);
+				irrevent.SDLTextEvent.Start = 0;
+				irrevent.SDLTextEvent.Length = 0;
+				postEventFromUser(irrevent);
+			}
+			break;
 		default:
 			handle_joystick(SDL_event);
-			handle_textinput(SDL_event);
 			break;
 		} // end switch
 
@@ -1075,7 +1097,7 @@ void CIrrDeviceSDL::createKeyMap()
 
 	KeyMap.push_back(SKeyMap(SDLK_LGUI, IRR_KEY_LWIN));
 	KeyMap.push_back(SKeyMap(SDLK_RGUI, IRR_KEY_RWIN));
-	// apps missing
+	KeyMap.push_back(SKeyMap(SDLK_APPLICATION, IRR_KEY_APPS));
 	KeyMap.push_back(SKeyMap(SDLK_POWER, IRR_KEY_SLEEP)); //??
 
 	KeyMap.push_back(SKeyMap(SDLK_KP_0, IRR_KEY_NUMPAD0));
@@ -1090,7 +1112,7 @@ void CIrrDeviceSDL::createKeyMap()
 	KeyMap.push_back(SKeyMap(SDLK_KP_9, IRR_KEY_NUMPAD9));
 	KeyMap.push_back(SKeyMap(SDLK_KP_MULTIPLY, IRR_KEY_MULTIPLY));
 	KeyMap.push_back(SKeyMap(SDLK_KP_PLUS, IRR_KEY_ADD));
-//	KeyMap.push_back(SKeyMap(SDLK_KP_, IRR_KEY_SEPARATOR));
+	KeyMap.push_back(SKeyMap(SDLK_SEPARATOR, IRR_KEY_SEPARATOR));
 	KeyMap.push_back(SKeyMap(SDLK_KP_MINUS, IRR_KEY_SUBTRACT));
 	KeyMap.push_back(SKeyMap(SDLK_KP_PERIOD, IRR_KEY_DECIMAL));
 	KeyMap.push_back(SKeyMap(SDLK_KP_DIVIDE, IRR_KEY_DIVIDE));
@@ -1223,6 +1245,7 @@ void CIrrDeviceSDL::createKeyMap()
 	ScanCodeMap[SDL_SCANCODE_KP_MULTIPLY] = IRR_KEY_MULTIPLY;
 	ScanCodeMap[SDL_SCANCODE_KP_MINUS] = IRR_KEY_MINUS;
 	ScanCodeMap[SDL_SCANCODE_KP_PLUS] = IRR_KEY_PLUS;
+	ScanCodeMap[SDL_SCANCODE_SEPARATOR] = IRR_KEY_SEPARATOR;
 	ScanCodeMap[SDL_SCANCODE_KP_ENTER] = IRR_KEY_RETURN;
 	ScanCodeMap[SDL_SCANCODE_KP_1] = IRR_KEY_NUMPAD1;
 	ScanCodeMap[SDL_SCANCODE_KP_2] = IRR_KEY_NUMPAD2;
@@ -1242,6 +1265,7 @@ void CIrrDeviceSDL::createKeyMap()
 	ScanCodeMap[SDL_SCANCODE_RSHIFT] = IRR_KEY_RSHIFT;
 	ScanCodeMap[SDL_SCANCODE_RALT] = IRR_KEY_RMENU;
 	ScanCodeMap[SDL_SCANCODE_RGUI] = IRR_KEY_RWIN;
+	ScanCodeMap[SDL_SCANCODE_APPLICATION] = IRR_KEY_APPS;
 	ScanCodeMap[SDL_SCANCODE_MODE] = IRR_KEY_BUTTON_MODE;
 	ScanCodeMap[SDL_SCANCODE_MENU] = IRR_KEY_MENU;
 }

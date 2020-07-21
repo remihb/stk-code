@@ -868,7 +868,10 @@ void KartSelectionScreen::updateKartStats(uint8_t widget_id,
 
     const KartProperties *kp =
                     kart_properties_manager->getKart(selection);
-
+    // Adjust for online addon karts
+    if (kp && kp->isAddon() && NetworkConfig::get()->isNetworking() &&
+        NetworkConfig::get()->useTuxHitboxAddon())
+        kp = kart_properties_manager->getKart("tux");
     if (kp != NULL)
     {
         w->setValues(kp, m_kart_widgets[widget_id].getHandicap());

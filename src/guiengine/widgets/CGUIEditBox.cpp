@@ -180,41 +180,6 @@ _raqm_get_grapheme_break (hb_codepoint_t ch,
 };
 #endif
 
-#if !defined(SERVER_ONLY) && defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
-CGUIEditBox* g_editbox = NULL;
-extern "C" void handle_textinput(SDL_Event& event)
-{
-    if (g_editbox)
-        g_editbox->handleSDLEvent(event);
-}
-
-void CGUIEditBox::handleSDLEvent(SDL_Event& event)
-{
-    switch (event.type)
-    {
-    case SDL_TEXTINPUT:
-    {
-        m_composing_text.clear();
-        m_composing_start = 0;
-        m_composing_end = 0;
-        std::u32string text = StringUtils::utf8ToUtf32(event.text.text);
-        for (char32_t t : text)
-            inputChar(t);
-        break;
-    }
-    case SDL_TEXTEDITING:
-        m_composing_text = StringUtils::utf8ToUtf32(event.edit.text);
-        m_composing_start = m_cursor_pos;
-        m_composing_end = m_cursor_pos + m_composing_text.size();
-        // In linux these values don't seem to provide any more useful info
-        // It's always 0, event.edit.text.size()
-        //printf("Debug: %d, %d\n", event.edit.start, event.edit.length);
-        break;
-    }
-}
-
-#endif
-
 //! constructor
 CGUIEditBox::CGUIEditBox(const wchar_t* text, bool border,
         IGUIEnvironment* environment, IGUIElement* parent, s32 id,
@@ -277,8 +242,8 @@ CGUIEditBox::~CGUIEditBox()
         GUIEngine::ScreenKeyboard::hasSystemScreenKeyboard())
         Android_toggleOnScreenKeyboard(false, 0, 0);
 #elif defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
-    SDL_StopTextInput();
-    g_editbox = NULL;
+    if (SDL_IsTextInputActive())
+        SDL_StopTextInput();
 #endif
 
 #endif
@@ -373,6 +338,26 @@ bool CGUIEditBox::OnEvent(const SEvent& event)
     {
         switch(event.EventType)
         {
+        case EET_SDL_TEXT_EVENT:
+            if (event.SDLTextEvent.Type == SDL_TEXTINPUT)
+            {
+                m_composing_text.clear();
+                m_composing_start = 0;
+                m_composing_end = 0;
+                std::u32string text = StringUtils::utf8ToUtf32(event.SDLTextEvent.Text);
+                for (char32_t t : text)
+                    inputChar(t);
+            }
+            else
+            {
+                m_composing_text = StringUtils::utf8ToUtf32(event.SDLTextEvent.Text);
+                m_composing_start = m_cursor_pos;
+                m_composing_end = m_cursor_pos + m_composing_text.size();
+                // In linux these values don't seem to provide any more useful info
+                // It's always 0, event.edit.text.size()
+                //printf("Debug: %d, %d\n", event.SDLTextEvent.Start, event.SDLTextEvent.Length);
+            }
+            return true;
         case EET_GUI_EVENT:
             if (event.GUIEvent.EventType == EGET_ELEMENT_FOCUS_LOST)
             {
@@ -382,8 +367,8 @@ bool CGUIEditBox::OnEvent(const SEvent& event)
                     setTextMarkers(0,0);
                 }
 #if !defined(ANDROID) && defined(_IRR_COMPILE_WITH_SDL_DEVICE_)
-                SDL_StopTextInput();
-                g_editbox = NULL;
+                if (SDL_IsTextInputActive())
+                    SDL_StopTextInput();
 #endif
 #ifdef ANDROID
             // If using non touchscreen input in android dismiss text input
@@ -400,6 +385,8 @@ bool CGUIEditBox::OnEvent(const SEvent& event)
             }
             else if (event.GUIEvent.EventType == EGET_ELEMENT_FOCUSED)
             {
+                // Required for correct screen keyboard position in the beginning
+                FrameRect = AbsoluteRect;
                 m_mark_begin = m_mark_end = m_cursor_pos = getTextCount();
 #ifdef ANDROID
                 calculateScrollPos();
@@ -419,7 +406,6 @@ bool CGUIEditBox::OnEvent(const SEvent& event)
                 calculateScrollPos();
 #endif
                 SDL_StartTextInput();
-                g_editbox = this;
 #endif
 #if !defined(ANDROID) && !defined(WIN32)
                 calculateScrollPos();
