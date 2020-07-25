@@ -967,6 +967,13 @@ void ServerLobby::kickHost(Event* event)
 {
     if (m_server_owner.lock() != event->getPeerSP())
         return;
+    if (!ServerConfig::m_kicks_allowed)
+    {
+        std::string msg = "Kicking players is not allowed on this server";
+        auto crown = event->getPeerSP();
+        sendStringToPeer(msg, crown);
+        return;
+    }
     if (!checkDataSize(event, 4)) return;
     NetworkString& data = event->data();
     uint32_t host_id = data.getUInt32();
@@ -6233,6 +6240,12 @@ void ServerLobby::handleServerCommand(Event* event,
         }
         else
         {
+            if (!peer->isAngryHost() && !ServerConfig::m_kicks_allowed)
+            {
+                std::string msg = "Kicking players is not allowed on this server";
+                sendStringToPeer(msg, peer);
+                return;
+            }
             Log::info("ServerLobby", "Crown player kicks %s", player_name.c_str());
             player_peer->kick();
             if (ServerConfig::m_track_kicks) {

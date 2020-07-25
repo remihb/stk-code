@@ -597,6 +597,11 @@ namespace ServerConfig
         "If true this server will allow AI instance to be connected from "
         "anywhere. (other than LAN network only)"));
 
+    SERVER_CFG_PREFIX BoolServerConfigParam m_kicks_allowed
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(true, "kicks-allowed",
+        "If true, the server owner can kick players, either via "
+        "the UI button or using /kick command."));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

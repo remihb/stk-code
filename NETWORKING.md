@@ -269,6 +269,9 @@ The current server configuration xml looks like this (this is only an example, j
     <!-- If true this server will allow AI instance to be connected from anywhere. (other than LAN network only) -->
     <ai-anywhere value="false" />
 
+    <!-- If true, the server owner can kick players, either via the UI button or using /kick command. -->
+    <kicks-allowed value="true" />
+
 </server-config>
 
 ```
