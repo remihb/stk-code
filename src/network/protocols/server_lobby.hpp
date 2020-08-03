@@ -22,6 +22,7 @@
 #include "network/protocols/lobby_protocol.hpp"
 #include "utils/cpp2011.hpp"
 #include "utils/time.hpp"
+#include "utils/track_filter.hpp"
 
 #include "irrString.h"
 
@@ -295,11 +296,35 @@ private:
 
     std::set<int> m_available_modes;
 
+    std::map<std::string, std::vector<std::string>> m_tournament_player_categories;
+
     std::set<std::string> m_tournament_red_players;
 
     std::set<std::string> m_tournament_blue_players;
     
     std::set<std::string> m_tournament_referees;
+
+    std::set<std::string> m_tournament_init_red;
+
+    std::set<std::string> m_tournament_init_blue;
+
+    std::set<std::string> m_tournament_init_ref;
+
+    bool m_tournament_limited_chat;
+
+    int m_tournament_length;
+
+    int m_tournament_max_games;
+
+    std::string m_tournament_game_limits;
+
+    std::string m_tournament_colors;
+
+    std::vector<std::string> m_tournament_arenas;
+
+    std::vector<TrackFilter> m_tournament_track_filters;
+
+    TrackFilter m_global_filter;
 
     std::set<std::string> m_temp_banned;
 
@@ -464,7 +489,7 @@ private:
     void changeLimitForTournament(bool goal_target);
     bool tournamentGoalsLimit(int game) const;
     bool tournamentColorsSwapped(int game) const;
-    bool tournamentHasIcy(int game) const;
+    // bool tournamentHasIcy(int game) const;
 #ifdef ENABLE_WEB_SUPPORT
     void loadAllTokens();
     std::string getToken();
@@ -510,7 +535,7 @@ public:
     void initAvailableModes();
     void resetToDefaultSettings();
     void writeOwnReport(STKPeer* reporter, STKPeer* reporting, const std::string& info);
-    int getTrackMaxPlayers(std::string& name) const;
+    // int getTrackMaxPlayers(std::string& name) const;
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP

@@ -527,13 +527,28 @@ namespace ServerConfig
         "tournaments. Rules may change so better ask STK players about "
         "the actual rules."));
 
-    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_players
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_match
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
-        "soccer-tournament-players",
+        "soccer-tournament-match",
         "List of players and judges. Use the format \"R red red "
         "red B blue blue blue J judge judge\" where "
         "the category is preceded by its letter. Categories can "
-        "be empty or absent and can go in any order."));
+        "be empty or absent and can go in any order. You can use "
+        "a category (#A) instead of listing all players."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_players
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "soccer-tournament-players",
+        "List of tournament players with categories (teams). Use the "
+        "format #Category player1 ... playerN #Category ..."));
+
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_rules
+        SERVER_CFG_DEFAULT(StringServerConfigParam("nochat 10 TTTTG RRBBR;"
+        ";;not %1;"
+        "not %1 "
+        "%2;;;",
+        "soccer-tournament-rules",
+        "A string specifying the match format."));
 
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",

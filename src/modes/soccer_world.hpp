@@ -44,7 +44,7 @@ public:
     {
         /** World ID of kart which scores. */
         unsigned int  m_id;
-        /** Whether this goal is socred correctly (identify for own goal). */
+        /** Whether this goal is scored correctly (identify for own goal). */
         bool          m_correct_goal;
         /** Time goal. */
         float         m_time;
@@ -122,6 +122,8 @@ private:
 
     std::vector<int> m_team_icon_draw_id;
 
+    bool stopped;
+
     std::vector<btTransform> m_goal_transforms;
     /** Function to update the location the ball on the polygon map */
     void updateBallPosition(int ticks);
@@ -138,6 +140,18 @@ private:
     int m_ticks_back_to_own_goal;
 
     void resetKartsToSelfGoals();
+
+
+    std::vector<ScorerData> m_backup_red_scorers;
+    std::vector<ScorerData> m_backup_blue_scorers;
+    int m_backup_reset_ball_ticks;
+    int m_backup_ticks_back_to_own_goal;
+
+    bool m_explicit_stop;
+    int m_bad_red_goals;
+    int m_bad_blue_goals;
+    int m_init_red_goals;
+    int m_init_blue_goals;
 
 public:
 
@@ -266,6 +280,20 @@ public:
     // ------------------------------------------------------------------------
     void setGoalScoringPolicy(int value)
                                 { m_scoring_policy = (GoalScoringPolicy)value;}
+    // ------------------------------------------------------------------------
+    void stop();
+    // ------------------------------------------------------------------------
+    void resume();
+    // ------------------------------------------------------------------------
+    void allToLobby() { m_explicit_stop = true; }
+    // ------------------------------------------------------------------------
+    void setInitialCount(int red, int blue);
+    // ------------------------------------------------------------------------
+    void tellCount() const;
+    // ------------------------------------------------------------------------
+    void tellCountIfDiffers() const;
+    // ------------------------------------------------------------------------
+    bool getStopped() { return stopped; }
 };   // SoccerWorld
 
 
