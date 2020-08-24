@@ -21,6 +21,8 @@
 #include "config/user_config.hpp"
 #include "graphics/camera_fps.hpp"
 #include "graphics/irr_driver.hpp"
+#include "graphics/shader_based_renderer.hpp"
+#include "graphics/sp/sp_base.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/event_handler.hpp"
 #include "guiengine/modaldialog.hpp"
@@ -88,7 +90,11 @@ InputManager::InputManager() : m_mode(BOOTSTRAP),
     m_master_player_only = false;
     m_timer = 0;
 #ifndef SERVER_ONLY
-    SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
+    if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
+    {
+        Log::error("InputManager", "Failed to init SDL game controller: %s",
+            SDL_GetError());
+    }
 #endif
 }
 
@@ -413,16 +419,13 @@ void InputManager::handleStaticAction(int key, int value)
             }
             break;
         case IRR_KEY_F11:
-            if(value && shift_is_pressed && world && RewindManager::isEnabled())
+            if(value && shift_is_pressed)
             {
-                printf("Enter rewind to time in ticks:");
-                char s[256];
-                fgets(s, 256, stdin);
-                int t;
-                StringUtils::fromString(s,t);
-                RewindManager::get()->rewindTo(t, world->getTicksSinceStart(), false);
-                Log::info("Rewind", "Rewinding from %d to %d",
-                          world->getTicksSinceStart(), t);
+#ifndef SERVER_ONLY
+                ShaderBasedRenderer* sbr = SP::getRenderer();
+                if (sbr)
+                    sbr->dumpRTT();
+#endif
             }
             break;
 

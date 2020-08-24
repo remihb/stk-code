@@ -480,6 +480,9 @@ namespace UserConfigParams
     PARAM_PREFIX BoolUserConfigParam          m_soccer_player_list
             PARAM_DEFAULT(  BoolUserConfigParam(false, "soccer-player-list",
             &m_race_setup_group, "Show player list icon in soccer mode.") );
+    PARAM_PREFIX BoolUserConfigParam          m_addon_tux_online
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "addon-tux-online",
+            &m_race_setup_group, "Always show online addon karts as tux when live join is on.") );
 
     // ---- Wiimote data
     PARAM_PREFIX GroupUserConfigParam        m_wiimote_group
@@ -786,12 +789,9 @@ namespace UserConfigParams
         "The stun servers that will be used to know the public address "
         "(ipv4 only) with port", {{ "stun-server", "address", "ping" }},
             {
-                 { "stunv4.1.supertuxkart.net:3478", 0u },
-                 { "stunv4.2.supertuxkart.net:19302", 0u },
-                 { "stunv4.3.supertuxkart.net:19302", 0u },
-                 { "stunv4.4.supertuxkart.net:19302", 0u },
-                 { "stunv4.5.supertuxkart.net:19302", 0u },
-                 { "stunv4.6.supertuxkart.net:19302", 0u }
+                 { "stunv4.linuxreviews.org:3478", 0u },
+                 { "stunv4.7.supertuxkart.net:3478", 0u },
+                 { "stunv4.8.supertuxkart.net:3478", 0u }
              }
          ));
 
@@ -800,7 +800,7 @@ namespace UserConfigParams
         "The stun servers that will be used to know the public address "
         "(including ipv6) with port", {{ "stun-server", "address", "ping" }},
             {
-                 { "stun.stunprotocol.org:3478", 0u },
+                 { "stunv6.linuxreviews.org:3478", 0u },
                  { "stun.l.google.com:19302", 0u },
                  { "stun1.l.google.com:19302", 0u },
                  { "stun2.l.google.com:19302", 0u },

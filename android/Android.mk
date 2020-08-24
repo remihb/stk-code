@@ -72,13 +72,6 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 
-# Fribidi
-LOCAL_MODULE       := fribidi
-LOCAL_SRC_FILES    := obj/fribidi/lib/.libs/libfribidi.a
-include $(PREBUILT_STATIC_LIBRARY)
-include $(CLEAR_VARS)
-
-
 # Freetype
 LOCAL_MODULE := freetype
 LOCAL_SRC_FILES := obj/freetype/objs/.libs/libfreetype.a
@@ -90,23 +83,6 @@ include $(CLEAR_VARS)
 LOCAL_MODULE       := harfbuzz
 LOCAL_SRC_FILES    := obj/harfbuzz/src/.libs/libharfbuzz.a
 include $(PREBUILT_STATIC_LIBRARY)
-include $(CLEAR_VARS)
-
-
-# Raqm
-LOCAL_MODULE       := raqm
-LOCAL_PATH         := .
-LOCAL_CPP_FEATURES += rtti
-LOCAL_SRC_FILES    := $(wildcard ../lib/libraqm/*.c)
-LOCAL_CFLAGS       := -Iobj/fribidi/include             \
-                      -Iobj/freetype/include            \
-                      -Iobj/harfbuzz/include            \
-                      -DHAVE_DECL_HB_BUFFER_FLAG_REMOVE_DEFAULT_IGNORABLES \
-                      -DHAVE_HB_BUFFER_SET_INVISIBLE_GLYPH \
-                      -DHAVE_HB_FT_FONT_CREATE_REFERENCED \
-                      -DHAVE_HB_FT_FONT_SET_LOAD_FLAGS \
-                      -std=c99
-include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 
@@ -167,6 +143,16 @@ LOCAL_PATH         := .
 LOCAL_CPP_FEATURES += rtti
 LOCAL_SRC_FILES    := $(wildcard ../lib/mcpp/*.c)
 LOCAL_CFLAGS       := -DMCPP_LIB -DHAVE_CONFIG_H
+include $(BUILD_STATIC_LIBRARY)
+include $(CLEAR_VARS)
+
+
+# SheenBidi
+LOCAL_MODULE       := sheenbidi
+LOCAL_PATH         := .
+LOCAL_CPP_FEATURES += rtti
+LOCAL_SRC_FILES    := $(wildcard ../lib/sheenbidi/Source/*.c)
+LOCAL_CFLAGS       := -I../lib/sheenbidi/Headers
 include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
@@ -248,7 +234,7 @@ LOCAL_SRC_FILES    := $(wildcard ../src/*.cpp)     \
 LOCAL_LDLIBS       := -llog -landroid -lGLESv1_CM -lGLESv3 -lOpenSLES -ldl -lm
 LOCAL_CFLAGS       := -I../lib/angelscript/include      \
                       -I../lib/bullet/src               \
-                      -I../lib/libraqm                  \
+                      -I../lib/sheenbidi/Headers        \
                       -I../lib/enet/include             \
                       -I../lib/ifaddrs                  \
                       -I../lib/irrlicht/include         \
@@ -258,7 +244,6 @@ LOCAL_CFLAGS       := -I../lib/angelscript/include      \
                       -I../lib/sdl2/include             \
                       -I../src                          \
                       -Iobj/curl/include                \
-                      -Iobj/fribidi/include             \
                       -Iobj/freetype/include            \
                       -Iobj/harfbuzz/include            \
                       -Iobj/libogg/include              \
@@ -279,7 +264,7 @@ LOCAL_CPPFLAGS     := -std=gnu++0x
 
 LOCAL_STATIC_LIBRARIES := irrlicht bullet enet ifaddrs angelscript mcpp SDL2 \
                           vorbisfile vorbis ogg openal curl libssl libcrypto \
-                          c++_static raqm fribidi harfbuzz freetype graphics_utils
+                          c++_static sheenbidi harfbuzz freetype graphics_utils
 
 include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)

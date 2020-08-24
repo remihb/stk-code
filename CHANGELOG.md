@@ -5,33 +5,47 @@ It should be kept in mind that some versions have a less complete changelog than
 
 For similar reasons, and because some features are vastly more complex than others, attributions of main changes should not be taken as a shortcut for overall contribution.
 
-## SuperTuxKart 1.1.1
+## SuperTuxKart 1.2
+
+[Changelog fully done up to 03/07/20. Modern skin to be renamed]
 
 ### Networking
-* Add support for IPv6 LAN server, by Benau
+* Add support for IPv6 LAN servers, by Benau
+* Auto-detect client IPv4 and IPv6 support, by Benau
 * Improved server creation speed and performance, by Benau
-* Allow any addon karts online using tux hitbox if live join enabled, by Benau
-
-### Race gameplay and physics
-* Add team chat for team games, by Benau
-* Show a message once a goal is made in soccer, by riso
-* Add camera settings in option screen, by luffah
-* Always show times in ms, by Fouks
+* Allow to use any addon karts online, on servers with live join enabled, by Benau. The kart shows as Tux for other players and has Tux's hitbox.
 
 ### General
-* Use SDL2 for window creation which allows better gamepad support, by Benau
+* Use SDL2 for window creation, allowing better gamepad support, by Benau
+* Add support for in-race messages in scripting, by CodedOre
+* Improved tutorial with free-flow racing (no more text interrupts), by CodedOre
 * Haiku support, by AlwaysLivid
+* Make the game's window resizable in-game, by Benau
+* Download addon icons on-demand to speed-up the addons list loading, by Benau
+* Allow theming of icons, by QwertyChouskie
+* Many many bugfixes and enhancements
 
 ### Mobile
-* Improved tutorial, by CodedOre
 * Mobile STK indication in lobby, by riso
 #### Android
-* Use android app bundle which allows all tracks to be included, by Benau
+* Use the android app bundle, allowing all tracks to be included, by Benau
 * Use java code for extracting game data screen, by Benau
+#### iOS
+* Allow server creation in-game by using only one process for client and server, by Benau
 
 ### User Interface
+* Introduce element padding for skins, by QwertyChouskie
 * Modern skin, by QwertyChouskie
+* Allow to rename control configurations, by GuillaumeBft
+* New tips for soccer mode
+* Always show the race end times in ms, by Fouks
 * SVG icons support, by riso
+#### In-race UI
+* Introduce camera settings in the options screen, by luffah
+* More spectator cameras in online spectating, by luffah
+* Add team chat for team games, by Benau
+* Show the kart orientation on the soccer minimap, by riso
+* Show a message once a goal is made in soccer, by riso
 
 ### Tracks and modeling
 #### Karts
@@ -85,14 +99,16 @@ For similar reasons, and because some features are vastly more complex than othe
 * Fixed plural forms for translations in several languages, by deveee
 * Close STK if Wayland crashes, by mstoeckl
 * Support nested directories for addons, by Benau
-* Various tweaks and bugfixes, including crash fixes
 * Scripting preprocessing for STK version, by Benau
+* Updated Wiiuse library to 0.15.5
+* Various tweaks and bugfixes, including crash fixes
 
 ### Mobile
 * Add a screen allowing to download official assets that can't be included in the release package because of size limits, by Benau
 * The tutorial text is now tailored for touchscreen usage, instead of the main keyboard text, by Benau
 * Enhanced acceleration handle, by Benau
-* Allow changing touchscreen controller type in race paused dialog, by deveee
+* Allow changing the touchscreen controller type in race paused dialog, by deveee
+* Allow for optional auto-acceleration, by deveee
 #### Android
 * Various bugfixes by deveee, dos1
 * Screen keyboard handling improvements, by deveee and Benau
@@ -104,11 +120,10 @@ For similar reasons, and because some features are vastly more complex than othe
     * Several changes or fixes to ensure proper behavior (input, screen-scaling, and more)
     
 ### User Interface
-* Showing tips for players when loading and after race ends, by dumaosen
+* Show tips for players when loading and after race ends, by dumaosen
 * Better scaling of many many UI elements to large resolutions, by dumaosen and others
 * Show country flags for servers and players in online multiplayer, by Benau
 * Add a new option to change font size on the fly, by Benau and deveee
-* Scale down the lap time indicator next to the kart icons when there are many karts, by risostk
 * Add icons for the available options in the race result screens, by dumaosen
 * Make the highscore list scrollable, by deveee
 * Display all the relevant info in the challenge dialog in Story Mode, by Alayan
@@ -121,12 +136,15 @@ For similar reasons, and because some features are vastly more complex than othe
 * Allow sorting lists with the keyboard, by Benau
 * Allow tooltip drawing outside of menus, by deveee
 * Prevent some font scaling blur caused by non-integer offsets, by Benau
-* Limit how long chat and in-race messages can be, by Benau and Alayan
 * Add a (configurable) limit to chat message frequency, by GuillaumeBft and Benau
-* Add an option to disable in-race messages only, by Alayan
 * Allow to explicitly set the flip direction of tabs, by dumaosen
 * Allow to download addons from the server lobby interface, by Benau
+* Allow to filter installed and non-installed addons in the addons screen, by Alayan
 * Many minor tweaks and bugfixes
+#### In-race UI
+* Scale down the lap time indicator next to the kart icons when there are many karts, by riso
+* Limit how long chat and in-race messages can be, by Benau and Alayan
+* Add an option to disable in-race messages only, by Alayan
 
 ### Tracks and modeling
 #### Tracks
@@ -193,7 +211,6 @@ For similar reasons, and because some features are vastly more complex than othe
 
 ### User Interface
 * New networking user interface by Benau and hiker
-* Race UI improvements (new speedometer, nitro gauge, bigger minimap, minimap display options, more legible text with outlines and for some bigger font) by Alayan
 * New coal skin by Alayan
 * Support for collapsing widgets in UI by Mrxx99
 * Multidirectional keyboard navigation in menus by Alayan
@@ -205,11 +222,15 @@ For similar reasons, and because some features are vastly more complex than othe
 * Control configurations can be disabled without being deleted by Alayan
 * Other significant enhancements (detailed progress of multi-goal achievements, reset password button, clearer checkbox status, milliseconds displayed in time-trials and egg hunts, nitro efficiency in the kart selection screen, better track info screen, better warnings when trying to do an online action with internet access disabled, hour support for GP time, default resolutions can't be used in fullscreen if unsupported by the monitor...)
 * Many bugfixes and small enhancements mostly by deveee and Alayan
+#### In-race UI
+* New speedometer and nitro gauge, by Alayan
+* Bigger minimap and new display options, by Alayan
+* More legible text with outlines and for some bigger font, by Alayan
 
 ### Tracks and modeling
 #### Tracks
-* Black Forest by Sven Andreas Belting, replacing Green Valley
-* Ravenbridge Mansion by samuncle, replacing Black Hill Mansion
+* Black Forest by Sven Andreas Belting (replacing Green Valley)
+* Ravenbridge Mansion by samuncle (replacing Black Hill Mansion)
 * Unwanted shortcuts and exploits found by several players and fixed mostly by Auria in many tracks :
     * Antediluvian Abyss, Around the Lighthouse, Fort Magma, Grand Paradisio Island, Hacienda, Minigolf, Nessie's Pond, Northern Resort, The Old Mine, Oliver's Math Class, Shifting Sands, STK Enterprise, XR591
 * Smoothness issues causing collisions and kart slowdown fixed by Auria :
