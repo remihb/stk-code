@@ -1791,7 +1791,7 @@ void ServerLobby::asynchronousUpdate()
                 if (peer->alwaysSpectate() &&
                     peer->getClientAssets().second.count(track_name) == 0)
                 {
-                    peer->setAlwaysSpectate(false);
+                    peer->setAlwaysSpectate(ASM_NONE);
                     peer->setWaitingForGame(true);
                     m_peers_ready.erase(peer);
                     bad_spectators.insert(peer.get());
@@ -2759,7 +2759,7 @@ void ServerLobby::startSelection(const Event *event)
         if (!can_race)
         {
             if (ServerConfig::m_soccer_tournament || ServerConfig::m_only_host_riding)
-                peer->setAlwaysSpectate(true);
+                peer->setAlwaysSpectate(ASM_COMMAND);
         }
         if (!can_race && !peer->alwaysSpectate())
         {
@@ -2790,7 +2790,7 @@ void ServerLobby::startSelection(const Event *event)
             "An attempt to start a game while no one is able to play.");
         return;
         // for (STKPeer* peer : always_spectate_peers)
-        //     peer->setAlwaysSpectate(false);
+        //     peer->setAlwaysSpectate(ASM_NONE);
         // always_spectate_peers.clear();
     }
     else
@@ -2827,7 +2827,7 @@ void ServerLobby::startSelection(const Event *event)
         std::sort(peers.begin(), peers.end(),
             [](const std::shared_ptr<STKPeer>& a,
             const std::shared_ptr<STKPeer>& b)
-            { return a->getReadyToRaceTime() < b->getReadyToRaceTime(); });
+            { return a->getHostId() > b->getHostId(); });
         int remove_player = max_player;
         for (unsigned i = 0; i < peers.size(); i++)
         {
@@ -4601,14 +4601,14 @@ void ServerLobby::updatePlayerList(bool update_when_reset_server)
         if (!ServerConfig::m_soccer_tournament)
         {
             for (auto& peer : m_default_always_spectate_peers)
-                peer->setAlwaysSpectate(true);
+                peer->setAlwaysSpectate(ASM_COMMAND);
         }
         else
         {
             auto peers = STKHost::get()->getPeers();
             for (auto& peer: peers)
             {
-                peer->setAlwaysSpectate(false);
+                peer->setAlwaysSpectate(ASM_NONE);
             }
         }
     }
