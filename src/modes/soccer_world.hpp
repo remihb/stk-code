@@ -294,6 +294,8 @@ public:
     void tellCountIfDiffers() const;
     // ------------------------------------------------------------------------
     bool getStopped() { return stopped; }
+    // ------------------------------------------------------------------------
+    TrackObject* getBall() const { return m_ball; }
 };   // SoccerWorld
 
 
