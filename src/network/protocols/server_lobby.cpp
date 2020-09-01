@@ -2809,18 +2809,21 @@ void ServerLobby::startSelection(const Event *event)
     // }
     unsigned max_player = 0;
     STKHost::get()->updatePlayers(&max_player);
+    int remove_player = max_player;
 
     if (RaceManager::get()->getMinorMode() ==
         RaceManager::MINOR_MODE_CAPTURE_THE_FLAG)
-        max_player -= 14;
-    if (RaceManager::get()->getMinorMode() ==
+        remove_player -= 14;
+    else if (RaceManager::get()->getMinorMode() ==
         RaceManager::MINOR_MODE_FREE_FOR_ALL)
-        max_player -= 10;
-    if (RaceManager::get()->getMinorMode() ==
+        remove_player -= 10;
+    else if (RaceManager::get()->getMinorMode() ==
         RaceManager::MINOR_MODE_SOCCER)
-        max_player -= 14;
+        remove_player -= 14;
+    else
+        remove_player -= 1000000;
 
-    if (max_player > 0)
+    if (remove_player > 0)
     {
         // Set late coming player to spectate if too many players in battle or
         // soccer
@@ -2828,7 +2831,6 @@ void ServerLobby::startSelection(const Event *event)
             [](const std::shared_ptr<STKPeer>& a,
             const std::shared_ptr<STKPeer>& b)
             { return a->getHostId() > b->getHostId(); });
-        int remove_player = max_player;
         for (unsigned i = 0; i < peers.size(); i++)
         {
             auto& peer = peers[i];
@@ -7029,6 +7031,30 @@ void ServerLobby::handleServerCommand(Event* event,
         std::string msg = "1.2-kimden 200828 beta";
         sendStringToPeer(msg, peer);
     }
+    else if (argv[0] == "register")
+    {
+        int online_id = peer->getPlayerProfiles()[0]->getOnlineId();
+        if (online_id <= 0)
+        {
+            std::string msg = "Please join with a valid online STK account.";
+            sendStringToPeer(msg, peer);
+            return;
+        }
+        std::string ans = "";
+        for (unsigned i = 1; i < argv.size(); ++i)
+        {
+            if (i > 1)
+                ans.push_back(' ');
+            ans += argv[i];
+        }
+        std::string message_ok = "Your registration request is being processed";
+        std::string message_wrong = "Sorry, an error occurred. Please try again.";
+        if (writeOnePlayerReport(peer.get(), ServerConfig::m_register_table_name,
+            ans))
+            sendStringToPeer(message_ok, peer);
+        else
+            sendStringToPeer(message_wrong, peer);
+    }
 #ifdef ENABLE_WEB_SUPPORT
     else if (argv[0] == "token")
     {
@@ -7861,6 +7887,53 @@ void ServerLobby::loadWhiteList()
     for (std::string& s: tokens)
         m_usernames_white_list.insert(s);
 }   // loadWhiteList
+//-----------------------------------------------------------------------------  
+bool ServerLobby::writeOnePlayerReport(STKPeer* reporter,
+    const std::string& table, const std::string& info)
+{
+#ifdef ENABLE_SQLITE3
+    if (!m_db)
+        return false;
+    if (!reporter->hasPlayerProfiles())
+        return false;
+    auto reporter_npp = reporter->getPlayerProfiles()[0];
+
+    std::string query = StringUtils::insertValues(
+        "INSERT INTO %s "
+        "(server_uid, reporter_online_id, reporter_username, "
+        "info) "
+        "VALUES (?, %u, ?, ?);",
+        table.c_str(),
+        reporter_npp->getOnlineId());
+
+    bool written = easySQLQuery(query,
+        [reporter_npp, info](sqlite3_stmt* stmt)
+        {
+            // SQLITE_TRANSIENT to copy string
+            if (sqlite3_bind_text(stmt, 1, ServerConfig::m_server_uid.c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    ServerConfig::m_server_uid.c_str());
+            }
+            if (sqlite3_bind_text(stmt, 2,
+                StringUtils::wideToUtf8(reporter_npp->getName()).c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    StringUtils::wideToUtf8(reporter_npp->getName()).c_str());
+            }
+            if (sqlite3_bind_text(stmt, 3,
+                info.c_str(),
+                -1, SQLITE_TRANSIENT) != SQLITE_OK)
+            {
+                Log::error("easySQLQuery", "Failed to bind %s.",
+                    info.c_str());
+            }
+        });
+    return written;
+#endif
+}   // writeOnePlayerReport
 //-----------------------------------------------------------------------------   
 void ServerLobby::changeLimitForTournament(bool goal_target)
 {

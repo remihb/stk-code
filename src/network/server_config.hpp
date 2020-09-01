@@ -617,6 +617,12 @@ namespace ServerConfig
         "If true, the server owner can kick players, either via "
         "the UI button or using /kick command."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_register_table_name
+        SERVER_CFG_DEFAULT(StringServerConfigParam("", "registration-table-name",
+        "When non-empty, stores input given by /register command in "
+        "the corresponding table. Otherwise, /register command does "
+        "nothing"));
+
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */
     static const uint32_t m_server_version = 6;

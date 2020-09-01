@@ -551,7 +551,10 @@ public:
     void initAvailableTracks();
     void initAvailableModes();
     void resetToDefaultSettings();
-    void writeOwnReport(STKPeer* reporter, STKPeer* reporting, const std::string& info);
+    void writeOwnReport(STKPeer* reporter, STKPeer* reporting,
+        const std::string& info);
+    bool writeOnePlayerReport(STKPeer* reporter, const std::string& table,
+        const std::string& info);
     // int getTrackMaxPlayers(std::string& name) const;
 };   // class ServerLobby
 
