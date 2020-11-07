@@ -393,7 +393,9 @@ void SoccerWorld::reset(bool restart)
 //-----------------------------------------------------------------------------
 void SoccerWorld::onGo()
 {
-    Log::info("SoccerWorld", "The game starts now.");
+    Log::info("SoccerWorld", "SoccerMatchLog: The game starts now.");
+    Log::info("SoccerWorld", "SoccerMatchLog: The arena is %s",
+        RaceManager::get()->getTrackName().c_str());
     m_ball->setEnabled(true);
     m_ball->reset();
     WorldWithRank::onGo();
@@ -561,7 +563,7 @@ void SoccerWorld::onCheckGoalTriggered(bool first_goal)
             if (sd.m_correct_goal)
             {
                 if (!stopped)
-                    Log::info("SoccerWorld", "[Goal] %s scored a goal for %s",
+                    Log::info("SoccerWorld", "SoccerMatchLog: [Goal] %s scored a goal for %s",
                         player_name.c_str(), team_name.c_str());
                 m_karts[sd.m_id]->getKartModel()
                     ->setAnimation(KartModel::AF_WIN_START, true/* play_non_loop*/);
@@ -569,7 +571,7 @@ void SoccerWorld::onCheckGoalTriggered(bool first_goal)
             else if (!sd.m_correct_goal)
             {
                 if (!stopped)
-                    Log::info("SoccerWorld", "[Goal] %s scored an own goal for %s",
+                    Log::info("SoccerWorld", "SoccerMatchLog: [Goal] %s scored an own goal for %s",
                         player_name.c_str(), team_name.c_str());
                 m_karts[sd.m_id]->getKartModel()
                     ->setAnimation(KartModel::AF_LOSE_START, true/* play_non_loop*/);

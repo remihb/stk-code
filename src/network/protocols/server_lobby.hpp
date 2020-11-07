@@ -23,6 +23,7 @@
 #include "utils/cpp2011.hpp"
 #include "utils/time.hpp"
 #include "utils/track_filter.hpp"
+#include "utils/kart_elimination.hpp"
 
 #include "irrString.h"
 
@@ -299,13 +300,7 @@ private:
 
     std::set<STKPeer*> m_team_speakers;
 
-    bool m_gnu_elimination;
-
-    int m_gnu_remained;
-
-    std::string m_gnu_kart;
-
-    std::vector<std::string> m_gnu_participants;
+    KartElimination m_kart_elimination;
 
     std::set<int> m_available_difficulties;
 
@@ -386,6 +381,8 @@ private:
     void updatePlayerList(bool update_when_reset_server = false);
     void updateServerOwner();
     void handleServerConfiguration(Event* event);
+    void handleServerConfiguration(std::shared_ptr<STKPeer> peer,
+        int difficulty, int mode, bool soccer_goal_target);
     void updateTracksForMode();
     bool checkPeersReady(bool ignore_ai_peer) const;
     void resetPeersReady()
@@ -487,7 +484,6 @@ private:
     void writeDisconnectInfoTable(STKPeer* peer);
     void writePlayerReport(Event* event);
     bool supportsAI();
-    void updateGnuElimination();
     void updateAddons();
     void initTournamentPlayers();
     void changeColors();
@@ -498,8 +494,7 @@ private:
     bool hasHostRights(std::shared_ptr<STKPeer>& peer) const;
     bool hasHostRights(STKPeer* peer) const;
     void loadTracksQueueFromConfig();
-    void sendGnuStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
-    void sendGrandPrixStandingsToPeer(std::shared_ptr<STKPeer> peer) const;
+    std::string getGrandPrixStandings() const;
     void loadCustomScoring();
     void updateWorldSettings();
     void loadWhiteList();
@@ -556,6 +551,7 @@ public:
     bool writeOnePlayerReport(STKPeer* reporter, const std::string& table,
         const std::string& info);
     // int getTrackMaxPlayers(std::string& name) const;
+    void updateGnuElimination();
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP
