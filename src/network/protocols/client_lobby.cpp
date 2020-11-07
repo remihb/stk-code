@@ -69,6 +69,13 @@
 #include <algorithm>
 #include <cstdlib>
 
+#ifndef SERVER_ONLY
+extern "C"
+{
+    #include <SheenBidi.h>
+}
+#endif
+
 // ============================================================================
 /** The protocol that manages starting a race with the server. It uses a 
  *  finite state machine:
@@ -816,7 +823,11 @@ void ClientLobby::updatePlayerList(Event* event)
         {
             lp.m_user_name = _("%s (handicapped)", lp.m_user_name);
         }
-        lp.m_kart_team = (KartTeam)data.getUInt8();
+        KartTeam team = (KartTeam)data.getUInt8();
+        if (is_spectator)
+            lp.m_kart_team = KART_TEAM_NONE;
+        else
+            lp.m_kart_team = team;
         // No handicap for AI peer
         if (!ai && lp.m_host_id == STKHost::get()->getMyHostId())
         {
@@ -1419,6 +1430,42 @@ void ClientLobby::sendChat(irr::core::stringw text, KartTeam team)
             name = PlayerManager::getCurrentOnlineProfile()->getUserName();
         else
             name = player->getName();
+        // Make message look better by aligning to left or right side depends
+        // on name and text
+        // (LTR: RTL text always right; RTL : LTR text always left)
+#ifndef SERVER_ONLY
+        if (!name.empty() && !text.empty())
+        {
+            SBCodepointSequence codepoint_sequence;
+            codepoint_sequence.stringEncoding = sizeof(wchar_t) == 2 ?
+                SBStringEncodingUTF16 : SBStringEncodingUTF32;
+            codepoint_sequence.stringBuffer = (void*)name.c_str();
+            codepoint_sequence.stringLength = name.size();
+            SBAlgorithmRef bidi_algorithm =
+                SBAlgorithmCreate(&codepoint_sequence);
+            SBParagraphRef first_paragraph =
+                SBAlgorithmCreateParagraph(bidi_algorithm, 0, (int32_t)-1,
+                SBLevelDefaultLTR);
+            SBLevel name_level = SBParagraphGetBaseLevel(first_paragraph);
+            SBParagraphRelease(first_paragraph);
+            SBAlgorithmRelease(bidi_algorithm);
+
+            codepoint_sequence.stringBuffer = (void*)text.c_str();
+            codepoint_sequence.stringLength = text.size();
+            bidi_algorithm =
+                SBAlgorithmCreate(&codepoint_sequence);
+            first_paragraph =
+                SBAlgorithmCreateParagraph(bidi_algorithm, 0, (int32_t)-1,
+                SBLevelDefaultLTR);
+            SBLevel text_level = SBParagraphGetBaseLevel(first_paragraph);
+            SBParagraphRelease(first_paragraph);
+            SBAlgorithmRelease(bidi_algorithm);
+            if (name_level % 2 == 0 && text_level % 2 != 0)
+                name = core::stringw(L"\u200F") + name;
+            else if (name_level % 2 != 0 && text_level % 2 == 0)
+                name = core::stringw(L"\u200E") + name;
+        }
+#endif
         chat->encodeString16(name + L": " + text, 1000/*max_len*/);
 
         if (team != KART_TEAM_NONE)

@@ -157,6 +157,16 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 
+# tinygettext
+LOCAL_MODULE       := tinygettext
+LOCAL_PATH         := .
+LOCAL_CPP_FEATURES += rtti exceptions
+LOCAL_SRC_FILES    := $(wildcard ../lib/tinygettext/src/*.cpp)
+LOCAL_CFLAGS       := -I../lib/tinygettext/include -DDISABLE_ICONV
+include $(BUILD_STATIC_LIBRARY)
+include $(CLEAR_VARS)
+
+
 # Irrlicht
 LOCAL_MODULE       := irrlicht
 LOCAL_PATH         := .
@@ -242,6 +252,7 @@ LOCAL_CFLAGS       := -I../lib/angelscript/include      \
                       -I../lib/graphics_utils           \
                       -I../lib/mcpp                     \
                       -I../lib/sdl2/include             \
+                      -I../lib/tinygettext/include      \
                       -I../src                          \
                       -Iobj/curl/include                \
                       -Iobj/freetype/include            \
@@ -256,6 +267,7 @@ LOCAL_CFLAGS       := -I../lib/angelscript/include      \
                       -DENABLE_IPV6    \
                       -DENABLE_CRYPTO_OPENSSL           \
                       -DNDEBUG         \
+                      -DDISABLE_ICONV  \
                       -DANDROID_PACKAGE_NAME=\"$(PACKAGE_NAME)\"    \
                       -DANDROID_APP_DIR_NAME=\"$(APP_DIR_NAME)\"    \
                       -DSUPERTUXKART_VERSION=\"$(PROJECT_VERSION)\" \
@@ -264,7 +276,8 @@ LOCAL_CPPFLAGS     := -std=gnu++0x
 
 LOCAL_STATIC_LIBRARIES := irrlicht bullet enet ifaddrs angelscript mcpp SDL2 \
                           vorbisfile vorbis ogg openal curl libssl libcrypto \
-                          c++_static sheenbidi harfbuzz freetype graphics_utils
+                          c++_static sheenbidi harfbuzz freetype \
+                          tinygettext graphics_utils
 
 include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)

@@ -5,7 +5,7 @@
 # Translators:
 # Adevair Junior <adevairhpj@gmail.com>, 2018-2020
 # André Marcelo Alvarenga <alvarenga@kde.org>, 2017-2018
-# Benau, 2018
+# Benau, 2018,2020
 # C. E., 2020
 # C. E., 2019
 # flaviozavan <flaviozavan@gmail.com>, 2015-2017
@@ -16,8 +16,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SuperTuxKart\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-07-29 01:02+0800\n"
-"PO-Revision-Date: 2020-07-28 20:03+0000\n"
+"POT-Creation-Date: 2020-09-21 09:33+0800\n"
+"PO-Revision-Date: 2020-09-21 04:03+0000\n"
 "Last-Translator: Adevair Junior <adevairhpj@gmail.com>\n"
 "Language-Team: Portuguese (Brazil) (http://www.transifex.com/supertuxkart/supertuxkart/language/pt_BR/)\n"
 "MIME-Version: 1.0\n"
@@ -797,6 +797,7 @@ msgstr "Modo de jogo"
 #. I18N: Multiplayer game mode
 #. I18N: Game mode
 #: src/network/server_config.cpp:260 src/race/race_manager.cpp:1188
+#: supertuxkart.appdata.xml:33
 msgid "Normal Race"
 msgstr "Corrida Normal"
 
@@ -813,7 +814,7 @@ msgstr "Corrida Contra o Relógio"
 #. I18N: Multiplayer game mode
 #. I18N: ./data/gui/screens/online/create_server.stkgui
 #. I18N: Multiplayer game mode
-#: src/states_screens/race_setup_screen.cpp:112
+#: src/states_screens/race_setup_screen.cpp:112 supertuxkart.appdata.xml:37
 msgid "Battle"
 msgstr "Batalha"
 
@@ -823,6 +824,7 @@ msgstr "Batalha"
 #. I18N: Multiplayer game mode
 #. I18N: Game mode
 #: src/network/server_config.cpp:264 src/race/race_manager.cpp:1202
+#: supertuxkart.appdata.xml:41
 msgid "Soccer"
 msgstr "Futebol"
 
@@ -1011,7 +1013,7 @@ msgstr "Instalado"
 #. I18N: track group
 #. I18N: In the UI options,litscreen_method in the race UI
 #: src/states_screens/grand_prix_editor_screen.cpp:335
-#: src/states_screens/options/options_screen_ui.cpp:359
+#: src/states_screens/options/options_screen_ui.cpp:361
 msgid "Standard"
 msgstr "Padrão"
 
@@ -1042,7 +1044,7 @@ msgstr "Complementos"
 #: src/states_screens/addons_screen.cpp:135
 #: src/states_screens/arenas_screen.cpp:74
 #: src/states_screens/easter_egg_screen.cpp:137
-#: src/states_screens/edit_track_screen.cpp:146
+#: src/states_screens/edit_track_screen.cpp:111
 #: src/states_screens/gp_info_screen.cpp:74
 #: src/states_screens/grand_prix_editor_screen.cpp:334
 #: src/states_screens/kart_selection.cpp:309
@@ -2035,8 +2037,8 @@ msgstr "Música"
 #. I18N: in the graphical options tooltip;
 #. indicates a graphical feature is enabled
 #: src/states_screens/dialogs/custom_video_settings.cpp:66
-#: src/states_screens/options/options_screen_video.cpp:538
-#: src/states_screens/options/options_screen_video.cpp:611
+#: src/states_screens/options/options_screen_video.cpp:537
+#: src/states_screens/options/options_screen_video.cpp:610
 msgid "Enabled"
 msgstr "Ativado"
 
@@ -2719,7 +2721,7 @@ msgid "New kart '%s' now available"
 msgstr "Novo kart: '%s' está disponível"
 
 #: src/challenges/story_mode_timer.cpp:281
-#: src/states_screens/options/options_screen_ui.cpp:300
+#: src/states_screens/options/options_screen_ui.cpp:302
 msgid ""
 "Speedrun mode disabled. It can only be enabled if the game has not been closed since the launch of the story mode.\n"
 "\n"
@@ -2770,12 +2772,12 @@ msgid "FPS: %d/%d/%d - %d KTris, Ping: %dms"
 msgstr "FPS: %d/%d/%d - %d KTris, Ping %d ms"
 
 #. I18N: Tip shown in gui for giving player hints
-#: src/guiengine/engine.cpp:1392 src/states_screens/race_result_gui.cpp:154
+#: src/guiengine/engine.cpp:1432 src/states_screens/race_result_gui.cpp:154
 #, c-format
 msgid "Tip: %s"
 msgstr "Dica: %s"
 
-#: src/guiengine/engine.cpp:1436
+#: src/guiengine/engine.cpp:1476
 msgid "Loading"
 msgstr "Carregando"
 
@@ -2801,7 +2803,7 @@ msgstr "Eficiência de Nitro"
 #: src/guiengine/widgets/player_kart_widget.cpp:758
 #: src/karts/controller/local_player_controller.cpp:446
 #: src/karts/controller/player_controller.cpp:413
-#: src/network/protocols/client_lobby.cpp:817
+#: src/network/protocols/client_lobby.cpp:824
 #: src/states_screens/dialogs/splitscreen_player_dialog.cpp:121
 #: src/states_screens/race_result_gui.cpp:1421
 #: src/states_screens/race_result_gui.cpp:1482
@@ -3411,12 +3413,12 @@ msgstr "Gatilho esquerdo"
 msgid "Right trigger"
 msgstr "Gatilho direito"
 
-#: src/input/input_manager.cpp:985
+#: src/input/input_manager.cpp:989
 #, c-format
 msgid "Ignoring '%s'. You needed to join earlier to play!"
 msgstr "Ignorando '%s', você precisa entrar antes para jogar!"
 
-#: src/input/input_manager.cpp:1022
+#: src/input/input_manager.cpp:1026
 msgid "Only the Game Master may act at this point!"
 msgstr "Apenas o Mestre do Jogo pode agir neste momento!"
 
@@ -3472,12 +3474,12 @@ msgid "You finished the race!"
 msgstr "Você terminou a corrida!"
 
 #. I18N: Message shown in game to tell player left the game in network
-#: src/karts/kart_rewinder.cpp:126 src/network/protocols/client_lobby.cpp:1115
+#: src/karts/kart_rewinder.cpp:126 src/network/protocols/client_lobby.cpp:1122
 #, c-format
 msgid "%s left the game."
 msgstr "%s saiu do jogo."
 
-#: src/main.cpp:1888
+#: src/main.cpp:1913
 msgid ""
 "SuperTuxKart may connect to a server to download add-ons and notify you of "
 "updates. We also collect anonymous hardware statistics to help with the "
@@ -3488,16 +3490,16 @@ msgid ""
 "statistics\")."
 msgstr "O SuperTuxKart pode se conectar a um servidor para baixar complementos e notificá-lo sobre atualizações. Também coletamos estatísticas anônimas de hardware a fim de ajudar o desenvolvimento do jogo. Por favor, leia a nossa política de privacidade em http://privacy.supertuxkart.net. Você gostaria de ativar esta opção? (Caso mude de ideia, você pode ir em opções, selecionar a aba \"Geral\" e editar \"Conectar à Internet\" e \"Enviar dados de hardware anonimamente\")."
 
-#: src/main.cpp:2169
+#: src/main.cpp:2194
 msgid "Your screen resolution is too low to run STK."
 msgstr "Sua resolução de tela é muito baixa para rodar o STK."
 
-#: src/main.cpp:2204
+#: src/main.cpp:2229
 msgid ""
 "Your driver version is too old. Please install the latest video drivers."
 msgstr "A versão do seu driver é muito antiga. Por favor instale a última versão do seu driver de vídeo."
 
-#: src/main.cpp:2222
+#: src/main.cpp:2247
 #, c-format
 msgid ""
 "Your graphics driver appears to be very old. Please check if an update is "
@@ -3505,7 +3507,7 @@ msgid ""
 "game will likely still run, but in a reduced-graphics mode."
 msgstr "Seu driver gráfico aparenta ser muito antigo. Por favor verifique se há uma atualização disponível. O SuperTuxKart recomenda um driver que suporte %s ou superior. O jogo ainda será executado, mas em um modo de gráficos reduzidos."
 
-#: src/main_loop.cpp:468 src/network/protocols/client_lobby.cpp:102
+#: src/main_loop.cpp:477 src/network/protocols/client_lobby.cpp:109
 msgid "Server connection timed out."
 msgstr "A conexão com o servidor expirou."
 
@@ -3590,58 +3592,58 @@ msgid_plural "%i spare tire karts have been spawned!"
 msgstr[0] "1%i kart de estepe foi criado!"
 msgstr[1] "1%i karts de estepe foram criados"
 
-#: src/modes/world.cpp:1369
+#: src/modes/world.cpp:1371
 msgid "You have been eliminated!"
 msgstr "Você foi eliminado!"
 
-#: src/modes/world.cpp:1376
+#: src/modes/world.cpp:1378
 #, c-format
 msgid "'%s' has been eliminated."
 msgstr "'%s' foi eliminado."
 
-#: src/network/protocols/client_lobby.cpp:103
+#: src/network/protocols/client_lobby.cpp:110
 msgid "Server has been shut down."
 msgstr "O servidor foi desligado."
 
-#: src/network/protocols/client_lobby.cpp:104
+#: src/network/protocols/client_lobby.cpp:111
 msgid "You were kicked from the server."
 msgstr "Você foi expulso do servidor."
 
-#: src/network/protocols/client_lobby.cpp:106
+#: src/network/protocols/client_lobby.cpp:113
 msgid "You were kicked: Ping too high."
 msgstr "Você foi expulso. Ping muito alto."
 
-#: src/network/protocols/client_lobby.cpp:255
-#: src/network/protocols/client_lobby.cpp:857
+#: src/network/protocols/client_lobby.cpp:262
+#: src/network/protocols/client_lobby.cpp:864
 msgid "Bad network connection is detected."
 msgstr "Conexão ruim de rede detectada."
 
-#: src/network/protocols/client_lobby.cpp:420
-#: src/network/protocols/server_lobby.cpp:3636
+#: src/network/protocols/client_lobby.cpp:427
+#: src/network/protocols/server_lobby.cpp:3792
 msgid "Bot"
 msgstr "Bot"
 
-#: src/network/protocols/client_lobby.cpp:590
+#: src/network/protocols/client_lobby.cpp:597
 #, c-format
 msgid "%s disconnected."
 msgstr "%s desconectado."
 
 #. I18N: Message shown in network lobby to tell user that
 #. player name is clickable
-#: src/network/protocols/client_lobby.cpp:621
+#: src/network/protocols/client_lobby.cpp:628
 msgid ""
 "Press player name in the list for player management and ranking information."
 msgstr "Pressione o nome do jogador na lista para o gerenciamento de jogadores e informações de ranking."
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:680
+#: src/network/protocols/client_lobby.cpp:687
 #, c-format
 msgid "Server name: %s"
 msgstr "Nome do servidor: %s"
 
 #. I18N: In the networking lobby
 #. I18N: In server info dialog
-#: src/network/protocols/client_lobby.cpp:688
+#: src/network/protocols/client_lobby.cpp:695
 #: src/states_screens/dialogs/server_info_dialog.cpp:84
 #: src/states_screens/race_result_gui.cpp:1785
 #, c-format
@@ -3649,20 +3651,20 @@ msgid "Difficulty: %s"
 msgstr "Dificuldade: %s"
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:693
+#: src/network/protocols/client_lobby.cpp:700
 #, c-format
 msgid "Max players: %d"
 msgstr "Máximo de jogadores: %d"
 
 #. I18N: In server info dialog
-#: src/network/protocols/client_lobby.cpp:706
+#: src/network/protocols/client_lobby.cpp:713
 #: src/states_screens/dialogs/server_info_dialog.cpp:88
 #, c-format
 msgid "Game mode: %s"
 msgstr "Modo de jogo: %s"
 
 #. I18N: In the create server screen for soccer server
-#: src/network/protocols/client_lobby.cpp:719
+#: src/network/protocols/client_lobby.cpp:726
 #: src/states_screens/dialogs/server_configuration_dialog.cpp:174
 #: src/states_screens/online/create_server_screen.cpp:242
 #: src/states_screens/track_info_screen.cpp:366
@@ -3670,7 +3672,7 @@ msgid "Time limit"
 msgstr "Limite de tempo"
 
 #. I18N: In the create server screen for soccer server
-#: src/network/protocols/client_lobby.cpp:720
+#: src/network/protocols/client_lobby.cpp:727
 #: src/states_screens/dialogs/server_configuration_dialog.cpp:175
 #: src/states_screens/online/create_server_screen.cpp:244
 #: src/states_screens/track_info_screen.cpp:367
@@ -3678,102 +3680,102 @@ msgid "Goals limit"
 msgstr "Limite de gols"
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:724
+#: src/network/protocols/client_lobby.cpp:731
 #, c-format
 msgid "Soccer game type: %s"
 msgstr "Tipo de jogo de futebol: %s"
 
-#: src/network/protocols/client_lobby.cpp:734
+#: src/network/protocols/client_lobby.cpp:741
 #, c-format
 msgid "Grand prix progress: %d / %d"
 msgstr "Progresso do campeonato: %d/%d"
 
 #. I18N: Display when all players are in red or blue team, which the race
 #. will not be allowed to start
-#: src/network/protocols/client_lobby.cpp:849
+#: src/network/protocols/client_lobby.cpp:856
 msgid "All players joined red or blue team."
 msgstr "Todos os jogadores se juntaram ao time vermelho ou azul."
 
 #. I18N: Display when a player is allow to control the server
-#: src/network/protocols/client_lobby.cpp:869
+#: src/network/protocols/client_lobby.cpp:876
 msgid "You are now the owner of server."
 msgstr "Você agora é o dono do servidor."
 
-#: src/network/protocols/client_lobby.cpp:912
+#: src/network/protocols/client_lobby.cpp:919
 msgid "Connection refused: Server is busy."
 msgstr "Conexão recusada. O servidor está ocupado."
 
-#: src/network/protocols/client_lobby.cpp:917
+#: src/network/protocols/client_lobby.cpp:924
 msgid "Connection refused: You are banned from the server."
 msgstr "Conexão recusada. Você foi banido do servidor."
 
-#: src/network/protocols/client_lobby.cpp:931
+#: src/network/protocols/client_lobby.cpp:938
 msgid "Connection refused: Server password is incorrect."
 msgstr "Conexão recusada. Senha do servidor incorreta."
 
-#: src/network/protocols/client_lobby.cpp:935
+#: src/network/protocols/client_lobby.cpp:942
 msgid "Connection refused: Game data is incompatible."
 msgstr "Conexão recusada. Dados do jogo incompatíveis."
 
-#: src/network/protocols/client_lobby.cpp:939
+#: src/network/protocols/client_lobby.cpp:946
 msgid "Connection refused: Server is full."
 msgstr "Conexão recusada. Servidor cheio."
 
-#: src/network/protocols/client_lobby.cpp:943
+#: src/network/protocols/client_lobby.cpp:950
 msgid "Connection refused: Invalid player connecting."
 msgstr "Conexão recusada. Jogador inválido se conectando."
 
-#: src/network/protocols/client_lobby.cpp:971
+#: src/network/protocols/client_lobby.cpp:978
 msgid "Failed to start the network game."
 msgstr "Falha ao iniciar o jogo em rede."
 
 #. I18N: Error message shown if live join or spectate failed in network
-#: src/network/protocols/client_lobby.cpp:1184
+#: src/network/protocols/client_lobby.cpp:1191
 msgid "The game has ended, you can't live join or spectate anymore."
 msgstr "O jogo terminou. Você não pode mais participar ou assistir ao jogo."
 
 #. I18N: Error message shown if live join failed in network
-#: src/network/protocols/client_lobby.cpp:1188
+#: src/network/protocols/client_lobby.cpp:1195
 msgid "No remaining place in the arena - live join disabled."
 msgstr "Não há lugares restantes na arena - Participação ao jogo desativada."
 
 #. I18N: Error message shown if only 1 player remains in network
-#: src/network/protocols/client_lobby.cpp:1192
+#: src/network/protocols/client_lobby.cpp:1199
 msgid "Only 1 player remaining, returning to lobby."
 msgstr "Apenas 1 jogador restante, retornando ao lobby."
 
-#: src/network/protocols/client_lobby.cpp:1198
+#: src/network/protocols/client_lobby.cpp:1205
 msgid "Server owner quit the game."
 msgstr "O dono do servidor saiu do jogo."
 
 #. I18N: Status shown to player when he will be spectating the next game
-#: src/network/protocols/client_lobby.cpp:1202
+#: src/network/protocols/client_lobby.cpp:1209
 msgid "You will be spectating the next game."
 msgstr "Você estará assistindo o próximo jogo."
 
 #. I18N: Show when player join red team of the started game in
 #. network
-#: src/network/protocols/client_lobby.cpp:1370
+#: src/network/protocols/client_lobby.cpp:1377
 #, c-format
 msgid "%s joined the red team."
 msgstr "%s entrou na equipe vermelha."
 
 #. I18N: Show when player join blue team of the started game in
 #. network
-#: src/network/protocols/client_lobby.cpp:1376
+#: src/network/protocols/client_lobby.cpp:1383
 #, c-format
 msgid "%s joined the blue team."
 msgstr "%s entrou na equipe azul."
 
 #. I18N: Show when player join the started game in network
-#: src/network/protocols/client_lobby.cpp:1382
+#: src/network/protocols/client_lobby.cpp:1389
 #, c-format
 msgid "%s joined the game."
 msgstr "%s entrou no jogo."
 
 #. I18N: Message shown in game to tell the player it's possible to change
 #. the camera target in spectate mode of network
-#: src/network/protocols/client_lobby.cpp:1537
+#: src/network/protocols/client_lobby.cpp:1580
 #, c-format
 msgid ""
 "Press <%s> or <%s> to change the targeted player, <%s> or <%s> for the "
@@ -3781,22 +3783,22 @@ msgid ""
 msgstr "Pressione <%s> ou <%s> para alterar o jogador destinado, <%s>  ou <%s> para a posição da câmera. "
 
 #. I18N: Tell player he has successfully report this named player
-#: src/network/protocols/client_lobby.cpp:1553
+#: src/network/protocols/client_lobby.cpp:1596
 #, c-format
 msgid "Successfully reported %s."
 msgstr "%s Reportado com sucesso."
 
-#: src/network/protocols/connect_to_server.cpp:77
+#: src/network/protocols/connect_to_server.cpp:222
 msgid "No quick play server available."
 msgstr "Nenhum servidor de jogo rápido disponível."
 
-#: src/network/protocols/connect_to_server.cpp:373
+#: src/network/protocols/connect_to_server.cpp:372
 #, c-format
 msgid "Cannot connect to server %s."
 msgstr "Não foi possível conectar ao servidor %s."
 
 #. I18N: Show the failed detect port server name
-#: src/network/protocols/connect_to_server.cpp:766
+#: src/network/protocols/connect_to_server.cpp:771
 #, c-format
 msgid "Failed to detect port number for server %s."
 msgstr "Falha ao detectar o número da porta para o servidor %s."
@@ -4504,14 +4506,14 @@ msgstr "Resoluções menores que 1024x768 ou 1280x720 não são suportadas. Algu
 #: src/states_screens/dialogs/custom_video_settings.cpp:87
 #: src/states_screens/online/create_server_screen.cpp:206
 #: src/states_screens/options/options_screen_video.cpp:226
-#: src/states_screens/options/options_screen_video.cpp:541
-#: src/states_screens/options/options_screen_video.cpp:612
+#: src/states_screens/options/options_screen_video.cpp:540
+#: src/states_screens/options/options_screen_video.cpp:611
 msgid "Disabled"
 msgstr "Desativado"
 
 #. I18N: if only important particles effects is enabled
 #: src/states_screens/dialogs/custom_video_settings.cpp:65
-#: src/states_screens/options/options_screen_video.cpp:543
+#: src/states_screens/options/options_screen_video.cpp:542
 msgid "Important only"
 msgstr "Importante apenas"
 
@@ -4521,7 +4523,7 @@ msgstr "Importante apenas"
 #: src/states_screens/dialogs/custom_video_settings.cpp:73
 #: src/states_screens/dialogs/custom_video_settings.cpp:82
 #: src/states_screens/dialogs/custom_video_settings.cpp:88
-#: src/states_screens/options/options_screen_video.cpp:550
+#: src/states_screens/options/options_screen_video.cpp:549
 msgid "Low"
 msgstr "Baixo"
 
@@ -4531,14 +4533,14 @@ msgstr "Baixo"
 #: src/states_screens/dialogs/custom_video_settings.cpp:75
 #: src/states_screens/dialogs/custom_video_settings.cpp:83
 #: src/states_screens/dialogs/custom_video_settings.cpp:89
-#: src/states_screens/options/options_screen_video.cpp:553
+#: src/states_screens/options/options_screen_video.cpp:552
 msgid "High"
 msgstr "Alto"
 
 #. I18N: in the graphical options tooltip;
 #. indicates the rendered image quality is very low
 #: src/states_screens/dialogs/custom_video_settings.cpp:81
-#: src/states_screens/options/options_screen_video.cpp:547
+#: src/states_screens/options/options_screen_video.cpp:546
 msgid "Very Low"
 msgstr "Muito baixo"
 
@@ -4675,7 +4677,7 @@ msgstr "Pressione qualquer tecla..."
 
 #: src/states_screens/dialogs/race_paused_dialog.cpp:115
 #: src/states_screens/online/networking_lobby.cpp:244
-#: src/states_screens/online/networking_lobby.cpp:832
+#: src/states_screens/online/networking_lobby.cpp:836
 msgid "Chat is disabled, enable in options menu."
 msgstr "Bate-papo está desativado. Ative no menu de opções."
 
@@ -4909,7 +4911,7 @@ msgstr "%s (+)"
 msgid "An error occurred while trying to save your grand prix."
 msgstr "Um erro ocorreu ao tentar salvar o seu campeonato"
 
-#: src/states_screens/edit_track_screen.cpp:234
+#: src/states_screens/edit_track_screen.cpp:254
 msgid "Select a track"
 msgstr "Selecione uma pista"
 
@@ -5039,7 +5041,7 @@ msgid "Locked"
 msgstr "Bloqueado"
 
 #: src/states_screens/kart_selection.cpp:1032
-#: src/states_screens/online/networking_lobby.cpp:515
+#: src/states_screens/online/networking_lobby.cpp:518
 msgid ""
 "Everyone:\n"
 "Press the 'Select' button to join the game"
@@ -5161,7 +5163,7 @@ msgstr "Por favor espere o jogo atual terminar. Progresso estimado: %d%."
 msgid "Please wait for the current game's end."
 msgstr "Por favor espere o jogo atual terminar. "
 
-#: src/states_screens/online/networking_lobby.cpp:484
+#: src/states_screens/online/networking_lobby.cpp:487
 #, c-format
 msgid "Game will start if there is more than %d player."
 msgid_plural "Game will start if there are more than %d players."
@@ -5170,7 +5172,7 @@ msgstr[1] "O jogo começará quando houver mais de %d jogadores."
 
 #. I18N: In the networking lobby, display the starting timeout
 #. for owner-less server to begin a game
-#: src/states_screens/online/networking_lobby.cpp:498
+#: src/states_screens/online/networking_lobby.cpp:501
 #, c-format
 msgid ""
 "Starting after %d second, or once everyone has pressed the 'Ready' button."
@@ -5179,12 +5181,12 @@ msgid_plural ""
 msgstr[0] "Começando dentro de %d segundo ou quando todos pressionarem o botão 'Pronto'."
 msgstr[1] "Começando dentro de %d segundos ou quando todos pressionarem o botão 'Pronto'."
 
-#: src/states_screens/online/networking_lobby.cpp:535
+#: src/states_screens/online/networking_lobby.cpp:538
 #, c-format
 msgid "Connecting to server %s"
 msgstr "Conectando ao servidor %s"
 
-#: src/states_screens/online/networking_lobby.cpp:540
+#: src/states_screens/online/networking_lobby.cpp:543
 msgid "Finding a quick play server"
 msgstr "Encontrando um servidor de jogo rápido"
 
@@ -5565,74 +5567,74 @@ msgid "System Language"
 msgstr "Idioma do Sistema"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:91
+#: src/states_screens/options/options_screen_ui.cpp:93
 msgid "In the bottom-left"
 msgstr "No fundo esquerdo"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:93
+#: src/states_screens/options/options_screen_ui.cpp:95
 msgid "On the right side"
 msgstr "No lado direito"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:95
+#: src/states_screens/options/options_screen_ui.cpp:97
 msgid "Hidden"
 msgstr "Oculto"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:97
+#: src/states_screens/options/options_screen_ui.cpp:99
 msgid "Centered"
 msgstr "Centrado"
 
 #. I18N: In the UI options, splitscreen_method in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:115
+#: src/states_screens/options/options_screen_ui.cpp:117
 msgid "Vertical"
 msgstr "Vertical"
 
 #. I18N: In the UI options, splitscreen_method position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:117
+#: src/states_screens/options/options_screen_ui.cpp:119
 msgid "Horizontal"
 msgstr "Horizontal"
 
 #. I18N: In the UI options, Very small font size
-#: src/states_screens/options/options_screen_ui.cpp:128
+#: src/states_screens/options/options_screen_ui.cpp:130
 msgid "Very small"
 msgstr "Muito pequeno"
 
 #. I18N: In the UI options, Small font size
-#: src/states_screens/options/options_screen_ui.cpp:130
+#: src/states_screens/options/options_screen_ui.cpp:132
 msgid "Small"
 msgstr "Pequeno"
 
 #. I18N: In the UI options, Medium font size
-#: src/states_screens/options/options_screen_ui.cpp:132
+#: src/states_screens/options/options_screen_ui.cpp:134
 msgid "Medium"
 msgstr "Médio"
 
 #. I18N: In the UI options, Large font size
-#: src/states_screens/options/options_screen_ui.cpp:134
+#: src/states_screens/options/options_screen_ui.cpp:136
 msgid "Large"
 msgstr "Grande"
 
 #. I18N: In the UI options, Very large font size
-#: src/states_screens/options/options_screen_ui.cpp:136
+#: src/states_screens/options/options_screen_ui.cpp:138
 msgid "Very large"
 msgstr "Muito grande"
 
 #. I18N: custom camera setting
 #. I18N: custom video settings
-#: src/states_screens/options/options_screen_ui.cpp:357
+#: src/states_screens/options/options_screen_ui.cpp:359
 #: src/states_screens/options/options_screen_video.cpp:489
-#: src/states_screens/options/options_screen_video.cpp:521
+#: src/states_screens/options/options_screen_video.cpp:520
 msgid "Custom"
 msgstr "Personalizado"
 
 #. I18N: In the UI options, splitscreen_method position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:361
+#: src/states_screens/options/options_screen_ui.cpp:363
 msgid "Drone chase"
 msgstr "Perseguição com drone"
 
-#: src/states_screens/options/options_screen_ui.cpp:529
+#: src/states_screens/options/options_screen_ui.cpp:533
 msgid ""
 "Speedrun mode can only be enabled if the game has not been closed since the launch of the story mode.\n"
 "\n"
@@ -5670,82 +5672,82 @@ msgid "Vsync will not work if your drivers don't support it."
 msgstr "A sincronização vertical não funcionará se os drivers não forem compatíveis. "
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:556
+#: src/states_screens/options/options_screen_video.cpp:555
 #, c-format
 msgid "Particles Effects: %s"
 msgstr "Efeitos de Partículas: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:562
+#: src/states_screens/options/options_screen_video.cpp:561
 #, c-format
 msgid "Animated Characters: %s"
 msgstr "Personagens Animados: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:565
+#: src/states_screens/options/options_screen_video.cpp:564
 #, c-format
 msgid "Dynamic lights: %s"
 msgstr "Luzes dinâmicas: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:568
+#: src/states_screens/options/options_screen_video.cpp:567
 #, c-format
 msgid "Light scattering: %s"
 msgstr "Dispersão de Luz: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:571
+#: src/states_screens/options/options_screen_video.cpp:570
 #, c-format
 msgid "Anti-aliasing: %s"
 msgstr "Anti-serrilhado: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:574
+#: src/states_screens/options/options_screen_video.cpp:573
 #, c-format
 msgid "Ambient occlusion: %s"
 msgstr "Oclusão ambiente (AO): %s"
 
-#: src/states_screens/options/options_screen_video.cpp:578
+#: src/states_screens/options/options_screen_video.cpp:577
 #, c-format
 msgid "Shadows: %s"
 msgstr "Sombras: %s"
 
-#: src/states_screens/options/options_screen_video.cpp:580
+#: src/states_screens/options/options_screen_video.cpp:579
 #, c-format
 msgid "Shadows: %i"
 msgstr "Sombras: %i"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:583
+#: src/states_screens/options/options_screen_video.cpp:582
 #, c-format
 msgid "Bloom: %s"
 msgstr "Brilho: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:587
+#: src/states_screens/options/options_screen_video.cpp:586
 #, c-format
 msgid "Glow (outlines): %s"
 msgstr "Aura: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:591
+#: src/states_screens/options/options_screen_video.cpp:590
 #, c-format
 msgid "Light shaft (God rays): %s"
 msgstr "Raios de Deus: %s"
 
-#: src/states_screens/options/options_screen_video.cpp:596
+#: src/states_screens/options/options_screen_video.cpp:595
 #, c-format
 msgid "Rendered image quality: %s"
 msgstr "Qualidade da imagem renderizada: 1%s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:615
+#: src/states_screens/options/options_screen_video.cpp:614
 #, c-format
 msgid "Motion blur: %s"
 msgstr "Motion blur: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:619
+#: src/states_screens/options/options_screen_video.cpp:618
 #, c-format
 msgid "Depth of field: %s"
 msgstr "Produndidade de campo (DoF): %s"
@@ -5836,7 +5838,7 @@ msgstr "Siga o líder!"
 msgid "Top %i"
 msgstr "Os %i Melhores"
 
-#: src/states_screens/race_gui.cpp:442
+#: src/states_screens/race_gui.cpp:444
 msgid "Challenge Failed"
 msgstr "Desafio Fracassado"
 
@@ -6129,3 +6131,67 @@ msgstr "Note que se você conseguir derrapar durante vários segundos, você rec
 #: ../stk-assets/tracks/tutorial/scripting.as:164
 msgid "You are now ready to race. Good luck!"
 msgstr "Você está pronto para correr. Boa sorte!"
+
+#. I18N: Generic name in desktop file entry, summary in AppData and short
+#. description in Google Play
+#: supertuxkart.desktop:4 supertuxkart.appdata.xml:6
+msgid "A 3D open-source kart racing game"
+msgstr "Um jogo de corrida de kart 3D de código aberto"
+
+#. I18N: Keywords in desktop entry, translators please keep it separated with
+#. semicolons
+#: supertuxkart.desktop:11
+msgid "tux;game;race;"
+msgstr "tux;jogo;corrida;"
+
+#: supertuxkart.appdata.xml:8
+msgid ""
+"Karts. Nitro. Action! SuperTuxKart is a 3D open-source arcade racer with a "
+"variety of characters, tracks, and modes to play. Our aim is to create a "
+"game that is more fun than realistic, and provide an enjoyable experience "
+"for all ages."
+msgstr "Karts. Nitro. Ação! SuperTuxKart é um jogo de corrida 3D de código aberto com uma variedade de personagens, pistas e modos de jogo. Nosso objetivo é criar um jogo que seja mais divertido do que realista, e providenciar uma experiência agradável para todas as idades."
+
+#: supertuxkart.appdata.xml:11
+msgid ""
+"Discover the mystery of an underwater world, or drive through the jungles of"
+" Val Verde and visit the famous Cocoa Temple. Race underground or in a "
+"spaceship, through a rural farmland or a strange alien planet. Or rest under"
+" the palm trees on the beach, watching the other karts overtake you. But "
+"don't eat the bananas! Watch for bowling balls, plungers, bubble gum, and "
+"cakes thrown by your opponents."
+msgstr "Descubra os mistérios de um mundo subaquático, ou dirija pelas selvas de Val Verde e visite o famoso Templo do Cacau. Corra pelo subsolo ou em uma nave espacial, através de uma fazenda rural ou um estranho planeta alienígena. Ou descanse sob as palmeiras da praia, vendo os outros karts ultrapassarem você. Mas não coma as bananas! Preste atenção nas bolas de boliche, desentupidores, chicletes e bolos lançados pelos seus oponentes."
+
+#: supertuxkart.appdata.xml:14
+msgid ""
+"You can do a single race against other karts, compete in one of several "
+"Grand Prix, try to beat the high score in time trials on your own, play "
+"battle mode against the computer or your friends, and more! For a greater "
+"challenge, race online against players from all over the world and prove "
+"your racing skills!"
+msgstr "Você pode participar de corridas únicas com outros karts, competir em vários campeonatos, tentar bater a pontuação mais alta em corridas contra o relógio, jogar em arenas de batalha contra bots ou seus amigos, e muito mais! Se você quer um desafio maior, corra online contra outros jogadores de todo o mundo e mostre suas habilidades nas corridas!"
+
+#: supertuxkart.appdata.xml:17
+msgid "This game is free and without ads."
+msgstr "Este jogo é gratuito e sem anúncios."
+
+#: supertuxkart.appdata.xml:20
+msgid ""
+"This is an unstable version of SuperTuxKart that contains latest "
+"improvements. It is released mainly for testing, to make stable STK as good "
+"as possible."
+msgstr "Esta é uma versão instável do SuperTuxKart que contém as melhorias mais recentes. É lançada principalmente para testes, para tornar o STK estável o melhor possível."
+
+#: supertuxkart.appdata.xml:23
+msgid ""
+"This version can be installed in parallel with the stable version on the "
+"device."
+msgstr "Esta versão pode ser instalada em paralelo com a versão estável no dispositivo."
+
+#: supertuxkart.appdata.xml:26
+msgid "If you need more stability, consider using the stable version: %s"
+msgstr "Se você preferir mais estabilidade, considere usar a versão estável: %s"
+
+#: supertuxkart.appdata.xml:44
+msgid "SuperTuxKart Team"
+msgstr "Equipe SuperTuxKart"

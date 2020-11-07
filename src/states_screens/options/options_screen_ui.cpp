@@ -41,6 +41,8 @@
 #include "guiengine/widgets/spinner_widget.hpp"
 #include "guiengine/widget.hpp"
 #include "io/file_manager.hpp"
+#include "items/powerup_manager.hpp"
+#include "modes/world.hpp"
 #include "online/request_manager.hpp"
 #include "states_screens/dialogs/message_dialog.hpp"
 #include "states_screens/main_menu_screen.hpp"
@@ -465,6 +467,8 @@ void OptionsScreenUI::eventCallback(Widget* widget, const std::string& name, con
         GUIEngine::SpinnerWidget* minimap_options = getWidget<GUIEngine::SpinnerWidget>("minimap");
         assert( minimap_options != NULL );
         UserConfigParams::m_minimap_display = minimap_options->getValue();
+        if (World::getWorld())
+            World::getWorld()->getRaceGUI()->recreateGUI();
     }
     else if (name == "font_size")
     {
@@ -610,6 +614,9 @@ void OptionsScreenUI::reloadGUIEngine()
     if (reload_skin)
     {
         irr_driver->setMaxTextureSize();
+        delete powerup_manager;
+        powerup_manager = new PowerupManager();
+        powerup_manager->loadPowerupsModels();
     }
     OptionsScreenUI::getInstance()->m_reload_option = nullptr;
 }   // reloadGUIEngine

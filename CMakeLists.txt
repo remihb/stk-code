@@ -175,14 +175,14 @@ endif()
 
 # Build the Bullet physics library
 add_subdirectory("${PROJECT_SOURCE_DIR}/lib/bullet")
-include_directories("${PROJECT_SOURCE_DIR}/lib/bullet/src")
+include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/bullet/src")
 
-if(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "BSD")
+if(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "BSD" OR CMAKE_SYSTEM_NAME MATCHES "DragonFly")
     set(LIBRESOLV_LIBRARY)
 elseif (HAIKU)
     find_library(LIBRESOLV_LIBRARY NAMES network socket)
 else()
-   find_library(LIBRESOLV_LIBRARY NAMES resolv libresolv)
+    find_library(LIBRESOLV_LIBRARY NAMES resolv libresolv)
 endif()
 
 # Find system ENet library or build it if missing
@@ -199,7 +199,7 @@ if(ENET_FOUND AND NOT USE_IPV6)
 else()
     # Fallback to built-in version
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/enet")
-    include_directories("${PROJECT_SOURCE_DIR}/lib/enet/include")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/enet/include")
     set(ENET_LIBRARIES "enet")
 endif()
 
@@ -209,7 +209,7 @@ if (APPLE AND NOT IOS)
     find_path(GLEW_INCLUDEDIR NAMES GL/glew.h glew.h PATHS)
     if (NOT GLEW_LIBRARY OR NOT GLEW_INCLUDEDIR)
         add_subdirectory("${PROJECT_SOURCE_DIR}/lib/glew")
-        include_directories("${PROJECT_SOURCE_DIR}/lib/glew/include")
+        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/glew/include")
         set(GLEW_LIBRARIES "glew")
     else()
         set(GLEW_LIBRARIES ${GLEW_LIBRARY})
@@ -227,7 +227,7 @@ elseif(NOT USE_GLES2 AND NOT SERVER_ONLY)
     else()
         # Fallback to built-in version silently
         add_subdirectory("${PROJECT_SOURCE_DIR}/lib/glew")
-        include_directories("${PROJECT_SOURCE_DIR}/lib/glew/include")
+        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/glew/include")
         set(GLEW_LIBRARIES "glew")
     endif()
 endif()
@@ -261,7 +261,9 @@ endif()
 
 if(NOT SERVER_ONLY)
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/graphics_utils")
-    include_directories("${PROJECT_SOURCE_DIR}/lib/graphics_utils")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/graphics_utils")
+    add_subdirectory("${PROJECT_SOURCE_DIR}/lib/tinygettext")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/tinygettext/include")
 endif()
 
 # Libmcpp
@@ -269,7 +271,7 @@ find_library(MCPP_LIBRARY NAMES mcpp libmcpp)
 find_path(MCPP_INCLUDEDIR NAMES mcpp_lib.h PATHS)
 if (NOT MCPP_LIBRARY OR NOT MCPP_INCLUDEDIR)
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/mcpp")
-    include_directories("${PROJECT_SOURCE_DIR}/lib/mcpp")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/mcpp")
     SET(MCPP_LIBRARY mcpp)
     message(STATUS "System libmcpp not found, use the bundled one.")
 else()
@@ -284,7 +286,7 @@ if(NOT SERVER_ONLY)
     endif()
     if (NOT SQUISH_LIBRARY OR NOT SQUISH_INCLUDEDIR)
         add_subdirectory("${PROJECT_SOURCE_DIR}/lib/libsquish")
-        include_directories("${PROJECT_SOURCE_DIR}/lib/libsquish")
+        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/libsquish")
         SET(SQUISH_LIBRARY squish)
     else()
         include_directories("${SQUISH_INCLUDEDIR}")
@@ -303,11 +305,17 @@ if (NOT SERVER_ONLY)
         include_directories("${SDL2_INCLUDEDIR}")
         MESSAGE(STATUS "Use system SDL2: ${SDL2_LIBRARY}")
     endif()
+    # DirectFB. Necessary if system SDL2 is built with DirectFB support.
+    find_path(DIRECTFB_INCLUDEDIR NAMES directfb.h directfb++.h PATH_SUFFIXES directfb include/directfb include PATHS)
+    if (DIRECTFB_INCLUDEDIR)
+        include_directories("${DIRECTFB_INCLUDEDIR}")
+        message(STATUS "Adding DirectFB include directories for DirectFB support in SDL2")
+    endif()
 endif()
 
 # Build the irrlicht library
 add_subdirectory("${PROJECT_SOURCE_DIR}/lib/irrlicht")
-include_directories("${PROJECT_SOURCE_DIR}/lib/irrlicht/include")
+include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/irrlicht/include")
 
 # Build the Wiiuse library
 # Note: wiiuse MUST be declared after irrlicht, since otherwise
@@ -326,7 +334,7 @@ if(USE_WIIUSE)
         if(WIIUSE_BUILD)
             add_subdirectory("${PROJECT_SOURCE_DIR}/lib/wiiuse")
         endif()
-        include_directories("${PROJECT_SOURCE_DIR}/lib/wiiuse/src")
+        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/wiiuse/src")
         set(WIIUSE_LIBRARIES "wiiuse" "bluetooth")
     endif()
 endif()
@@ -354,7 +362,7 @@ if(USE_SYSTEM_ANGELSCRIPT)
     endif()
 else()
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/angelscript/projects/cmake")
-    include_directories("${PROJECT_SOURCE_DIR}/lib/angelscript/include")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/angelscript/include")
     set(Angelscript_LIBRARIES angelscript)
 endif()
 
@@ -374,7 +382,7 @@ endif()
 if (NOT SERVER_ONLY)
     # SheenBidi
     add_subdirectory("${PROJECT_SOURCE_DIR}/lib/sheenbidi")
-    include_directories("${PROJECT_SOURCE_DIR}/lib/sheenbidi/Headers")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/sheenbidi/Headers")
     SET(SHEENBIDI_LIBRARY sheenbidi)
 
     # Freetype
@@ -421,7 +429,7 @@ if(USE_SQLITE3)
     find_path(SQLITE3_INCLUDEDIR NAMES sqlite3.h PATHS)
     if (NOT SQLITE3_LIBRARY OR NOT SQLITE3_INCLUDEDIR)
 #        add_subdirectory("${PROJECT_SOURCE_DIR}/lib/sqlite3")
-#        include_directories("${PROJECT_SOURCE_DIR}/lib/sqlite3")
+#        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/sqlite3")
 #        SET(SQLITE3_LIBRARY sqlite3)
         set(USE_SQLITE3 OFF CACHE BOOL "Use sqlite to manage server stats and ban list." FORCE)
         message(WARNING "Sqlite3 not found, disable advanced server management.")
@@ -652,7 +660,8 @@ if(NOT SERVER_ONLY)
         ${HARFBUZZ_LIBRARY}
         ${SDL2_LIBRARY}
         ${SHEENBIDI_LIBRARY}
-        graphics_utils)
+        graphics_utils
+        tinygettext)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -738,6 +747,19 @@ if(MINGW)
     endif()
 endif()
 
+
+# Find LibGamerzilla library or build it if missing
+if (NOT APPLE)
+    include(FindPkgConfig)
+    pkg_search_module(GAMERZILLA OPTIONAL gamerzilla)
+
+    if (GAMERZILLA_LIBRARIES)
+        message(STATUS "Gamerzilla found")
+        include_directories(${GAMERZILLA_INCLUDE_DIRS})
+        target_link_libraries(supertuxkart ${GAMERZILLA_LIBRARIES})
+        add_definitions(-DGAMERZILLA)
+    endif()
+endif()
 
 # ==== Checking if data folder exists ====
 if(NOT IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data)

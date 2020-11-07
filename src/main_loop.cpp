@@ -151,6 +151,15 @@ extern "C" void resume_mainloop()
 #endif
 
 //-----------------------------------------------------------------------------
+extern "C" void reset_network_body()
+{
+    // In windows the rendering is paused when out focus, which pauses the
+    // smooth timer
+    if (World::getWorld() && RewindManager::exists())
+        RewindManager::get()->resetSmoothNetworkBody();
+}  // reset_network_body
+
+//-----------------------------------------------------------------------------
 /** Returns the current dt, which guarantees a limited frame rate. If dt is
  *  too low (the frame rate too high), the process will sleep to reach the
  *  maximum frame rate.
@@ -287,10 +296,8 @@ float MainLoop::getLimitedDt()
 #else
         const int max_fps = (irr_driver->isRecording() &&
                              UserConfigParams::m_limit_game_fps )
-                          ? UserConfigParams::m_record_fps 
-                          : ( StateManager::get()->throttleFPS() 
-                              ? 60 
-                              : UserConfigParams::m_max_fps     );
+                           ? UserConfigParams::m_record_fps 
+                           : UserConfigParams::m_max_fps;
 #endif
         const int current_fps = (int)(1000.0f / dt);
         if (!m_throttle_fps || current_fps <= max_fps ||

@@ -1400,8 +1400,13 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
                 Online::RequestManager::m_disable_polling = true;
                 // For server we assume it is an IPv4 one, because if it fails
                 // to detect the server won't start at all
-                NetworkConfig::get()->setIPType(NetworkConfig::IP_V4);
-                NetworkConfig::get()->detectIPType();
+                if (UserConfigParams::m_default_ip_type == NetworkConfig::IP_NONE)
+                {
+                    NetworkConfig::get()->setIPType(NetworkConfig::IP_V4);
+                    NetworkConfig::get()->queueIPDetection();
+                }
+                // Longer timeout for server creation
+                NetworkConfig::get()->getIPDetectionResult(4000);
                 NetworkConfig::get()->setIsWAN();
                 NetworkConfig::get()->setIsPublicServer();
                 ServerConfig::loadServerLobbyFromConfig();
@@ -1906,13 +1911,12 @@ void askForInternetPermission()
 
     MessageDialog *dialog =
     new MessageDialog(_("SuperTuxKart may connect to a server "
-        "to download add-ons and notify you of updates. We also collect "
-        "anonymous hardware statistics to help with the development of STK. "
-        "Please read our privacy policy at http://privacy.supertuxkart.net. "
+        "to download add-ons and notify you of updates. "
+        "Please read our privacy policy at https://supertuxkart.net/Privacy. "
         "Would you like this feature to be enabled? (To change this setting "
         "at a later time, go to options, select tab "
         "'General', and edit \"Connect to the "
-        "Internet\" and \"Send anonymous HW statistics\")."),
+        "Internet\")."),
         MessageDialog::MESSAGE_DIALOG_YESNO,
         new ConfirmServer(), true, true, 0.85f, 0.85f);
 

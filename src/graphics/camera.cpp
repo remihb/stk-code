@@ -68,7 +68,7 @@ Camera* Camera::createCamera(AbstractKart* kart, const int index)
 // ----------------------------------------------------------------------------
 /** Creates a camera of the specified type, but does not add it to the list
  *  of all cameras. This is a helper function for other static functions.
- *  \paran index Index this camera has in the list of all cameras.
+ *  \param index Index this camera has in the list of all cameras.
  *  \param type The camera type of the camera to create.
  *  \param kart To which kart the camera is attached (NULL if a free camera).
  */
@@ -223,7 +223,7 @@ Camera::Mode Camera::getMode()
 }   // getMode
 
 // ----------------------------------------------------------------------------
-/** Returns the last kwown mode of the camera.
+/** Returns the last known mode of the camera.
  */
 Camera::Mode Camera::getPreviousMode()
 {
@@ -262,7 +262,7 @@ void Camera::reset()
 }   // reset
 
 //-----------------------------------------------------------------------------
-/** Saves the current kart position as initial starting position for the
+/** Saves the current kart position as the initial starting position for the
  *  camera.
  */
 void Camera::setInitialTransform()

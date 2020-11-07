@@ -12,8 +12,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: SuperTuxKart\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-07-29 01:02+0800\n"
-"PO-Revision-Date: 2020-08-01 13:34+0000\n"
+"POT-Creation-Date: 2020-09-21 09:33+0800\n"
+"PO-Revision-Date: 2020-10-06 20:38+0000\n"
 "Last-Translator: ToMáš Marný\n"
 "Language-Team: Czech (http://www.transifex.com/supertuxkart/supertuxkart/language/cs/)\n"
 "MIME-Version: 1.0\n"
@@ -793,6 +793,7 @@ msgstr "Herní režim"
 #. I18N: Multiplayer game mode
 #. I18N: Game mode
 #: src/network/server_config.cpp:260 src/race/race_manager.cpp:1188
+#: supertuxkart.appdata.xml:33
 msgid "Normal Race"
 msgstr "Normální závod"
 
@@ -809,7 +810,7 @@ msgstr "Závod na čas"
 #. I18N: Multiplayer game mode
 #. I18N: ./data/gui/screens/online/create_server.stkgui
 #. I18N: Multiplayer game mode
-#: src/states_screens/race_setup_screen.cpp:112
+#: src/states_screens/race_setup_screen.cpp:112 supertuxkart.appdata.xml:37
 msgid "Battle"
 msgstr "Bitva"
 
@@ -819,6 +820,7 @@ msgstr "Bitva"
 #. I18N: Multiplayer game mode
 #. I18N: Game mode
 #: src/network/server_config.cpp:264 src/race/race_manager.cpp:1202
+#: supertuxkart.appdata.xml:41
 msgid "Soccer"
 msgstr "Fotbal"
 
@@ -1007,7 +1009,7 @@ msgstr "Nainstalováno"
 #. I18N: track group
 #. I18N: In the UI options,litscreen_method in the race UI
 #: src/states_screens/grand_prix_editor_screen.cpp:335
-#: src/states_screens/options/options_screen_ui.cpp:359
+#: src/states_screens/options/options_screen_ui.cpp:361
 msgid "Standard"
 msgstr "Standardní"
 
@@ -1038,7 +1040,7 @@ msgstr "Zásuvné moduly"
 #: src/states_screens/addons_screen.cpp:135
 #: src/states_screens/arenas_screen.cpp:74
 #: src/states_screens/easter_egg_screen.cpp:137
-#: src/states_screens/edit_track_screen.cpp:146
+#: src/states_screens/edit_track_screen.cpp:111
 #: src/states_screens/gp_info_screen.cpp:74
 #: src/states_screens/grand_prix_editor_screen.cpp:334
 #: src/states_screens/kart_selection.cpp:309
@@ -2031,8 +2033,8 @@ msgstr "Hudba"
 #. I18N: in the graphical options tooltip;
 #. indicates a graphical feature is enabled
 #: src/states_screens/dialogs/custom_video_settings.cpp:66
-#: src/states_screens/options/options_screen_video.cpp:538
-#: src/states_screens/options/options_screen_video.cpp:611
+#: src/states_screens/options/options_screen_video.cpp:537
+#: src/states_screens/options/options_screen_video.cpp:610
 msgid "Enabled"
 msgstr "Zapnuto"
 
@@ -2171,12 +2173,12 @@ msgstr "Zobrazit bonusy ostatních motokár"
 #. I18N: ./data/gui/screens/options_ui.stkgui
 #. I18N: In the ui settings
 msgid "Enable the story mode timer"
-msgstr ""
+msgstr "Zapnout odpočet režimu příběhu"
 
 #. I18N: ./data/gui/screens/options_ui.stkgui
 #. I18N: In the ui settings
 msgid "Enable the speedrun timer"
-msgstr ""
+msgstr "Zapnout rychlostní odpočet"
 
 #. I18N: ./data/gui/screens/options_video.stkgui
 #. I18N: In the video settings
@@ -2715,14 +2717,14 @@ msgid "New kart '%s' now available"
 msgstr "Nová motokára '%s' nyní k dispozici"
 
 #: src/challenges/story_mode_timer.cpp:281
-#: src/states_screens/options/options_screen_ui.cpp:300
+#: src/states_screens/options/options_screen_ui.cpp:302
 msgid ""
 "Speedrun mode disabled. It can only be enabled if the game has not been closed since the launch of the story mode.\n"
 "\n"
 "Closing the game before the story mode's completion invalidates the timer.\n"
 "\n"
 "To use the speedrun mode, please use a new profile."
-msgstr ""
+msgstr "Rychlostní režim deaktivován. Lze jej aktivovat pouze pokud hra nebyla ukončena od spuštění režimu příběhu.\n\nUkončení hry před dokončením režimu příběhu zneplatní odpočet.\n\nChcete-li použít rychlostní režim, použijte nový profil."
 
 #. I18N: Name of first guest player (without number)
 #: src/config/player_manager.cpp:392
@@ -2766,12 +2768,12 @@ msgid "FPS: %d/%d/%d - %d KTris, Ping: %dms"
 msgstr "FPS: %d/%d/%d - %d tisíc trojúhelníků, ping: %d ms"
 
 #. I18N: Tip shown in gui for giving player hints
-#: src/guiengine/engine.cpp:1392 src/states_screens/race_result_gui.cpp:154
+#: src/guiengine/engine.cpp:1432 src/states_screens/race_result_gui.cpp:154
 #, c-format
 msgid "Tip: %s"
 msgstr "Tip: %s"
 
-#: src/guiengine/engine.cpp:1436
+#: src/guiengine/engine.cpp:1476
 msgid "Loading"
 msgstr "Načítání"
 
@@ -2797,7 +2799,7 @@ msgstr "Nitro efektivita"
 #: src/guiengine/widgets/player_kart_widget.cpp:758
 #: src/karts/controller/local_player_controller.cpp:446
 #: src/karts/controller/player_controller.cpp:413
-#: src/network/protocols/client_lobby.cpp:817
+#: src/network/protocols/client_lobby.cpp:824
 #: src/states_screens/dialogs/splitscreen_player_dialog.cpp:121
 #: src/states_screens/race_result_gui.cpp:1421
 #: src/states_screens/race_result_gui.cpp:1482
@@ -3407,12 +3409,12 @@ msgstr "Levý spouštěč"
 msgid "Right trigger"
 msgstr "Pravý spouštěč"
 
-#: src/input/input_manager.cpp:985
+#: src/input/input_manager.cpp:989
 #, c-format
 msgid "Ignoring '%s'. You needed to join earlier to play!"
 msgstr "„%s“ je ignorováno. Abyste se mohli zúčastnit, je třeba se do hry připojit dříve!"
 
-#: src/input/input_manager.cpp:1022
+#: src/input/input_manager.cpp:1026
 msgid "Only the Game Master may act at this point!"
 msgstr "V tomto okamžiku může jednat pouze hráč zakládající hru!"
 
@@ -3470,12 +3472,12 @@ msgid "You finished the race!"
 msgstr "Dokončili jste závod!"
 
 #. I18N: Message shown in game to tell player left the game in network
-#: src/karts/kart_rewinder.cpp:126 src/network/protocols/client_lobby.cpp:1115
+#: src/karts/kart_rewinder.cpp:126 src/network/protocols/client_lobby.cpp:1122
 #, c-format
 msgid "%s left the game."
 msgstr "%s opustil(a) hru."
 
-#: src/main.cpp:1888
+#: src/main.cpp:1913
 msgid ""
 "SuperTuxKart may connect to a server to download add-ons and notify you of "
 "updates. We also collect anonymous hardware statistics to help with the "
@@ -3486,16 +3488,16 @@ msgid ""
 "statistics\")."
 msgstr "SuperTuxKart se může připojit k serveru pro stahování zásuvných modulů a upozornit vás o aktualizacích. Také shromažďujeme anonymní statistiky ohledně parametrů počítače za účelem pomoci s rozvojem STK. Přečtěte si prosím naše zásady ochrany osobních údajů na http://privacy.supertuxkart.net. Chtěli byste tuto funkci povolit? (Budete-li chtít změnit toto nastavení později, přejděte na Možnosti, zvolte záložku 'Obecné', a upravte volby \"Připojit k Internetu\" a \"Odesílat anonymní statistiky ohledně hardwaru\")."
 
-#: src/main.cpp:2169
+#: src/main.cpp:2194
 msgid "Your screen resolution is too low to run STK."
 msgstr "Vaše rozlišení obrazovky je příliš nízké pro spuštění STK."
 
-#: src/main.cpp:2204
+#: src/main.cpp:2229
 msgid ""
 "Your driver version is too old. Please install the latest video drivers."
 msgstr "Ovladač grafické karty, který je nyní používán na tomto systému, je zastaralý. Nainstalujte jeho nejnovější verzi."
 
-#: src/main.cpp:2222
+#: src/main.cpp:2247
 #, c-format
 msgid ""
 "Your graphics driver appears to be very old. Please check if an update is "
@@ -3503,7 +3505,7 @@ msgid ""
 "game will likely still run, but in a reduced-graphics mode."
 msgstr "Váš grafický ovladač se zdá být velmi starý. Zkontrolujte, zda je k dispozici aktualizace. SuperTuxKart doporučuje ovladač podporující %s nebo lepší. Hra pravděpodobně ještě poběží, ale v redukovaném grafickém režimu."
 
-#: src/main_loop.cpp:468 src/network/protocols/client_lobby.cpp:102
+#: src/main_loop.cpp:477 src/network/protocols/client_lobby.cpp:109
 msgid "Server connection timed out."
 msgstr "Časový limit připojení k serveru vypršel."
 
@@ -3590,58 +3592,58 @@ msgstr[1] "Vznikly %i náhradní pneumatiky pro motokáru!"
 msgstr[2] "Vzniklo %i náhradních pneumatik pro motokáru!"
 msgstr[3] "Vzniklo %i náhradních pneumatik pro motokáru!"
 
-#: src/modes/world.cpp:1369
+#: src/modes/world.cpp:1371
 msgid "You have been eliminated!"
 msgstr "Byli jste vyřazeni!"
 
-#: src/modes/world.cpp:1376
+#: src/modes/world.cpp:1378
 #, c-format
 msgid "'%s' has been eliminated."
 msgstr "„%s“ byl vyřazen."
 
-#: src/network/protocols/client_lobby.cpp:103
+#: src/network/protocols/client_lobby.cpp:110
 msgid "Server has been shut down."
 msgstr "Server byl vypnut."
 
-#: src/network/protocols/client_lobby.cpp:104
+#: src/network/protocols/client_lobby.cpp:111
 msgid "You were kicked from the server."
 msgstr "Byli jste vykopnutí ze serveru."
 
-#: src/network/protocols/client_lobby.cpp:106
+#: src/network/protocols/client_lobby.cpp:113
 msgid "You were kicked: Ping too high."
 msgstr "Byli jste vykopnuti: Příliš vysoký ping."
 
-#: src/network/protocols/client_lobby.cpp:255
-#: src/network/protocols/client_lobby.cpp:857
+#: src/network/protocols/client_lobby.cpp:262
+#: src/network/protocols/client_lobby.cpp:864
 msgid "Bad network connection is detected."
 msgstr "Bylo zjištěno špatné připojení k síti."
 
-#: src/network/protocols/client_lobby.cpp:420
-#: src/network/protocols/server_lobby.cpp:3636
+#: src/network/protocols/client_lobby.cpp:427
+#: src/network/protocols/server_lobby.cpp:3792
 msgid "Bot"
 msgstr ""
 
-#: src/network/protocols/client_lobby.cpp:590
+#: src/network/protocols/client_lobby.cpp:597
 #, c-format
 msgid "%s disconnected."
 msgstr "%s odpojen."
 
 #. I18N: Message shown in network lobby to tell user that
 #. player name is clickable
-#: src/network/protocols/client_lobby.cpp:621
+#: src/network/protocols/client_lobby.cpp:628
 msgid ""
 "Press player name in the list for player management and ranking information."
 msgstr "Stiskněte jméno hráče v seznamu pro správu hráčů a informace o hodnocení."
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:680
+#: src/network/protocols/client_lobby.cpp:687
 #, c-format
 msgid "Server name: %s"
 msgstr "Název serveru: %s"
 
 #. I18N: In the networking lobby
 #. I18N: In server info dialog
-#: src/network/protocols/client_lobby.cpp:688
+#: src/network/protocols/client_lobby.cpp:695
 #: src/states_screens/dialogs/server_info_dialog.cpp:84
 #: src/states_screens/race_result_gui.cpp:1785
 #, c-format
@@ -3649,20 +3651,20 @@ msgid "Difficulty: %s"
 msgstr "Obtížnost: %s"
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:693
+#: src/network/protocols/client_lobby.cpp:700
 #, c-format
 msgid "Max players: %d"
 msgstr "Maximálně hráčů: %d"
 
 #. I18N: In server info dialog
-#: src/network/protocols/client_lobby.cpp:706
+#: src/network/protocols/client_lobby.cpp:713
 #: src/states_screens/dialogs/server_info_dialog.cpp:88
 #, c-format
 msgid "Game mode: %s"
 msgstr "Herní režim: %s"
 
 #. I18N: In the create server screen for soccer server
-#: src/network/protocols/client_lobby.cpp:719
+#: src/network/protocols/client_lobby.cpp:726
 #: src/states_screens/dialogs/server_configuration_dialog.cpp:174
 #: src/states_screens/online/create_server_screen.cpp:242
 #: src/states_screens/track_info_screen.cpp:366
@@ -3670,7 +3672,7 @@ msgid "Time limit"
 msgstr "Limit času"
 
 #. I18N: In the create server screen for soccer server
-#: src/network/protocols/client_lobby.cpp:720
+#: src/network/protocols/client_lobby.cpp:727
 #: src/states_screens/dialogs/server_configuration_dialog.cpp:175
 #: src/states_screens/online/create_server_screen.cpp:244
 #: src/states_screens/track_info_screen.cpp:367
@@ -3678,102 +3680,102 @@ msgid "Goals limit"
 msgstr "Limit branek"
 
 #. I18N: In the networking lobby
-#: src/network/protocols/client_lobby.cpp:724
+#: src/network/protocols/client_lobby.cpp:731
 #, c-format
 msgid "Soccer game type: %s"
 msgstr "Typ fotbalové hry: %s"
 
-#: src/network/protocols/client_lobby.cpp:734
+#: src/network/protocols/client_lobby.cpp:741
 #, c-format
 msgid "Grand prix progress: %d / %d"
 msgstr "Průběh Velké ceny: %d / %d"
 
 #. I18N: Display when all players are in red or blue team, which the race
 #. will not be allowed to start
-#: src/network/protocols/client_lobby.cpp:849
+#: src/network/protocols/client_lobby.cpp:856
 msgid "All players joined red or blue team."
 msgstr "Všichni hráči se připojili k červenému nebo modrému týmu."
 
 #. I18N: Display when a player is allow to control the server
-#: src/network/protocols/client_lobby.cpp:869
+#: src/network/protocols/client_lobby.cpp:876
 msgid "You are now the owner of server."
 msgstr "Nyní jste vlastníkem serveru."
 
-#: src/network/protocols/client_lobby.cpp:912
+#: src/network/protocols/client_lobby.cpp:919
 msgid "Connection refused: Server is busy."
 msgstr "Připojení odmítnuto: Server je zaneprázdněn."
 
-#: src/network/protocols/client_lobby.cpp:917
+#: src/network/protocols/client_lobby.cpp:924
 msgid "Connection refused: You are banned from the server."
 msgstr "Připojení odmítnuto: Ze serveru jste zakázáni."
 
-#: src/network/protocols/client_lobby.cpp:931
+#: src/network/protocols/client_lobby.cpp:938
 msgid "Connection refused: Server password is incorrect."
 msgstr "Připojení odmítnuto: Heslo serveru je nesprávné."
 
-#: src/network/protocols/client_lobby.cpp:935
+#: src/network/protocols/client_lobby.cpp:942
 msgid "Connection refused: Game data is incompatible."
 msgstr "Připojení odmítnuto: Údaje hry nejsou kompatibilní."
 
-#: src/network/protocols/client_lobby.cpp:939
+#: src/network/protocols/client_lobby.cpp:946
 msgid "Connection refused: Server is full."
 msgstr "Připojení odmítnuto: Server je plný."
 
-#: src/network/protocols/client_lobby.cpp:943
+#: src/network/protocols/client_lobby.cpp:950
 msgid "Connection refused: Invalid player connecting."
 msgstr "Připojení odmítnuto: Připojení neplatného hráče."
 
-#: src/network/protocols/client_lobby.cpp:971
+#: src/network/protocols/client_lobby.cpp:978
 msgid "Failed to start the network game."
 msgstr "Nepodařilo se spustit síťovou hru."
 
 #. I18N: Error message shown if live join or spectate failed in network
-#: src/network/protocols/client_lobby.cpp:1184
+#: src/network/protocols/client_lobby.cpp:1191
 msgid "The game has ended, you can't live join or spectate anymore."
 msgstr "Hra skončila, už se nemůžete živě připojit nebo dívat."
 
 #. I18N: Error message shown if live join failed in network
-#: src/network/protocols/client_lobby.cpp:1188
+#: src/network/protocols/client_lobby.cpp:1195
 msgid "No remaining place in the arena - live join disabled."
 msgstr "Žádné zbývající místo v aréně - připojení zakázáno."
 
 #. I18N: Error message shown if only 1 player remains in network
-#: src/network/protocols/client_lobby.cpp:1192
+#: src/network/protocols/client_lobby.cpp:1199
 msgid "Only 1 player remaining, returning to lobby."
 msgstr "Zbývá pouze 1 hráč, návrat do čekárny."
 
-#: src/network/protocols/client_lobby.cpp:1198
+#: src/network/protocols/client_lobby.cpp:1205
 msgid "Server owner quit the game."
 msgstr "Vlastník serveru ukončil hru."
 
 #. I18N: Status shown to player when he will be spectating the next game
-#: src/network/protocols/client_lobby.cpp:1202
+#: src/network/protocols/client_lobby.cpp:1209
 msgid "You will be spectating the next game."
 msgstr ""
 
 #. I18N: Show when player join red team of the started game in
 #. network
-#: src/network/protocols/client_lobby.cpp:1370
+#: src/network/protocols/client_lobby.cpp:1377
 #, c-format
 msgid "%s joined the red team."
 msgstr "%s se připojil(a) k červenému týmu."
 
 #. I18N: Show when player join blue team of the started game in
 #. network
-#: src/network/protocols/client_lobby.cpp:1376
+#: src/network/protocols/client_lobby.cpp:1383
 #, c-format
 msgid "%s joined the blue team."
 msgstr "%s se připojil(a) k modrému týmu."
 
 #. I18N: Show when player join the started game in network
-#: src/network/protocols/client_lobby.cpp:1382
+#: src/network/protocols/client_lobby.cpp:1389
 #, c-format
 msgid "%s joined the game."
 msgstr "%s se připojil ke hře."
 
 #. I18N: Message shown in game to tell the player it's possible to change
 #. the camera target in spectate mode of network
-#: src/network/protocols/client_lobby.cpp:1537
+#: src/network/protocols/client_lobby.cpp:1580
 #, c-format
 msgid ""
 "Press <%s> or <%s> to change the targeted player, <%s> or <%s> for the "
@@ -3781,22 +3783,22 @@ msgid ""
 msgstr "Stiskněte <%s> nebo <%s> pro změnu zaměřeného hráče, <%s> nebo <%s> pro polohu kamery."
 
 #. I18N: Tell player he has successfully report this named player
-#: src/network/protocols/client_lobby.cpp:1553
+#: src/network/protocols/client_lobby.cpp:1596
 #, c-format
 msgid "Successfully reported %s."
 msgstr "%s úspěšně nahlášen."
 
-#: src/network/protocols/connect_to_server.cpp:77
+#: src/network/protocols/connect_to_server.cpp:222
 msgid "No quick play server available."
 msgstr "Není k dispozici žádný server rychlé hry."
 
-#: src/network/protocols/connect_to_server.cpp:373
+#: src/network/protocols/connect_to_server.cpp:372
 #, c-format
 msgid "Cannot connect to server %s."
 msgstr "Nelze se připojit k serveru %s."
 
 #. I18N: Show the failed detect port server name
-#: src/network/protocols/connect_to_server.cpp:766
+#: src/network/protocols/connect_to_server.cpp:771
 #, c-format
 msgid "Failed to detect port number for server %s."
 msgstr "Nepodařilo se zjistit číslo portu pro server %s."
@@ -4512,14 +4514,14 @@ msgstr "Rozlišení menší než 1024x768 nebo 1280x720 nejsou podporována. Ně
 #: src/states_screens/dialogs/custom_video_settings.cpp:87
 #: src/states_screens/online/create_server_screen.cpp:206
 #: src/states_screens/options/options_screen_video.cpp:226
-#: src/states_screens/options/options_screen_video.cpp:541
-#: src/states_screens/options/options_screen_video.cpp:612
+#: src/states_screens/options/options_screen_video.cpp:540
+#: src/states_screens/options/options_screen_video.cpp:611
 msgid "Disabled"
 msgstr "Zakázáno"
 
 #. I18N: if only important particles effects is enabled
 #: src/states_screens/dialogs/custom_video_settings.cpp:65
-#: src/states_screens/options/options_screen_video.cpp:543
+#: src/states_screens/options/options_screen_video.cpp:542
 msgid "Important only"
 msgstr "Pouze důležité"
 
@@ -4529,7 +4531,7 @@ msgstr "Pouze důležité"
 #: src/states_screens/dialogs/custom_video_settings.cpp:73
 #: src/states_screens/dialogs/custom_video_settings.cpp:82
 #: src/states_screens/dialogs/custom_video_settings.cpp:88
-#: src/states_screens/options/options_screen_video.cpp:550
+#: src/states_screens/options/options_screen_video.cpp:549
 msgid "Low"
 msgstr "Nízká"
 
@@ -4539,14 +4541,14 @@ msgstr "Nízká"
 #: src/states_screens/dialogs/custom_video_settings.cpp:75
 #: src/states_screens/dialogs/custom_video_settings.cpp:83
 #: src/states_screens/dialogs/custom_video_settings.cpp:89
-#: src/states_screens/options/options_screen_video.cpp:553
+#: src/states_screens/options/options_screen_video.cpp:552
 msgid "High"
 msgstr "Vysoká"
 
 #. I18N: in the graphical options tooltip;
 #. indicates the rendered image quality is very low
 #: src/states_screens/dialogs/custom_video_settings.cpp:81
-#: src/states_screens/options/options_screen_video.cpp:547
+#: src/states_screens/options/options_screen_video.cpp:546
 msgid "Very Low"
 msgstr "Velmi nízká"
 
@@ -4683,7 +4685,7 @@ msgstr "Stiskněte libovolnou klávesu…"
 
 #: src/states_screens/dialogs/race_paused_dialog.cpp:115
 #: src/states_screens/online/networking_lobby.cpp:244
-#: src/states_screens/online/networking_lobby.cpp:832
+#: src/states_screens/online/networking_lobby.cpp:836
 msgid "Chat is disabled, enable in options menu."
 msgstr "Chat vypnut, zapnete v nabídce předvoleb."
 
@@ -4917,7 +4919,7 @@ msgstr "%s (+)"
 msgid "An error occurred while trying to save your grand prix."
 msgstr "Vyskytla se chyba při pokusu uložit vaši Velkou cenu."
 
-#: src/states_screens/edit_track_screen.cpp:234
+#: src/states_screens/edit_track_screen.cpp:254
 msgid "Select a track"
 msgstr "Vyberte trať"
 
@@ -5047,7 +5049,7 @@ msgid "Locked"
 msgstr "Zamčeno"
 
 #: src/states_screens/kart_selection.cpp:1032
-#: src/states_screens/online/networking_lobby.cpp:515
+#: src/states_screens/online/networking_lobby.cpp:518
 msgid ""
 "Everyone:\n"
 "Press the 'Select' button to join the game"
@@ -5169,7 +5171,7 @@ msgstr "Počkejte prosím na konec aktuální hry, odhadovaný pokrok: %d%."
 msgid "Please wait for the current game's end."
 msgstr "Počkejte prosím na konec aktuální hry."
 
-#: src/states_screens/online/networking_lobby.cpp:484
+#: src/states_screens/online/networking_lobby.cpp:487
 #, c-format
 msgid "Game will start if there is more than %d player."
 msgid_plural "Game will start if there are more than %d players."
@@ -5180,7 +5182,7 @@ msgstr[3] "Hra začne, pokud je zde více než %d hráčů."
 
 #. I18N: In the networking lobby, display the starting timeout
 #. for owner-less server to begin a game
-#: src/states_screens/online/networking_lobby.cpp:498
+#: src/states_screens/online/networking_lobby.cpp:501
 #, c-format
 msgid ""
 "Starting after %d second, or once everyone has pressed the 'Ready' button."
@@ -5191,12 +5193,12 @@ msgstr[1] "Start začne po %d sekundách, nebo jakmile každý stiskne tlačítk
 msgstr[2] "Start začne po %d sekundách, nebo jakmile každý stiskne tlačítko „Připraveno“."
 msgstr[3] "Start začne po %d sekundách, nebo jakmile každý stiskne tlačítko „Připraveno“."
 
-#: src/states_screens/online/networking_lobby.cpp:535
+#: src/states_screens/online/networking_lobby.cpp:538
 #, c-format
 msgid "Connecting to server %s"
 msgstr "Připojení k serveru %s"
 
-#: src/states_screens/online/networking_lobby.cpp:540
+#: src/states_screens/online/networking_lobby.cpp:543
 msgid "Finding a quick play server"
 msgstr "Vyhledání serveru rychlé hry"
 
@@ -5577,81 +5579,81 @@ msgid "System Language"
 msgstr "Systémový jazyk"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:91
+#: src/states_screens/options/options_screen_ui.cpp:93
 msgid "In the bottom-left"
 msgstr "Vlevo dole"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:93
+#: src/states_screens/options/options_screen_ui.cpp:95
 msgid "On the right side"
 msgstr "Na pravé straně"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:95
+#: src/states_screens/options/options_screen_ui.cpp:97
 msgid "Hidden"
 msgstr "Skryté"
 
 #. I18N: In the UI options, minimap position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:97
+#: src/states_screens/options/options_screen_ui.cpp:99
 msgid "Centered"
 msgstr "Na středu"
 
 #. I18N: In the UI options, splitscreen_method in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:115
+#: src/states_screens/options/options_screen_ui.cpp:117
 msgid "Vertical"
 msgstr "Svisle"
 
 #. I18N: In the UI options, splitscreen_method position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:117
+#: src/states_screens/options/options_screen_ui.cpp:119
 msgid "Horizontal"
 msgstr "Vodorovně"
 
 #. I18N: In the UI options, Very small font size
-#: src/states_screens/options/options_screen_ui.cpp:128
+#: src/states_screens/options/options_screen_ui.cpp:130
 msgid "Very small"
 msgstr "Velmi malé"
 
 #. I18N: In the UI options, Small font size
-#: src/states_screens/options/options_screen_ui.cpp:130
+#: src/states_screens/options/options_screen_ui.cpp:132
 msgid "Small"
 msgstr "Malé"
 
 #. I18N: In the UI options, Medium font size
-#: src/states_screens/options/options_screen_ui.cpp:132
+#: src/states_screens/options/options_screen_ui.cpp:134
 msgid "Medium"
 msgstr "Střední"
 
 #. I18N: In the UI options, Large font size
-#: src/states_screens/options/options_screen_ui.cpp:134
+#: src/states_screens/options/options_screen_ui.cpp:136
 msgid "Large"
 msgstr "Velké"
 
 #. I18N: In the UI options, Very large font size
-#: src/states_screens/options/options_screen_ui.cpp:136
+#: src/states_screens/options/options_screen_ui.cpp:138
 msgid "Very large"
 msgstr "Velmi velké"
 
 #. I18N: custom camera setting
 #. I18N: custom video settings
-#: src/states_screens/options/options_screen_ui.cpp:357
+#: src/states_screens/options/options_screen_ui.cpp:359
 #: src/states_screens/options/options_screen_video.cpp:489
-#: src/states_screens/options/options_screen_video.cpp:521
+#: src/states_screens/options/options_screen_video.cpp:520
 msgid "Custom"
 msgstr "Vlastní"
 
 #. I18N: In the UI options, splitscreen_method position in the race UI
-#: src/states_screens/options/options_screen_ui.cpp:361
+#: src/states_screens/options/options_screen_ui.cpp:363
 msgid "Drone chase"
 msgstr "Pronásledování dronem"
 
-#: src/states_screens/options/options_screen_ui.cpp:529
+#: src/states_screens/options/options_screen_ui.cpp:533
 msgid ""
 "Speedrun mode can only be enabled if the game has not been closed since the launch of the story mode.\n"
 "\n"
 "Closing the game before the story mode's completion invalidates the timer.\n"
 "\n"
 "To use the speedrun mode, please use a new profile."
-msgstr ""
+msgstr "Rychlostní režim lze aktivovat pouze v případě, že hra nebyla ukončena od spuštění režimu příběhu.\n\nUkončení hry před dokončením režimu příběhu zneplatní odpočet\n\nChcete-li použít rychlostní režim, použijte nový profil."
 
 #. I18N: In the video options, maximum frame per second
 #: src/states_screens/options/options_screen_video.cpp:220
@@ -5682,82 +5684,82 @@ msgid "Vsync will not work if your drivers don't support it."
 msgstr "Vertikální synchronizace nebude fungovat, pokud to vaše ovladače nepodporují."
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:556
+#: src/states_screens/options/options_screen_video.cpp:555
 #, c-format
 msgid "Particles Effects: %s"
 msgstr "Částicové efekty: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:562
+#: src/states_screens/options/options_screen_video.cpp:561
 #, c-format
 msgid "Animated Characters: %s"
 msgstr "Animované postavy: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:565
+#: src/states_screens/options/options_screen_video.cpp:564
 #, c-format
 msgid "Dynamic lights: %s"
 msgstr "Dynamická světla: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:568
+#: src/states_screens/options/options_screen_video.cpp:567
 #, c-format
 msgid "Light scattering: %s"
 msgstr "Rozptyl světla: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:571
+#: src/states_screens/options/options_screen_video.cpp:570
 #, c-format
 msgid "Anti-aliasing: %s"
 msgstr "Vyhlazování hran: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:574
+#: src/states_screens/options/options_screen_video.cpp:573
 #, c-format
 msgid "Ambient occlusion: %s"
 msgstr "Zastínění okolím: %s"
 
-#: src/states_screens/options/options_screen_video.cpp:578
+#: src/states_screens/options/options_screen_video.cpp:577
 #, c-format
 msgid "Shadows: %s"
 msgstr "Stíny: %s"
 
-#: src/states_screens/options/options_screen_video.cpp:580
+#: src/states_screens/options/options_screen_video.cpp:579
 #, c-format
 msgid "Shadows: %i"
 msgstr "Stíny: %i"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:583
+#: src/states_screens/options/options_screen_video.cpp:582
 #, c-format
 msgid "Bloom: %s"
 msgstr "Bloom: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:587
+#: src/states_screens/options/options_screen_video.cpp:586
 #, c-format
 msgid "Glow (outlines): %s"
 msgstr "Záře (obrysy): %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:591
+#: src/states_screens/options/options_screen_video.cpp:590
 #, c-format
 msgid "Light shaft (God rays): %s"
 msgstr "Světelné paprsky: %s"
 
-#: src/states_screens/options/options_screen_video.cpp:596
+#: src/states_screens/options/options_screen_video.cpp:595
 #, c-format
 msgid "Rendered image quality: %s"
 msgstr "Kvalita vykreslovaného obrazu: 1%s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:615
+#: src/states_screens/options/options_screen_video.cpp:614
 #, c-format
 msgid "Motion blur: %s"
 msgstr "Pohybová neostrost: %s"
 
 #. I18N: in graphical options
-#: src/states_screens/options/options_screen_video.cpp:619
+#: src/states_screens/options/options_screen_video.cpp:618
 #, c-format
 msgid "Depth of field: %s"
 msgstr "Hloubka ostrosti: %s"
@@ -5848,7 +5850,7 @@ msgstr "Následujte vedoucího!"
 msgid "Top %i"
 msgstr "Prvních %i"
 
-#: src/states_screens/race_gui.cpp:442
+#: src/states_screens/race_gui.cpp:444
 msgid "Challenge Failed"
 msgstr "Výzva selhala"
 
@@ -6141,3 +6143,67 @@ msgstr "Všimněte si, že pokud zvládnete několik sekund řídit smykem, dost
 #: ../stk-assets/tracks/tutorial/scripting.as:164
 msgid "You are now ready to race. Good luck!"
 msgstr "Nyní jste připravení na závod. Hodně štěstí!"
+
+#. I18N: Generic name in desktop file entry, summary in AppData and short
+#. description in Google Play
+#: supertuxkart.desktop:4 supertuxkart.appdata.xml:6
+msgid "A 3D open-source kart racing game"
+msgstr "3D open source závodní hra motokár"
+
+#. I18N: Keywords in desktop entry, translators please keep it separated with
+#. semicolons
+#: supertuxkart.desktop:11
+msgid "tux;game;race;"
+msgstr "tux;hra;závod;"
+
+#: supertuxkart.appdata.xml:8
+msgid ""
+"Karts. Nitro. Action! SuperTuxKart is a 3D open-source arcade racer with a "
+"variety of characters, tracks, and modes to play. Our aim is to create a "
+"game that is more fun than realistic, and provide an enjoyable experience "
+"for all ages."
+msgstr "Motokáry. Nitro. Akce! SuperTuxKart je 3D arkádová závodní hra s otevřeným zdrojovým kódem, která nabízí různé postavy, tratě a režimy. Naším cílem je vytvořit hru, která je spíš zábavnější než realistická a poskytne příjemný zážitek všem věkovým skupinám."
+
+#: supertuxkart.appdata.xml:11
+msgid ""
+"Discover the mystery of an underwater world, or drive through the jungles of"
+" Val Verde and visit the famous Cocoa Temple. Race underground or in a "
+"spaceship, through a rural farmland or a strange alien planet. Or rest under"
+" the palm trees on the beach, watching the other karts overtake you. But "
+"don't eat the bananas! Watch for bowling balls, plungers, bubble gum, and "
+"cakes thrown by your opponents."
+msgstr "Objevte tajemství podmořského světa nebo projeďte džunglemi Val Verde a navštivte slavný kakaový chrám. Závoďte v podzemí nebo ve vesmírné lodi, přes venkovskou zemědělskou půdu nebo cizí planetu. Nebo odpočívejte pod palmami na pláži a sledujte, jak vás ostatní motokáry předjíždějí. Ale nejezte banány! Dávejte pozor na bowlingové koule, zvony, žvýkačky a dorty hozené vašimi soupeři."
+
+#: supertuxkart.appdata.xml:14
+msgid ""
+"You can do a single race against other karts, compete in one of several "
+"Grand Prix, try to beat the high score in time trials on your own, play "
+"battle mode against the computer or your friends, and more! For a greater "
+"challenge, race online against players from all over the world and prove "
+"your racing skills!"
+msgstr "Můžete si spustit samostatný závod proti jiným motokárám, zúčastnit se jedné z několika Velkých cen, pokusit se překonat vysoké skóre v závodu na čas, hrát v režimu bitvy proti počítači nebo svým přátelům a další! Pro ještě větší výzvu závoďte on-line proti hráčům z celého světa a prokažte své závodní schopnosti!"
+
+#: supertuxkart.appdata.xml:17
+msgid "This game is free and without ads."
+msgstr "Tato hra je zdarma a bez reklam."
+
+#: supertuxkart.appdata.xml:20
+msgid ""
+"This is an unstable version of SuperTuxKart that contains latest "
+"improvements. It is released mainly for testing, to make stable STK as good "
+"as possible."
+msgstr "Toto je nestabilní verze SuperTuxKart, která obsahuje nejnovější vylepšení. Je vydávána hlavně pro testování, aby byla stabilní verze SuperTuxKart co nejlepší."
+
+#: supertuxkart.appdata.xml:23
+msgid ""
+"This version can be installed in parallel with the stable version on the "
+"device."
+msgstr "Tuto verzi lze na zařízení nainstalovat paralelně se stabilní verzí."
+
+#: supertuxkart.appdata.xml:26
+msgid "If you need more stability, consider using the stable version: %s"
+msgstr "Pokud potřebujete větší stabilitu, zvažte použití stabilní verze: %s"
+
+#: supertuxkart.appdata.xml:44
+msgid "SuperTuxKart Team"
+msgstr "Tým SuperTuxKart"
