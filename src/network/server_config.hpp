@@ -551,6 +551,12 @@ namespace ServerConfig
         "soccer-tournament-rules",
         "A string specifying the match format."));
 
+    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_enforced_tracks_string
+        SERVER_CFG_DEFAULT(StringServerConfigParam("",
+        "soccer-tournament-enforced-tracks",
+        "List of tracks tournament players should have to enter "
+        "(doesn't apply to spectators)."));
+
     SERVER_CFG_PREFIX StringServerConfigParam m_incompatible_advice
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "incompatible-advice",
@@ -559,8 +565,12 @@ namespace ServerConfig
 
     SERVER_CFG_PREFIX BoolServerConfigParam m_only_host_riding
         SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "only-host-riding",
-        "A temporary feature to make others only spectate. Not ideal. "
-        "Maybe not even working."));
+        "A feature to make others only spectate."));
+
+    SERVER_CFG_PREFIX BoolServerConfigParam m_record_replays
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "record-replays",
+        "If true, normal race and time trial games are recorded into ghost "
+        "replays."));
 
     SERVER_CFG_PREFIX BoolServerConfigParam m_random_selects_addons
         SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "random-selects-addons",
@@ -599,7 +609,7 @@ namespace ServerConfig
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
         "tokens-table",
         "A table containing tokens for website authentication using "
-        "STK account only."));        
+        "STK account only."));
 #endif
 
     SERVER_CFG_PREFIX StringServerConfigParam m_power_password

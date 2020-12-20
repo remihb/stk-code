@@ -284,6 +284,8 @@ private:
 
     std::vector<std::string> m_must_have_tracks;
 
+    std::vector<std::string> m_tournament_must_have_tracks;
+
     bool m_restricting_config;
 
     bool m_inverted_config_restriction;
@@ -307,6 +309,10 @@ private:
     std::set<int> m_available_modes;
 
     std::map<std::string, std::vector<std::string>> m_tournament_player_categories;
+
+    std::set<std::string> m_tournament_displayed_categories;
+
+    std::map<std::string, std::set<std::string>> m_categories_for_player;
 
     std::set<std::string> m_tournament_red_players;
 
@@ -355,6 +361,8 @@ private:
     std::set<std::string> m_usernames_white_list;
 
     bool m_allowed_to_start;
+
+    bool m_consent_on_replays;
 
 #ifdef ENABLE_WEB_SUPPORT
     std::set<std::string> m_web_tokens;
@@ -481,6 +489,7 @@ private:
     void testBannedForIP(STKPeer* peer) const;
     void testBannedForIPv6(STKPeer* peer) const;
     void testBannedForOnlineId(STKPeer* peer, uint32_t online_id) const;
+    void getMessagesFromHost(STKPeer* peer, int online_id) const;
     void writeDisconnectInfoTable(STKPeer* peer);
     void writePlayerReport(Event* event);
     bool supportsAI();
@@ -488,11 +497,14 @@ private:
     void initTournamentPlayers();
     void changeColors();
     void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;
+    void sendStringToPeer(std::string& s, STKPeer* peer) const;
     void sendStringToAllPeers(std::string& s);
     bool canRace(std::shared_ptr<STKPeer>& peer) const;
     bool canRace(STKPeer* peer) const;
     bool hasHostRights(std::shared_ptr<STKPeer>& peer) const;
     bool hasHostRights(STKPeer* peer) const;
+    std::vector<std::string> getMissingTournamentAssets(std::shared_ptr<STKPeer>& peer) const;
+    std::vector<std::string> getMissingTournamentAssets(STKPeer* peer) const;
     void loadTracksQueueFromConfig();
     std::string getGrandPrixStandings() const;
     void loadCustomScoring();
