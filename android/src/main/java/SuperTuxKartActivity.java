@@ -64,9 +64,9 @@ public class SuperTuxKartActivity extends SDLActivity
     private STKEditText m_stk_edittext;
     private int m_bottom_y;
     // ------------------------------------------------------------------------
-    private native void saveKeyboardHeight(int height);
+    private native static void saveKeyboardHeight(int height);
     // ------------------------------------------------------------------------
-    private native void saveMovedHeight(int height);
+    private native static void saveMovedHeight(int height);
     // ------------------------------------------------------------------------
     private native static void addDNSSrvRecords(String name, int weight);
     // ------------------------------------------------------------------------
@@ -306,22 +306,6 @@ public class SuperTuxKartActivity extends SDLActivity
                 hideKeyboardNative(clear_text);
             }
         });
-    }
-    // ------------------------------------------------------------------------
-    /* Called by STK in JNI. */
-    public void openURL(final String url)
-    {
-        try
-        {
-            Uri uri = Uri.parse(url);
-            Intent i = new Intent(Intent.ACTION_VIEW, uri);
-            if (i.resolveActivity(getPackageManager()) != null)
-                startActivity(i);
-        }
-        catch (ActivityNotFoundException e)
-        {
-            e.printStackTrace();
-        }
     }
     // ------------------------------------------------------------------------
     /* Called by STK in JNI. */

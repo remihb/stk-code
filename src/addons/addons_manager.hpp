@@ -21,6 +21,7 @@
 
 #ifndef SERVER_ONLY
 
+#include <atomic>
 #include <string>
 #include <map>
 #include <memory>
@@ -60,6 +61,8 @@ private:
      * background. */
     bool m_downloaded_icons;
 
+    std::atomic_bool m_has_new_addons;
+
     void  loadInstalledAddons();
 
 public:
@@ -98,6 +101,8 @@ public:
     const Addon& getAddon(unsigned int i) { return m_addons_list.getData()[i];}
     // ------------------------------------------------------------------------
     bool hasDownloadedIcons() const { return m_downloaded_icons; }
+    // ------------------------------------------------------------------------
+    bool hasNewAddons() const { return m_has_new_addons; }
 };   // class AddonsManager
 
 extern AddonsManager *addons_manager;

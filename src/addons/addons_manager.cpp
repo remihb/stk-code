@@ -59,6 +59,7 @@ AddonsManager* addons_manager = 0;
 AddonsManager::AddonsManager() : m_addons_list(std::vector<Addon>() ),
                                  m_state(STATE_INIT)
 {
+    m_has_new_addons = false;
     m_downloaded_icons = false;
     // Clean .part file which may be left behind
     std::string addons_part = file_manager->getAddonsFile("addons.xml.part");
@@ -96,6 +97,7 @@ AddonsManager::~AddonsManager()
 void AddonsManager::init(const XMLNode *xml,
                          bool force_refresh)
 {
+    m_has_new_addons = false;
     std::string    addon_list_url("");
     StkTime::TimeType mtime(0);
     const XMLNode *include = xml->getNode("include");
@@ -185,6 +187,12 @@ void AddonsManager::initAddons(const XMLNode *xml)
             node->getName()=="arena"                                 )
         {
             Addon addon(*node);
+            if (addon.testStatus(Addon::AS_APPROVED) &&
+                addon.getDate() > UserConfigParams::m_latest_addon_time)
+            {
+                m_has_new_addons = true;
+                UserConfigParams::m_latest_addon_time = addon.getDate();
+            }
             int index = getAddonIndex(addon.getId());
 
             int stk_version=0;

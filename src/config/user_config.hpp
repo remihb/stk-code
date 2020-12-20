@@ -533,6 +533,11 @@ namespace UserConfigParams
             &m_multitouch_group,
             "Draw steering wheel on right side.") );
 
+    PARAM_PREFIX BoolUserConfigParam         m_multitouch_auto_acceleration
+            PARAM_DEFAULT( BoolUserConfigParam(false, "multitouch_auto_acceleration",
+            &m_multitouch_group,
+            "Auto acceleration for multitouch controls.") );
+
     PARAM_PREFIX IntUserConfigParam         m_multitouch_controls
             PARAM_DEFAULT( IntUserConfigParam(0, "multitouch_controls",
             &m_multitouch_group,
@@ -963,6 +968,37 @@ namespace UserConfigParams
             &m_camera_normal,
             "Focal distance (single player)"));
 
+    // ---- Saved custom camera settings
+    PARAM_PREFIX GroupUserConfigParam        m_saved_camera_settings
+            PARAM_DEFAULT( GroupUserConfigParam(
+                        "saved-camera-settings",
+                        "Saved custom camera settings for player.") );
+
+    PARAM_PREFIX FloatUserConfigParam         m_saved_camera_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(1.0, "distance",
+            &m_saved_camera_settings,
+            "Distance between kart and camera"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_saved_camera_forward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(0, "forward-up-angle",
+            &m_saved_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing forward"));
+
+    PARAM_PREFIX BoolUserConfigParam         m_saved_camera_forward_smoothing
+            PARAM_DEFAULT(  BoolUserConfigParam(true, "forward-smoothing",
+            &m_saved_camera_settings,
+            "if true, use smoothing (forward-up-angle become relative to speed) when pointing forward"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_saved_camera_backward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(5, "backward-up-angle",
+            &m_saved_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing backwards. This is usually larger than the forward-up-angle, since the kart itself otherwise obstricts too much of the view"));
+
+    PARAM_PREFIX IntUserConfigParam         m_saved_camera_fov
+            PARAM_DEFAULT(  IntUserConfigParam(80, "fov",
+            &m_saved_camera_settings,
+            "Focal distance (single player)"));
+
 
     // camera in artist mode
     PARAM_PREFIX GroupUserConfigParam        m_camera
@@ -1106,6 +1142,11 @@ namespace UserConfigParams
             PARAM_DEFAULT(  TimeUserConfigParam(0, "addon_last_updated",
                                                 &m_addon_group,
                                         "Time addon-list was updated last.") );
+
+    PARAM_PREFIX TimeUserConfigParam        m_latest_addon_time
+            PARAM_DEFAULT(  TimeUserConfigParam(0, "latest_addon_time",
+                                                &m_addon_group,
+                                        "Latest approved addon time.") );
 
     PARAM_PREFIX StringUserConfigParam      m_language
             PARAM_DEFAULT( StringUserConfigParam("system", "language",
