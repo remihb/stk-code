@@ -620,6 +620,11 @@ public:
         return m_kart_status[kart].m_ident;
     }   // getKartIdent
     // ----------------------------------------------------------------------------------------
+    const std::string& getPlayerName(int kart) const
+    {
+        return m_kart_status[kart].m_player_name;
+    }   // getKartName
+    // ----------------------------------------------------------------------------------------
     int getKartScore(int krt) const { return m_kart_status[krt].m_score; }
     // ----------------------------------------------------------------------------------------
     int getKartPrevScore(int krt) const

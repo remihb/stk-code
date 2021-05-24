@@ -308,11 +308,15 @@ private:
 
     std::set<int> m_available_modes;
 
-    std::map<std::string, std::vector<std::string>> m_tournament_player_categories;
+    std::map<std::string, std::set<std::string>> m_player_categories;
 
-    std::set<std::string> m_tournament_displayed_categories;
+    std::set<std::string> m_hidden_categories;
+
+    std::set<std::string> m_special_categories;
 
     std::map<std::string, std::set<std::string>> m_categories_for_player;
+
+    std::map<std::string, int> m_team_for_player;
 
     std::set<std::string> m_tournament_red_players;
 
@@ -348,6 +352,10 @@ private:
 
     std::map<std::string, GPScore> m_gp_scores;
 
+    std::map<int, GPScore> m_gp_team_scores;
+
+    std::vector<std::string> m_team_name;
+
     int m_tournament_game;
 
     int m_fixed_lap;
@@ -363,6 +371,10 @@ private:
     bool m_allowed_to_start;
 
     bool m_consent_on_replays;
+    
+    std::map<std::string, int> m_team_name_to_index;
+
+    bool m_shuffle_gp;
 
 #ifdef ENABLE_WEB_SUPPORT
     std::set<std::string> m_web_tokens;
@@ -494,6 +506,7 @@ private:
     void writePlayerReport(Event* event);
     bool supportsAI();
     void updateAddons();
+    void initCategories();
     void initTournamentPlayers();
     void changeColors();
     void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;

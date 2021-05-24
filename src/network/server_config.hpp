@@ -537,11 +537,12 @@ namespace ServerConfig
         "be empty or absent and can go in any order. You can use "
         "a category (#A) instead of listing all players."));
 
-    SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_players
+    SERVER_CFG_PREFIX StringServerConfigParam m_categories
         SERVER_CFG_DEFAULT(StringServerConfigParam("",
-        "soccer-tournament-players",
-        "List of tournament players with categories (teams). Use the "
-        "format #Category player1 ... playerN #Category ..."));
+        "categories",
+        "List of players with categories (teams, etc.). Use the "
+        "format #Category1 player1 ... playerN #Category2 ... "
+        "Use ## to hide the category from the player list."));
 
     SERVER_CFG_PREFIX StringServerConfigParam m_soccer_tournament_rules
         SERVER_CFG_DEFAULT(StringServerConfigParam("nochat 10 TTTTG RRBBR;"
@@ -633,6 +634,11 @@ namespace ServerConfig
         "When non-empty, stores input given by /register command in "
         "the corresponding table. Otherwise, /register command does "
         "nothing"));
+
+    SERVER_CFG_PREFIX BoolServerConfigParam m_shuffle_gp
+        SERVER_CFG_DEFAULT(BoolServerConfigParam(false, "shuffle-grand-prix-grid",
+        "If true, the GP grid is shuffled before each race, not only before "
+        "the first one."));
 
     // ========================================================================
     /** Server version, will be advanced if there are protocol changes. */

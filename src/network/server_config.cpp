@@ -349,7 +349,7 @@ void loadServerLobbyFromConfig()
         if (m_server_max_players < 9) {
             m_server_max_players = 9;
         }
-        m_voting_timeout = 15;
+        // m_voting_timeout = 15;
         m_soccer_goal_target = false;
         m_official_tracks_needed = false;
         // m_owner_less = false;
@@ -365,7 +365,7 @@ void loadServerLobbyFromConfig()
         m_live_players = true;
         m_sleeping_server = false;
         m_free_teams = true;
-        m_validating_player = true;
+        // m_validating_player = true;
         m_random_selects_addons = true;
         if (m_owner_less)
         {

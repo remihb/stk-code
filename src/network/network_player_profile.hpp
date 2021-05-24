@@ -72,6 +72,10 @@ private:
     /** 2-letter country code of player. */
     std::string m_country_code;
 
+    int m_temporary_team;
+
+    static float m_team_color[20];
+
 public:
     // ------------------------------------------------------------------------
     static std::shared_ptr<NetworkPlayerProfile>
@@ -91,6 +95,7 @@ public:
         m_handicap.store((HandicapLevel)0);
         m_local_player_id       = 0;
         m_team.store(team);
+        m_temporary_team        = -1;
         resetGrandPrixData();
     }
     // ------------------------------------------------------------------------
@@ -110,6 +115,7 @@ public:
         m_local_player_id       = local_player_id;
         m_team.store(team);
         m_country_code          = country_code;
+        m_temporary_team        = -1;
         resetGrandPrixData();
     }
     // ------------------------------------------------------------------------
@@ -137,7 +143,12 @@ public:
     /** Returns the name of this player. */
     const irr::core::stringw& getName() const         { return m_player_name; }
     // ------------------------------------------------------------------------
-    float getDefaultKartColor() const          { return m_default_kart_color; }
+    float getDefaultKartColor() const
+    {
+        if (m_temporary_team == -1)
+            return m_default_kart_color;
+        return m_team_color[m_temporary_team];
+    }
     // ------------------------------------------------------------------------
     uint32_t getOnlineId() const                        { return m_online_id; }
     // ------------------------------------------------------------------------
@@ -162,6 +173,10 @@ public:
     void setTeam(KartTeam team)                         { m_team.store(team); }
     // ------------------------------------------------------------------------
     KartTeam getTeam() const                          { return m_team.load(); }
+    // ------------------------------------------------------------------------
+    void setTemporaryTeam(int team)                { m_temporary_team = team; }
+    // ------------------------------------------------------------------------
+    int getTemporaryTeam() const                   { return m_temporary_team; }
     // ------------------------------------------------------------------------
     const std::string& getCountryCode() const        { return m_country_code; }
 };   // class NetworkPlayerProfile

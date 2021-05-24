@@ -54,6 +54,8 @@ protected:
 
     std::string m_custom_scoring_type;
 
+    bool m_shuffled;
+
 #ifdef DEBUG
     /** Used for debugging to help detect if the same kart position
      *  is used more than once. */
@@ -118,7 +120,10 @@ public:
     // ------------------------------------------------------------------------
     int getPolePoints() const;
     // ------------------------------------------------------------------------
-
+    bool isShuffled() const                              { return m_shuffled; }
+    // ------------------------------------------------------------------------
+    void setShuffled(bool value)                        { m_shuffled = value; }
+    // ------------------------------------------------------------------------
 };   // WorldWithRank
 
 #endif
