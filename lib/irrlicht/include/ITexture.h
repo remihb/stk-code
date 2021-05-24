@@ -192,11 +192,16 @@ public:
 	//! Get name of texture (in most cases this is the filename)
 	const io::SNamedPath& getName() const { return NamedPath; }
 
+	void setName(const char* name) { NamedPath = io::SNamedPath(name); }
+
 	//! return open gl texture name
-	virtual u32 getOpenGLTextureName() const = 0;
+	virtual u64 getTextureHandler() const = 0;
 
 	virtual u32 getTextureSize() const { return 0; }
 
+	virtual void updateTexture(void* data, ECOLOR_FORMAT format, u32 w, u32 h, u32 x, u32 y) {}
+
+	virtual void reload() {}
 protected:
 
 	//! Helper function, helps to get the desired texture creation format from the flags.

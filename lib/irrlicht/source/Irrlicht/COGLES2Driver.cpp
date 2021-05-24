@@ -2703,6 +2703,24 @@ namespace video
 		return Material;
 	}
 
+	void COGLES2Driver::enableScissorTest(const core::rect<s32>& r)
+	{
+		glEnable(GL_SCISSOR_TEST);
+		// The x​ and y​ is the window-space lower-left position of the scissor box,
+		// and width​ and height​ define the size of the rectangle.
+		s32 y = (s32)getCurrentRenderTargetSize().Height - r.LowerRightCorner.Y;
+			core::rect<s32> rect_reverse(r.UpperLeftCorner.X, y,
+			r.UpperLeftCorner.X + r.getWidth(),
+			y + r.getHeight());
+		glScissor(rect_reverse.UpperLeftCorner.X, rect_reverse.UpperLeftCorner.Y,
+			rect_reverse.getWidth(), rect_reverse.getHeight());
+	}
+
+	void COGLES2Driver::disableScissorTest()
+	{
+		glDisable(GL_SCISSOR_TEST);
+	}
+
 	COGLES2CallBridge* COGLES2Driver::getBridgeCalls() const
 	{
 		return BridgeCalls;
@@ -2840,7 +2858,7 @@ namespace video
 				setActiveTexture(GL_TEXTURE0 + stage);
 
 				if(Driver->CurrentTexture[stage])
-					glBindTexture(GL_TEXTURE_2D, Driver->CurrentTexture[stage]->getOpenGLTextureName());
+					glBindTexture(GL_TEXTURE_2D, Driver->CurrentTexture[stage]->getTextureHandler());
 
 				Texture[stage] = Driver->CurrentTexture[stage];
 			}

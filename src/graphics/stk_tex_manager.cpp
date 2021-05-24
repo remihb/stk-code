@@ -19,12 +19,16 @@
 #include "config/hardware_stats.hpp"
 #include "config/user_config.hpp"
 #include "graphics/central_settings.hpp"
-#include "graphics/stk_texture.hpp"
+#include "graphics/server_dummy_texture.hpp"
+#include "guiengine/engine.hpp"
 #include "io/file_manager.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/log.hpp"
 
 #include <algorithm>
+#ifndef SERVER_ONLY
+#include <ge_texture.hpp>
+#endif
 
 // ----------------------------------------------------------------------------
 STKTexManager::~STKTexManager()
@@ -33,7 +37,7 @@ STKTexManager::~STKTexManager()
 }   // ~STKTexManager
 
 // ----------------------------------------------------------------------------
-STKTexture* STKTexManager::findTextureInFileSystem(const std::string& filename,
+video::ITexture* STKTexManager::findTextureInFileSystem(const std::string& filename,
                                                    std::string* full_path)
 {
     io::path relative_path = file_manager->searchTexture(filename).c_str();
@@ -59,8 +63,7 @@ STKTexture* STKTexManager::findTextureInFileSystem(const std::string& filename,
 
 // ----------------------------------------------------------------------------
 video::ITexture* STKTexManager::getTexture(const std::string& path,
-                                           TexConfig* tc, bool no_upload,
-                                           bool create_if_unfound)
+                                std::function<void(video::IImage*)> image_mani)
 {
     if (path.empty())
     {
@@ -69,55 +72,66 @@ video::ITexture* STKTexManager::getTexture(const std::string& path,
     }
 
     auto ret = m_all_textures.find(path);
-    if (!no_upload && ret != m_all_textures.end())
+    if (ret != m_all_textures.end())
         return ret->second;
 
-    STKTexture* new_texture = NULL;
+    video::ITexture* new_texture = NULL;
     std::string full_path;
     if (path.find('/') == std::string::npos)
     {
         new_texture = findTextureInFileSystem(path, &full_path);
         if (full_path.empty())
             return NULL;
-        if (!no_upload && new_texture)
+        if (new_texture)
             return new_texture;
     }
 
-    if (create_if_unfound)
+#ifdef SERVER_ONLY
+    new_texture =
+        new ServerDummyTexture(full_path.empty() ? path : full_path);
+#else
+    if (GUIEngine::isNoGraphics())
     {
-        new_texture = new STKTexture(full_path.empty() ? path : full_path,
-            tc, no_upload);
-        if (new_texture->getOpenGLTextureName() == 0 && !no_upload)
-        {
-            const char* name = new_texture->getName().getPtr();
-            if (!m_texture_error_message.empty())
-            {
-                Log::error("STKTexManager", "%s",
-                    m_texture_error_message.c_str());
-            }
-            Log::error("STKTexManager", "Texture %s not found or invalid.",
-                name);
-            m_all_textures[name] = NULL;
-            delete new_texture;
-            return NULL;
-        }
+        new_texture =
+            new ServerDummyTexture(full_path.empty() ? path : full_path);
     }
+    else
+    {
+        new_texture =
+            GE::createTexture(full_path.empty() ? path : full_path,
+            image_mani);
+    }
+    if (new_texture->getTextureHandler() == 0)
+    {
+        const char* name = new_texture->getName().getPtr();
+        if (!m_texture_error_message.empty())
+        {
+            Log::error("STKTexManager", "%s",
+                m_texture_error_message.c_str());
+        }
+        Log::error("STKTexManager", "Texture %s not found or invalid.",
+            name);
+        m_all_textures[name] = NULL;
+        delete new_texture;
+        return NULL;
+    }
+#endif
 
-    if (create_if_unfound && !no_upload)
-        addTexture(new_texture);
+    addTexture(new_texture);
     return new_texture;
 }   // getTexture
 
 // ----------------------------------------------------------------------------
-video::ITexture* STKTexManager::addTexture(STKTexture* texture)
+video::ITexture* STKTexManager::addTexture(video::ITexture* texture)
 {
     m_all_textures[texture->getName().getPtr()] = texture;
     return texture;
 }   // addTexture
 
 // ----------------------------------------------------------------------------
-void STKTexManager::removeTexture(STKTexture* texture, bool remove_all)
+bool STKTexManager::removeTexture(video::ITexture* texture, bool remove_all)
 {
+    bool ret = false;
 #ifdef DEBUG
     std::vector<std::string> undeleted_texture;
 #endif
@@ -137,6 +151,7 @@ void STKTexManager::removeTexture(STKTexture* texture, bool remove_all)
 #endif
             p->second->drop();
             p = m_all_textures.erase(p);
+            ret = true;
         }
         else
         {
@@ -144,12 +159,15 @@ void STKTexManager::removeTexture(STKTexture* texture, bool remove_all)
         }
     }
 #ifdef DEBUG
-    if (!remove_all) return;
+    if (!remove_all) return ret;
     for (const std::string& s : undeleted_texture)
     {
         Log::error("STKTexManager", "%s undeleted!", s.c_str());
     }
 #endif
+    if (remove_all)
+        return true;
+    return ret;
 }   // removeTexture
 
 // ----------------------------------------------------------------------------
@@ -183,3 +201,29 @@ int STKTexManager::dumpTextureUsage()
     Log::info("STKTexManager", "Total %dMB", size);
     return size;
 }   // dumpTextureUsage
+
+// ----------------------------------------------------------------------------
+bool STKTexManager::hasTexture(const std::string& path)
+{
+    if (path.empty())
+    {
+        Log::error("STKTexManager", "Texture name is empty.");
+        return false;
+    }
+
+    auto ret = m_all_textures.find(path);
+    if (ret != m_all_textures.end())
+        return true;
+
+    video::ITexture* new_texture = NULL;
+    std::string full_path;
+    if (path.find('/') == std::string::npos)
+    {
+        new_texture = findTextureInFileSystem(path, &full_path);
+        if (full_path.empty())
+            return false;
+        if (new_texture)
+            return true;
+    }
+    return false;
+}   // hasTexture

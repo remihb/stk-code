@@ -131,8 +131,8 @@ KartModel::KartModel(bool is_master)
         m_animation_frame[i]=-1;
     m_animation_speed   = 25;
     m_current_animation = AF_DEFAULT;
-    m_play_non_loop     = false;
     m_support_colorization = false;
+    m_kart_properties = NULL;
 }   // KartModel
 
 // ----------------------------------------------------------------------------
@@ -152,10 +152,12 @@ void KartModel::loadInfo(const XMLNode &node)
         animation_node->get("start-winning-loop",
                                               &m_animation_frame[AF_WIN_LOOP_START] );
         animation_node->get("end-winning",    &m_animation_frame[AF_WIN_END]   );
+        animation_node->get("end-winning-straight", &m_animation_frame[AF_WIN_END_STRAIGHT]  );
         animation_node->get("start-losing",   &m_animation_frame[AF_LOSE_START]);
         animation_node->get("start-losing-loop",
                                              &m_animation_frame[AF_LOSE_LOOP_START]);
         animation_node->get("end-losing",     &m_animation_frame[AF_LOSE_END]  );
+        animation_node->get("end-losing-straight", &m_animation_frame[AF_LOSE_END_STRAIGHT]  );
         animation_node->get("start-explosion",&m_animation_frame[AF_LOSE_START]);
         animation_node->get("end-explosion",  &m_animation_frame[AF_LOSE_END]  );
         animation_node->get("start-jump",     &m_animation_frame[AF_JUMP_START]);
@@ -323,6 +325,7 @@ KartModel* KartModel::makeCopy(std::shared_ptr<RenderInfo> ri)
     assert(m_is_master);
     assert(!m_render_info);
     assert(!m_animated_node);
+    assert(m_kart_properties);
     KartModel *km               = new KartModel(/*is master*/ false);
     km->m_kart_width            = m_kart_width;
     km->m_kart_length           = m_kart_length;
@@ -383,6 +386,7 @@ KartModel* KartModel::makeCopy(std::shared_ptr<RenderInfo> ri)
     for(unsigned int i=AF_BEGIN; i<=AF_END; i++)
         km->m_animation_frame[i] = m_animation_frame[i];
 
+    km->m_kart_properties = m_kart_properties;
     return km;
 }   // makeCopy
 
@@ -441,8 +445,8 @@ scene::ISceneNode* KartModel::attachModel(bool animated_models, bool human_playe
         if(!m_wheel_model[i]) continue;
         m_wheel_node[i] = irr_driver->addMesh(m_wheel_model[i], "wheel",
                           node, getRenderInfo());
-        Vec3 wheel_min, wheel_max;
-        MeshTools::minMax3D(m_wheel_model[i], &wheel_min, &wheel_max);
+        Vec3 wheel_min = m_wheel_model[i]->getMin();
+        Vec3 wheel_max = m_wheel_model[i]->getMax();
         m_wheel_graphics_radius[i] = 0.5f*(wheel_max.getY() - wheel_min.getY());
 
         m_wheel_node[i]->grab();
@@ -562,6 +566,7 @@ void HeadlightObject::setLight(scene::ISceneNode* parent,
 bool KartModel::loadModels(const KartProperties &kart_properties)
 {
     assert(m_is_master);
+    m_kart_properties = &kart_properties;
     std::string  full_path = kart_properties.getKartDir()+m_model_filename;
     // For b3d loader only
     if (m_animation_frame[AF_STRAIGHT] > -1)
@@ -583,10 +588,8 @@ bool KartModel::loadModels(const KartProperties &kart_properties)
     m_mesh->grab();
     irr_driver->grabAllTextures(m_mesh);
 
-    Vec3 kart_min, kart_max;
-    MeshTools::minMax3D(m_mesh->getMesh(m_animation_frame[AF_STRAIGHT]),
-                        &kart_min, &kart_max);
-
+    Vec3 kart_min = m_mesh->getMin();
+    Vec3 kart_max = m_mesh->getMax();
 #ifndef SERVER_ONLY
     // Test if kart model support colorization
     if (CVS->isGLSL())
@@ -667,9 +670,9 @@ bool KartModel::loadModels(const KartProperties &kart_properties)
         irr_driver->grabAllTextures(obj.m_model);
 
         // Update min/max, speed weight can be scaled
-        Vec3 obj_min, obj_max;
         scene::IMesh* mesh = obj.m_model->getMesh(0);
-        MeshTools::minMax3D(mesh, &obj_min, &obj_max);
+        Vec3 obj_min = mesh->getMin();
+        Vec3 obj_max = mesh->getMax();
         core::vector3df transformed_min, transformed_max;
         obj.m_location.transformVect(transformed_min, obj_min.toIrrVector());
         obj.m_location.transformVect(transformed_max, obj_max.toIrrVector());
@@ -909,11 +912,54 @@ void KartModel::setAnimation(AnimationFrameType type, bool play_non_loop)
     // if animations disabled, give up
     if (m_animated_node == NULL) return;
 
-    m_play_non_loop = play_non_loop;
+    bool transition = false;
+    if (m_current_animation == AF_JUMP_START && type == AF_DEFAULT)
+    {
+        // For seamless transition back to AF_DEFAULT
+        transition = true;
+    }
+
     m_current_animation = type;
-    if(m_current_animation==AF_DEFAULT)
+    if ((type == AF_WIN_START || type == AF_LOSE_START) &&
+        m_animation_frame[type] > -1 && play_non_loop)
+    {
+        // Special handling for soccer goal animation
+        class SmoothTransition : public IAnimationEndCallBack
+        {
+            KartModel* m_kart_model;
+            bool m_transition;
+        public:
+            SmoothTransition(KartModel* km, bool transition) :
+                m_kart_model(km), m_transition(transition) {}
+            virtual void OnAnimationEnd(IAnimatedMeshSceneNode* node)
+            {
+                if (m_transition)
+                    m_kart_model->m_animated_node->setTransitionTime(0.2f);
+                m_kart_model->setAnimation(AF_DEFAULT);
+            }
+        };
+        AnimationFrameType end = (AnimationFrameType)(type + 2);
+        if (m_animation_frame [end] == -1)
+            end = (AnimationFrameType)((int)end - 1);
+        AnimationFrameType to_straight = (AnimationFrameType)(type + 3);
+        bool has_to_straight = m_animation_frame[to_straight] > -1;
+        if (has_to_straight)
+            end = to_straight;
+        m_animated_node->setAnimationSpeed(m_animation_speed);
+        m_animated_node->setFrameLoop(m_animation_frame[type],
+            m_animation_frame[end]);
+        m_animated_node->setLoopMode(false);
+        SmoothTransition* st = new SmoothTransition(this, !has_to_straight);
+        m_animated_node->setAnimationEndCallback(st);
+        st->drop();
+    }
+    else if (m_current_animation==AF_DEFAULT)
     {
         m_animated_node->setLoopMode(false);
+        // setTransitionTime before setFrameLoop so the node will save the last
+        // frame
+        if (transition)
+            m_animated_node->setTransitionTime(0.2f);
         const bool support_backpedal =
             m_animation_frame[AF_BACK_STRAIGHT] > -1 &&
             m_animation_frame[AF_BACK_LEFT] > -1 &&
@@ -937,6 +983,7 @@ void KartModel::setAnimation(AnimationFrameType type, bool play_non_loop)
         }
         m_animated_node->setAnimationEndCallback(NULL);
         m_animated_node->setAnimationSpeed(0);
+        m_animated_node->setCurrentFrame(m_animation_frame[AF_STRAIGHT]);
     }
     else if(m_animation_frame[type]>-1)
     {
@@ -1165,12 +1212,6 @@ void KartModel::update(float dt, float distance, float steer, float speed,
 
     // If animations are disabled, stop here
     if (m_animated_node == NULL) return;
-
-    if (m_play_non_loop && m_animated_node->getLoopMode() == true)
-    {
-        m_play_non_loop = false;
-        this->setAnimation(AF_DEFAULT);
-    }
 
     // Check if the end animation is being played, if so, don't
     // play steering animation.

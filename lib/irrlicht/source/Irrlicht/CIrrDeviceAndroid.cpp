@@ -9,8 +9,10 @@
 #include <atomic>
 #include <jni.h>
 #include <SDL_system.h>
+#include <string>
 #include <vector>
 #include "../../../../src/utils/utf8/unchecked.h"
+#include "../../../../src/guiengine/message_queue.hpp"
 
 using namespace irr;
 
@@ -18,6 +20,7 @@ using namespace irr;
 // moving screen
 std::atomic<int> g_keyboard_height(0);
 std::atomic<int> g_moved_height(0);
+std::atomic<int> g_disable_padding(0);
 extern "C" int Android_getKeyboardHeight()
 {
     return g_keyboard_height.load();
@@ -26,6 +29,32 @@ extern "C" int Android_getKeyboardHeight()
 extern "C" int Android_getMovedHeight()
 {
     return g_moved_height.load();
+}
+
+extern "C" int Android_disablePadding()
+{
+    return g_disable_padding.load();
+}
+
+#define MAKE_DEBUG_MSG_CALLBACK(x) JNIEXPORT void JNICALL Java_ ## x##_SuperTuxKartActivity_debugMsg(JNIEnv* env, jclass cls, jstring msg)
+#define ANDROID_DEBUG_MSG_CALLBACK(PKG_NAME) MAKE_DEBUG_MSG_CALLBACK(PKG_NAME)
+
+extern "C"
+ANDROID_DEBUG_MSG_CALLBACK(ANDROID_PACKAGE_CALLBACK_NAME)
+{
+    if (msg == NULL)
+        return;
+    const uint16_t* utf16_text =
+        (const uint16_t*)env->GetStringChars(msg, NULL);
+    if (utf16_text == NULL)
+        return;
+    const size_t str_len = env->GetStringLength(msg);
+    std::u32string tmp;
+    utf8::unchecked::utf16to32(
+        utf16_text, utf16_text + str_len, std::back_inserter(tmp));
+    env->ReleaseStringChars(msg, utf16_text);
+    core::stringw message = (wchar_t*)tmp.c_str();
+    MessageQueue::add(MessageQueue::MT_GENERIC, message);
 }
 
 #define MAKE_ANDROID_SAVE_KBD_HEIGHT_CALLBACK(x) JNIEXPORT void JNICALL Java_ ## x##_SuperTuxKartActivity_saveKeyboardHeight(JNIEnv* env, jclass cls, jint height)
@@ -44,6 +73,71 @@ extern "C"
 ANDROID_SAVE_MOVED_HEIGHT_CALLBACK(ANDROID_PACKAGE_CALLBACK_NAME)
 {
     g_moved_height.store((int)height);
+}
+
+#define MAKE_ANDROID_HANDLE_PADDING_CALLBACK(x) JNIEXPORT void JNICALL Java_ ## x##_SuperTuxKartActivity_handlePadding(JNIEnv* env, jclass cls, jboolean val)
+#define ANDROID_HANDLE_PADDING_CALLBACK(PKG_NAME) MAKE_ANDROID_HANDLE_PADDING_CALLBACK(PKG_NAME)
+
+extern "C"
+ANDROID_HANDLE_PADDING_CALLBACK(ANDROID_PACKAGE_CALLBACK_NAME)
+{
+    g_disable_padding.store((int)val);
+}
+
+extern "C" void Android_initDisplayCutout(float* top, float* bottom,
+                                          float* left, float* right,
+                                          int* initial_orientation)
+{
+    JNIEnv* env = NULL;
+    jobject activity = NULL;
+    jclass class_native_activity = NULL;
+    jmethodID top_method = NULL;
+    jmethodID bottom_method = NULL;
+    jmethodID left_method = NULL;
+    jmethodID right_method = NULL;
+    jmethodID initial_orientation_method = NULL;
+
+    env = (JNIEnv*)SDL_AndroidGetJNIEnv();
+    if (!env)
+        goto exit;
+
+    activity = (jobject)SDL_AndroidGetActivity();
+    if (!activity)
+        goto exit;
+
+    class_native_activity = env->GetObjectClass(activity);
+    if (class_native_activity == NULL)
+        goto exit;
+
+    top_method = env->GetMethodID(class_native_activity, "getTopPadding", "()F");
+    if (top_method == NULL)
+        goto exit;
+    *top = env->CallFloatMethod(activity, top_method);
+
+    bottom_method = env->GetMethodID(class_native_activity, "getBottomPadding", "()F");
+    if (bottom_method == NULL)
+        goto exit;
+    *bottom = env->CallFloatMethod(activity, bottom_method);
+
+    left_method = env->GetMethodID(class_native_activity, "getLeftPadding", "()F");
+    if (left_method == NULL)
+        goto exit;
+    *left = env->CallFloatMethod(activity, left_method);
+
+    right_method = env->GetMethodID(class_native_activity, "getRightPadding", "()F");
+    if (right_method == NULL)
+        goto exit;
+    *right = env->CallFloatMethod(activity, right_method);
+
+    initial_orientation_method = env->GetMethodID(class_native_activity, "getInitialOrientation", "()I");
+    if (initial_orientation_method == NULL)
+        goto exit;
+    *initial_orientation = env->CallIntMethod(activity, initial_orientation_method);
+exit:
+    if (!env)
+        return;
+    env->DeleteLocalRef(class_native_activity);
+    env->DeleteLocalRef(activity);
 }
 
 bool Android_isHardwareKeyboardConnected()

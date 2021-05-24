@@ -29,6 +29,7 @@ using namespace irr;
 #include "config/user_config.hpp"
 #include "font/font_drawer.hpp"
 #include "graphics/camera.hpp"
+#include "graphics/central_settings.hpp"
 #include "graphics/2dutils.hpp"
 #ifndef SERVER_ONLY
 #include "graphics/glwrap.hpp"
@@ -60,6 +61,8 @@ using namespace irr;
 #include "utils/constants.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
+
+#include <algorithm>
 
 /** The constructor is called before anything is attached to the scene node.
  *  So rendering to a texture can be done here. But world is not yet fully
@@ -375,7 +378,8 @@ void RaceGUI::renderPlayerView(const Camera *camera, float dt)
 
     if (!isSpectatorCam) drawPlungerInFace(camera, dt);
 
-    if (viewport.getWidth() != (int)irr_driver->getActualScreenSize().Width)
+    if (viewport.getWidth() != (int)irr_driver->getActualScreenSize().Width &&
+        viewport.getHeight() != (int)irr_driver->getActualScreenSize().Height)
     {
         scaling *= float(viewport.getWidth()) / float(irr_driver->getActualScreenSize().Width); // scale race GUI along screen size
     }
@@ -424,7 +428,7 @@ void RaceGUI::drawGlobalTimer()
 
     float elapsed_time = World::getWorld()->getTime();
     if (!RaceManager::get()->hasTimeTarget() ||
-        RaceManager::get()->getMinorMode() ==RaceManager::MINOR_MODE_SOCCER ||
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_SOCCER ||
         RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_FREE_FOR_ALL ||
         RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG)
     {
@@ -436,6 +440,8 @@ void RaceGUI::drawGlobalTimer()
         float time_target = RaceManager::get()->getTimeTarget();
         if (elapsed_time < time_target)
         {
+            if(time_target-elapsed_time <= 5)
+                time_color = video::SColor(255,255,255,0);
             sw = core::stringw (
               StringUtils::timeToString(time_target - elapsed_time).c_str());
         }
@@ -448,8 +454,14 @@ void RaceGUI::drawGlobalTimer()
             time_color = video::SColor(255,255,0,0);
             use_digit_font = false;
         }
+        
     }
-
+    if(elapsed_time <= 5 && RaceManager::get()->hasTimeTarget() && (RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_SOCCER ||
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_FREE_FOR_ALL ||
+        RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG))
+    {
+        time_color = video::SColor(255,255,255,0);
+    }
     core::rect<s32> pos(irr_driver->getActualScreenSize().Width - dist_from_right,
                         irr_driver->getActualScreenSize().Height*2/100,
                         irr_driver->getActualScreenSize().Width,
@@ -855,9 +867,9 @@ void RaceGUI::drawEnergyMeter(int x, int y, const AbstractKart *kart,
                                                      state, gauge_width, gauge_height, offset);
 
         if(kart->getControls().getNitro() || kart->isOnMinNitroTime())
-            drawMeterTexture(m_gauge_full_bright, vertices, count);
+            drawMeterTexture(m_gauge_full_bright, vertices, count, true);
         else
-            drawMeterTexture(m_gauge_full, vertices, count);
+            drawMeterTexture(m_gauge_full, vertices, count, true);
     }
 
     // Target
@@ -872,7 +884,7 @@ void RaceGUI::drawEnergyMeter(int x, int y, const AbstractKart *kart,
         unsigned int count = computeVerticesForMeter(position, threshold, vertices, vertices_count, 
                                                      coin_target, gauge_width, gauge_height, offset);
 
-        drawMeterTexture(m_gauge_goal, vertices, count);
+        drawMeterTexture(m_gauge_goal, vertices, count, true);
     }
 #endif
 }   // drawEnergyMeter
@@ -1096,7 +1108,7 @@ void RaceGUI::drawSpeedEnergyRank(const AbstractKart* kart,
 #endif
 }   // drawSpeedEnergyRank
 
-void RaceGUI::drawMeterTexture(video::ITexture *meter_texture, video::S3DVertex vertices[], unsigned int count)
+void RaceGUI::drawMeterTexture(video::ITexture *meter_texture, video::S3DVertex vertices[], unsigned int count, bool reverse)
 {
 #ifndef SERVER_ONLY
     //Should be greater or equal than the greatest vertices_count used by the meter functions
@@ -1109,19 +1121,24 @@ void RaceGUI::drawMeterTexture(video::ITexture *meter_texture, video::S3DVertex 
         vertices[i].Color = video::SColor(255, 255, 255, 255);
     }
 
+    if (reverse)
+        std::reverse(vertices + 1, vertices + count);
+
     video::SMaterial m;
     m.setTexture(0, meter_texture);
     m.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
     irr_driver->getVideoDriver()->setMaterial(m);
-    glEnable(GL_BLEND);
-    glDisable(GL_CULL_FACE);
 
-    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    if (CVS->isGLSL())
+    {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    }
     draw2DVertexPrimitiveList(m.getTexture(0), vertices, count,
         index, count-2, video::EVT_STANDARD, scene::EPT_TRIANGLE_FAN);
-    glDisable(GL_BLEND);
-    glEnable(GL_CULL_FACE);
 
+    if (CVS->isGLSL())
+        glDisable(GL_BLEND);
 #endif
 }   // drawMeterTexture
 
@@ -1295,9 +1312,9 @@ void RaceGUI::drawLap(const AbstractKart* kart,
         core::dimension2du d;
         if (score_limit != -1)
         {
-             d = font->getDimension(
+            d = font->getDimension(
                 (StringUtils::toWString(red_score) + L"-"
-                + StringUtils::toWString(blue_score) + L"     "
+                + StringUtils::toWString(blue_score) + L"00" // space between score and score limit (=width of two 0)
                 + StringUtils::toWString(score_limit)).c_str());
             pos.UpperLeftCorner.X -= d.Width / 2;
             int icon_width = irr_driver->getActualScreenSize().Height/19;
@@ -1324,8 +1341,11 @@ void RaceGUI::drawLap(const AbstractKart* kart,
         pos += core::position2di(d.Width, 0);
         if (score_limit != -1)
         {
-            text = L"     ";
-            text += StringUtils::toWString(score_limit);
+            text = L"00";
+            d = font->getDimension(text.c_str());
+            pos += core::position2di(d.Width, 0);
+            // skip the space equal to the width of two zeros, then draw the score limit
+            text = StringUtils::toWString(score_limit);
             font->draw(text, pos, video::SColor(255, 255, 255, 255));
         }
         font->setBlackBorder(false);

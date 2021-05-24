@@ -48,6 +48,9 @@
 #include "utils/utf8/unchecked.h"
 #endif
 
+#ifdef DNS_C
+#  include <dns.h>
+#else
 #ifdef WIN32
 #  include <windns.h>
 #  include <ws2tcpip.h>
@@ -55,11 +58,16 @@
 #  pragma comment(lib, "dnsapi.lib")
 #endif
 #else
+#ifndef __SWITCH__
 #  include <arpa/nameser.h>
 #  include <arpa/nameser_compat.h>
+#endif
 #  include <netdb.h>
 #  include <netinet/in.h>
+#ifndef __SWITCH__
 #  include <resolv.h>
+#endif
+#endif
 #endif
 
 #include <algorithm>
@@ -405,7 +413,7 @@ int ConnectToServer::interceptCallback(ENetHost* host, ENetEvent* event)
         host->receivedData[8] == '-' && host->receivedData[9] == 's' &&
         host->receivedData[10] == 't' && host->receivedData[11] == 'k')
     {
-#ifdef ENABLE_IPV6
+#if defined(ENABLE_IPV6) || defined(__SWITCH__)
         if (enet_ip_not_equal(host->receivedAddress.host, m_server_address.host) ||
 #else
         if (host->receivedAddress.host != m_server_address.host ||
@@ -462,7 +470,8 @@ bool ConnectToServer::tryConnect(int timeout, int retry, bool another_port,
         Log::info("ConnectToServer", "Trying connecting to %s from port %d, "
             "retry remain: %d", connecting_address.c_str(),
             nw->getPort(), m_retry_count);
-        while (enet_host_service(nw->getENetHost(), &event, timeout) != 0)
+        int res;
+        while ((res = enet_host_service(nw->getENetHost(), &event, timeout)) != 0)
         {
             if (event.type == ENET_EVENT_TYPE_CONNECT)
             {
@@ -684,9 +693,112 @@ bool ConnectToServer::detectPort()
         if (port_from_dns != 0)
             break;
     }
-#elif !defined(__CYGWIN__)
-    unsigned char response[512] = {};
+
+#elif defined(DNS_C)
     const std::string& utf8name = StringUtils::wideToUtf8(m_server->getName());
+
+    int err = 0;
+    struct dns_socket* so = NULL;
+    struct dns_packet* ans = NULL;
+    struct dns_packet* quest = NULL;
+
+    dns_options options = {};
+    struct dns_rr_i rri = {};
+    struct dns_rr rr = {};
+    dns_resolv_conf* conf = dns_resconf_open(&err);
+    if (!conf)
+    {
+        Log::error("ConnectToServer", "Error dns_resconf_open: %s",
+            dns_strerror(err));
+        goto cleanup;
+    }
+    if ((err = dns_resconf_loadpath(conf, "/etc/resolv.conf")))
+    {
+        err = 0;
+        // Fallback name server
+        SocketAddress addr("8.8.8.8:53");
+        memcpy(&conf->nameserver[0], addr.getSockaddr(), addr.getSocklen());
+    }
+
+    so = dns_so_open((sockaddr*)&conf->iface, 0, &options, &err);
+    if (!so)
+    {
+        Log::error("ConnectToServer", "Error dns_so_open: %s",
+            dns_strerror(err));
+        goto cleanup;
+    }
+
+    quest = dns_p_make(512, &err);
+    if (err)
+    {
+        Log::error("ConnectToServer", "Error dns_p_make: %s",
+            dns_strerror(err));
+        goto cleanup;
+    }
+    if ((err = dns_p_push(quest, DNS_S_QD, utf8name.c_str(),
+        utf8name.size(),
+        DNS_T_TXT, DNS_C_IN, 0, 0)))
+    {
+        Log::error("ConnectToServer", "Error dns_p_push: %s",
+            dns_strerror(err));
+        goto cleanup;
+    }
+
+    dns_header(quest)->rd = 1;
+    while (!(ans = dns_so_query(so, quest, (sockaddr*)&conf->nameserver[0],
+        &err)))
+    {
+        if (err == 0)
+        {
+            Log::error("ConnectToServer", "Error dns_so_query: %s",
+                dns_strerror(err));
+            goto cleanup;
+        }
+        if (dns_so_elapsed(so) > 10)
+        {
+            Log::error("ConnectToServer", "Timeout dns_so_query.");
+            goto cleanup;
+        }
+        dns_so_poll(so, 1);
+    }
+    if (!ans)
+    {
+        Log::error("ConnectToServer", "Timeout dns_so_query.");
+        goto cleanup;
+    }
+
+    rri.sort = dns_rr_i_packet;
+    err = 0;
+    while (dns_rr_grep(&rr, 1, &rri, ans, &err))
+    {
+        if (err != 0)
+        {
+            Log::error("ConnectToServer", "Error dns_rr_grep: %s",
+                dns_strerror(err));
+            goto cleanup;
+        }
+        if (rr.section != DNS_S_ANSWER)
+            continue;
+        dns_txt txt = {};
+        dns_txt_init(&txt, DNS_TXT_MINDATA);
+        if (dns_txt_parse(&txt, &rr, ans) != 0)
+            goto cleanup;
+        std::string txt_record((char*)&txt.data, txt.len);
+        port_from_dns = get_port(txt_record);
+        if (port_from_dns != 0)
+            break;
+    }
+
+cleanup:
+    free(ans);
+    free(quest);
+    dns_so_close(so);
+    dns_resconf_close(conf);
+
+#else
+    const std::string& utf8name = StringUtils::wideToUtf8(m_server->getName());
+    unsigned char response[512] = {};
+
     int response_len = res_query(utf8name.c_str(), C_IN, T_TXT, response, 512);
     if (response_len > 0)
     {

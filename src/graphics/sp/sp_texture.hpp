@@ -150,7 +150,7 @@ private:
                               const std::string& cache_location);
     // ------------------------------------------------------------------------
     std::vector<std::pair<core::dimension2du, unsigned> >
-                       compressTexture(std::shared_ptr<video::IImage> texture);
+                      compressTexture(std::shared_ptr<video::IImage>& texture);
     // ------------------------------------------------------------------------
     bool useTextureCache(const std::string& full_path, std::string* cache_loc);
     // ------------------------------------------------------------------------
@@ -181,7 +181,7 @@ public:
     // ------------------------------------------------------------------------
     std::shared_ptr<video::IImage> getTextureImage() const;
     // ------------------------------------------------------------------------
-    GLuint getOpenGLTextureName() const              { return m_texture_name; }
+    GLuint getTextureHandler() const              { return m_texture_name; }
     // ------------------------------------------------------------------------
     bool initialized() const
                         { return m_width.load() != 0 && m_height.load() != 0; }

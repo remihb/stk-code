@@ -33,14 +33,8 @@
 #include <vector>
 
 #ifdef ENABLE_SOUND
-#  ifdef __APPLE__
-#    define OPENAL_DEPRECATED
-#    include <OpenAL/al.h>
-#    include <OpenAL/alc.h>
-#  else
-#    include <AL/al.h>
-#    include <AL/alc.h>
-#  endif
+#  include <AL/al.h>
+#  include <AL/alc.h>
 #else
   typedef unsigned int ALuint;
 #endif
@@ -221,8 +215,10 @@ private:
     /** Master gain value, taken from the user config value. */
     float                     m_master_gain;
 
+#ifndef __SWITCH__
     /** Thread id of the thread running in this object. */
     std::thread               m_thread;
+#endif
 
     uint64_t                  m_last_update_time;
 

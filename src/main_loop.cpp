@@ -56,9 +56,26 @@
 #include "utils/string_utils.hpp"
 #include "utils/time.hpp"
 #include "utils/translation.hpp"
+#include "io/rich_presence.hpp"
 
 #ifndef WIN32
 #include <unistd.h>
+#endif
+
+#ifdef __SWITCH__
+extern "C" {
+#define Event libnx_Event
+#define u64 uint64_t
+#define u32 uint32_t
+#define s64 int64_t
+#define s32 int32_t
+#include <switch/services/applet.h>
+#undef Event
+#undef u64
+#undef u32
+#undef s64
+#undef s32
+}
 #endif
 
 MainLoop* main_loop = 0;
@@ -124,6 +141,10 @@ extern "C" void pause_mainloop()
     PlayerManager::get()->save();
     if (addons_manager->hasDownloadedIcons())
         addons_manager->saveInstalled();
+    // Make sure the new addon arrow is gone when stk is killed in background
+    // user_config saves the latest addon time
+    if (addons_manager->hasNewAddons())
+        user_config->saveConfig();
     Online::RequestManager::get()->setPaused(true);
     IrrlichtDevice* dev = irr_driver->getDevice();
     if (dev)
@@ -290,9 +311,9 @@ float MainLoop::getLimitedDt()
         // For iOS devices most at locked at 60, for new iPad Pro supports 120
         // which is currently m_max_fps
         const int max_fps =
-            UserConfigParams::m_swap_interval == 2 ? 30 :
+            UserConfigParams::m_swap_interval == 2 ? UserConfigParams::m_max_fps :
             UserConfigParams::m_swap_interval == 1 ? 60 :
-            UserConfigParams::m_max_fps;
+            30;
 #else
         const int max_fps = (irr_driver->isRecording() &&
                              UserConfigParams::m_limit_game_fps )
@@ -423,6 +444,14 @@ void MainLoop::run()
 
     while (!m_abort)
     {
+#ifdef __SWITCH__
+      // This feeds us messages (like when the Switch sleeps or requests an exit)
+      m_abort = !appletMainLoop();
+      if (m_abort)
+      {
+          Log::info("MainLoop", "Aborting main loop because Switch told us to!");
+      }
+#endif
 #ifdef WIN32
         if (parent != 0 && parent != INVALID_HANDLE_VALUE)
         {
@@ -442,7 +471,7 @@ void MainLoop::run()
                 m_request_abort = true;
             }
         }
-#else
+#elif !defined( __SWITCH__ )
         // POSIX equivalent
         if (m_parent_pid != 0 && getppid() != (int)m_parent_pid)
         {
@@ -685,6 +714,8 @@ void MainLoop::run()
                     m_request_abort = true;
                 }
             }
+
+            RichPresenceNS::RichPresence::get()->update(false);
 
             if (auto gp = GameProtocol::lock())
             {

@@ -19,7 +19,6 @@
 #include "graphics/central_settings.hpp"
 #include "graphics/irr_driver.hpp"
 #include "graphics/stk_tex_manager.hpp"
-#include "graphics/stk_texture.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/scalable_font.hpp"
 #include "io/file_manager.hpp"
@@ -32,6 +31,9 @@
 #include <IGUIButton.h>
 #include <IGUIStaticText.h>
 #include <algorithm>
+#ifndef SERVER_ONLY
+#include <ge_texture.hpp>
+#endif
 
 using namespace GUIEngine;
 using namespace irr::video;
@@ -365,28 +367,25 @@ const video::ITexture* IconButtonWidget::getTexture()
 // -----------------------------------------------------------------------------
 video::ITexture* IconButtonWidget::getDeactivatedTexture(video::ITexture* texture)
 {
-#if !defined(SERVER_ONLY) && !defined(USE_GLES2)
-    STKTexture* stk_tex = static_cast<STKTexture*>(texture);
-    // Compressed texture can't be turned into greyscale
-    if (stk_tex->isMeshTexture() && CVS->isTextureCompressionEnabled())
-        return stk_tex;
-
-    std::string name = stk_tex->getName().getPtr();
+#ifndef SERVER_ONLY
+    std::string name = texture->getName().getPtr();
     name += "_disabled";
     STKTexManager* stkm = STKTexManager::getInstance();
-    STKTexture* disabled_stk_tex = static_cast<STKTexture*>(stkm->getTexture
-        (name, NULL/*tc*/, false /*no_upload*/, false/*create_if_unfound*/));
-    if (disabled_stk_tex == NULL)
+    if (!stkm->hasTexture(name))
     {
         SColor c;
         u32 g;
 
+        void* tex_data = texture->lock(video::ETLM_READ_ONLY);
+        if (!tex_data)
+            return texture;
         video::IVideoDriver* driver = irr_driver->getVideoDriver();
         video::IImage* image = driver->createImageFromData
-            (video::ECF_A8R8G8B8, stk_tex->getSize(), stk_tex->lock(),
-            stk_tex->getTextureImage() == NULL/*ownForeignMemory*/);
-        texture->unlock();
+            (video::ECF_A8R8G8B8, texture->getSize(), tex_data,
+            false/*ownForeignMemory*/);
 
+        // GE::createTexture image will drop the image
+        image->grab();
         //Turn the image into grayscale
         for (u32 x = 0; x < image->getDimension().Width; x++)
         {
@@ -398,12 +397,15 @@ video::ITexture* IconButtonWidget::getDeactivatedTexture(video::ITexture* textur
                 image->setPixel(x, y, c);
             }
         }
-        return stkm->addTexture(new STKTexture(image, name));
+        video::ITexture* disabled_tex = GE::createTexture(image, name);
+        image->drop();
+        texture->unlock();
+        return stkm->addTexture(disabled_tex);
     }
-    return disabled_stk_tex;
+    return stkm->getTexture(name);
 #else
     return texture;
-#endif   // !SERVER_ONLY
+#endif
 }
 
 // -----------------------------------------------------------------------------

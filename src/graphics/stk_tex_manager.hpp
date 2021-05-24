@@ -26,6 +26,7 @@
 #include "ITexture.h"
 
 #include <cassert>
+#include <functional>
 #include <string>
 #include <unordered_map>
 
@@ -35,38 +36,17 @@ namespace irr
     namespace video { class SColor; }
 }
 
-struct TexConfig
-{
-     bool m_srgb;
-     bool m_premul_alpha;
-     bool m_mesh_tex;
-     bool m_set_material;
-     bool m_colorization_mask;
-     bool m_normal_map;
-     TexConfig(bool srgb = false, bool premul_alpha = false,
-               bool mesh_tex = true, bool set_material = false,
-               bool color_mask = false, bool normal_map = false)
-     {
-         m_srgb = srgb;
-         m_premul_alpha = premul_alpha;
-         m_mesh_tex = mesh_tex;
-         m_set_material = set_material;
-         m_colorization_mask = color_mask;
-         m_normal_map = normal_map;
-     }
-};
-
 class STKTexManager : public Singleton<STKTexManager>, NoCopy
 {
 private:
-    std::unordered_map<std::string, STKTexture*> m_all_textures;
+    std::unordered_map<std::string, irr::video::ITexture*> m_all_textures;
 
     /** Additional details to be shown in case that a texture is not found.
      *  This is used to specify details like: "while loading kart '...'" */
     std::string m_texture_error_message;
 
     // ------------------------------------------------------------------------
-    STKTexture* findTextureInFileSystem(const std::string& filename,
+    irr::video::ITexture* findTextureInFileSystem(const std::string& filename,
                                         std::string* full_path);
 public:
     // ------------------------------------------------------------------------
@@ -75,15 +55,25 @@ public:
     ~STKTexManager();
     // ------------------------------------------------------------------------
     irr::video::ITexture* getTexture(const std::string& path,
-                                     TexConfig* tc = NULL,
-                                     bool no_upload = false,
-                                     bool create_if_unfound = true);
+                std::function<void(irr::video::IImage*)> image_mani = nullptr);
     // ------------------------------------------------------------------------
-    irr::video::ITexture* addTexture(STKTexture* texture);
+    irr::video::ITexture* addTexture(irr::video::ITexture* texture);
     // ------------------------------------------------------------------------
-    void removeTexture(STKTexture* texture, bool remove_all = false);
+    bool hasTexture(const std::string& path);
+    // ------------------------------------------------------------------------
+    bool removeTexture(irr::video::ITexture* texture, bool remove_all = false);
     // ------------------------------------------------------------------------
     int dumpTextureUsage();
+    // ------------------------------------------------------------------------
+    void reloadAllTextures()
+    {
+        for (auto p : m_all_textures)
+        {
+            if (p.second == NULL)
+                continue;
+            p.second->reload();
+        }
+    }
     // ------------------------------------------------------------------------
     /** Returns the currently defined texture error message, which is used
      *  by event_handler.cpp to print additional info about irrlicht

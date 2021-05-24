@@ -27,6 +27,11 @@
 #include <bitset>
 #include "utils/types.hpp"
 
+#include <SDL_version.h>
+#if SDL_VERSION_ATLEAST(1,3,0)
+#include <SDL_haptic.h>
+#endif
+
 class GamePadDevice;
 
 class SDLController
@@ -37,6 +42,10 @@ private:
     SDL_Joystick* m_joystick;
 
     GamePadDevice* m_gamepad;
+
+#if SDL_VERSION_ATLEAST(1,3,0)
+    SDL_Haptic* m_haptic;
+#endif
 
     int m_buttons;
 
@@ -49,6 +58,8 @@ private:
     irr::SEvent m_irr_event;
 
     int16_t m_prev_axes[irr::SEvent::SJoystickEvent::NUMBER_OF_AXES];
+
+    uint64_t m_last_power_level_time;
 #ifdef ANDROID
     void handleDirectScanCode(const SDL_Event& event);
 #endif
@@ -148,6 +159,11 @@ public:
     }   // handleButton
     // ------------------------------------------------------------------------
     SDL_GameController* getGameController() const { return m_game_controller; }
+    // ------------------------------------------------------------------------
+    void checkPowerLevel();
+    // ------------------------------------------------------------------------
+    void doRumble(float strength_low, float strength_high, uint32_t duration_ms);
+    GamePadDevice* getGamePadDevice() const { return m_gamepad; }
 };
 
 #endif

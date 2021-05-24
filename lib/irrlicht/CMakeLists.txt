@@ -29,8 +29,8 @@ endif()
 
 if(APPLE AND NOT IOS)
     include_directories("${CMAKE_CURRENT_SOURCE_DIR}/source/Irrlicht/MacOSX" "${CMAKE_CURRENT_SOURCE_DIR}/source/Irrlicht")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch x86_64")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -arch x86_64 -F/Library/Frameworks")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch ${ARCHFLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -arch ${ARCHFLAGS} -F/Library/Frameworks")
 endif()
 
 add_definitions(-DNDEBUG=1 -DIRRLICHT_EXPORTS=1 -DPNG_THREAD_UNSAFE_OK -DPNG_NO_MMX_CODE -DPNG_NO_MNG_FEATURES)
@@ -187,6 +187,19 @@ source/Irrlicht/Irrlicht.cpp
 source/Irrlicht/irrXML.cpp
 source/Irrlicht/os.cpp
 source/Irrlicht/COpenGLNormalMapRenderer.cpp
+source/Irrlicht/CD3D9Driver.cpp
+source/Irrlicht/CD3D9Driver.h
+source/Irrlicht/CD3D9HLSLMaterialRenderer.cpp
+source/Irrlicht/CD3D9HLSLMaterialRenderer.h
+source/Irrlicht/CD3D9MaterialRenderer.h
+source/Irrlicht/CD3D9NormalMapRenderer.cpp
+source/Irrlicht/CD3D9NormalMapRenderer.h
+source/Irrlicht/CD3D9ParallaxMapRenderer.cpp
+source/Irrlicht/CD3D9ParallaxMapRenderer.h
+source/Irrlicht/CD3D9ShaderMaterialRenderer.cpp
+source/Irrlicht/CD3D9ShaderMaterialRenderer.h
+source/Irrlicht/CD3D9Texture.cpp
+source/Irrlicht/CD3D9Texture.h
 source/Irrlicht/CAnimatedMeshSceneNode.h
 source/Irrlicht/CAttributeImpl.h
 source/Irrlicht/CAttributes.h

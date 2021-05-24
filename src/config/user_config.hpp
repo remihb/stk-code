@@ -45,6 +45,8 @@
 #include <sstream>
 
 #include <irrString.h>
+#include <IrrCompileConfig.h>
+
 using irr::core::stringc;
 using irr::core::stringw;
 
@@ -138,7 +140,7 @@ public:
 
     irr::core::stringc toString() const;
 
-    operator std::map<T, U>&() const
+    operator std::map<T, U>&()
     {
         return m_elements;
     }
@@ -456,12 +458,13 @@ namespace UserConfigParams
     PARAM_PREFIX IntUserConfigParam          m_difficulty
             PARAM_DEFAULT(  IntUserConfigParam(0, "difficulty",
                             &m_race_setup_group,
-                        "Default race difficulty. 0=easy, 1=medium, 2=hard") );
+                        "Default race difficulty. 0=easy, 1=medium, 2=hard, 3=supertux") );
     PARAM_PREFIX IntUserConfigParam          m_game_mode
             PARAM_DEFAULT(  IntUserConfigParam(0, "game_mode",
                             &m_race_setup_group,
                             "Game mode. 0=standard, 1=time trial, 2=follow "
-                            "the leader, 3=3 strikes") );
+                            "the leader, 3=3 strikes, 4=easter egg hunt, "
+                            "5=soccer, 6=ghost replay") );
     PARAM_PREFIX StringUserConfigParam m_default_kart
             PARAM_DEFAULT( StringUserConfigParam("tux", "kart",
                            "Kart to select by default (the last used kart)") );
@@ -676,8 +679,8 @@ namespace UserConfigParams
         &m_video_group, "Determines if popup message about too old drivers should be displayed."));
     PARAM_PREFIX FloatUserConfigParam       m_scale_rtts_factor
         PARAM_DEFAULT(FloatUserConfigParam(1.0f, "scale_rtts_factor",
-        &m_video_group, "Allows one to increase performance by setting lower RTTs "
-                        "resolution. Value should be smaller or equal to 1.0"));
+        &m_video_group, "Custom value for RTTs resolution. "
+                        "Value should be smaller or equal to 1.0"));
     PARAM_PREFIX IntUserConfigParam         m_max_texture_size
         PARAM_DEFAULT(IntUserConfigParam(512, "max_texture_size",
         &m_video_group, "Max texture size when high definition textures are "
@@ -689,7 +692,17 @@ namespace UserConfigParams
                         "high quality method with SSE"));
     PARAM_PREFIX FloatUserConfigParam         m_font_size
         PARAM_DEFAULT(  FloatUserConfigParam(3, "font_size",
-        &m_video_group,"The size of fonts. 0 is the smallest and 6 is the biggest") );
+        &m_video_group, "The size of fonts. 0 is the smallest and 6 is the biggest") );
+
+#if defined(_IRR_COMPILE_WITH_DIRECT3D_9_) && defined(_M_ARM64)
+    PARAM_PREFIX StringUserConfigParam         m_render_driver
+        PARAM_DEFAULT(  StringUserConfigParam("directx9", "render_driver",
+        &m_video_group, "Render video driver to use, at the moment gl or directx9 is supported.") );
+#else
+    PARAM_PREFIX StringUserConfigParam         m_render_driver
+        PARAM_DEFAULT(  StringUserConfigParam("gl", "render_driver",
+        &m_video_group, "Render video driver to use, at the moment gl or directx9 is supported.") );
+#endif
 
     // ---- Recording
     PARAM_PREFIX GroupUserConfigParam        m_recording_group
@@ -724,19 +737,22 @@ namespace UserConfigParams
         &m_recording_group, "Specify the fps of recording video"));
 
     // ---- Debug - not saved to config file
-    /** If gamepad debugging is enabled. */
+    /** If high scores will not be saved. For repeated testing on tracks. */
+    PARAM_PREFIX bool m_no_high_scores PARAM_DEFAULT(false);
+
+    /** If unit testing is enabled. */
     PARAM_PREFIX bool m_unit_testing PARAM_DEFAULT(false);
 
     /** If gamepad debugging is enabled. */
     PARAM_PREFIX bool m_gamepad_debug PARAM_DEFAULT( false );
 
-    /** If gamepad debugging is enabled. */
+    /** If keyboard debugging is enabled. */
     PARAM_PREFIX bool m_keyboard_debug PARAM_DEFAULT(false);
 
     /** Wiimote debugging. */
     PARAM_PREFIX bool m_wiimote_debug PARAM_DEFAULT( false );
 
-    /** Debug gamepads  by visualising their values. */
+    /** Debug gamepads by visualising their values. */
     PARAM_PREFIX bool m_gamepad_visualisation PARAM_DEFAULT( false );
 
     /** If material debugging (printing terrain specific slowdown)
@@ -752,7 +768,7 @@ namespace UserConfigParams
     /** True if physics debugging should be enabled. */
     PARAM_PREFIX bool m_physics_debug PARAM_DEFAULT( false );
 
-    /** True if fps should be printed each frame. */
+    /** True if FPS should be printed each frame. */
     PARAM_PREFIX bool m_fps_debug PARAM_DEFAULT(false);
 
     /** True if arena (battle/soccer) ai profiling. */
@@ -787,6 +803,11 @@ namespace UserConfigParams
     PARAM_PREFIX bool m_profiler_enabled  PARAM_DEFAULT( false );
 
     // ---- Networking
+    PARAM_PREFIX StringToUIntUserConfigParam    m_address_history
+        PARAM_DEFAULT(StringToUIntUserConfigParam("address-history",
+        "Last 5 IP addresses that user entered",
+        {{ "server-address", "address", "last-connection" }}, {}));
+
     // These stk domains have only a record to each ipv6 stun below,
     // so we can use this to know ipv4 address of nat64 gateway (if any)
     PARAM_PREFIX StringToUIntUserConfigParam m_stun_servers_v4
@@ -901,7 +922,7 @@ namespace UserConfigParams
                            "Quality of anisotropic filtering (usual values include 2-4-8-16; 0 to disable)") );
 
     PARAM_PREFIX IntUserConfigParam         m_swap_interval
-            PARAM_DEFAULT( IntUserConfigParam(0, "swap_interval",
+            PARAM_DEFAULT( IntUserConfigParam(0, "swap-interval",
                            &m_graphics_quality,
                            "Swap interval for vsync: 0 = disabled, 1 = full") );
     PARAM_PREFIX BoolUserConfigParam         m_motionblur
@@ -958,6 +979,11 @@ namespace UserConfigParams
             &m_camera_normal,
             "if true, use smoothing (forward-up-angle become relative to speed) when pointing forward"));
 
+    PARAM_PREFIX FloatUserConfigParam         m_camera_backward_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(2.0, "backward-distance",
+            &m_camera_normal,
+            "Distance between kart and camera (reverse)"));
+
     PARAM_PREFIX FloatUserConfigParam         m_camera_backward_up_angle
             PARAM_DEFAULT(  FloatUserConfigParam(5, "backward-up-angle",
             &m_camera_normal,
@@ -968,7 +994,98 @@ namespace UserConfigParams
             &m_camera_normal,
             "Focal distance (single player)"));
 
-    // ---- Saved custom camera settings
+    PARAM_PREFIX BoolUserConfigParam       m_reverse_look_use_soccer_cam
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "reverse-look-use-soccer-cam",
+                            "Use ball camera in soccer mode, instead of reverse") );
+
+    // ---- The present camera (default: Standard)
+    PARAM_PREFIX IntUserConfigParam       m_camera_present
+            PARAM_DEFAULT(  IntUserConfigParam(1, "camera-present",
+                            "The current used camera. 0=Custom; 1=Standard; 2=Drone chase") );
+
+    // ---- Standard camera settings
+    PARAM_PREFIX GroupUserConfigParam        m_standard_camera_settings
+            PARAM_DEFAULT( GroupUserConfigParam(
+                        "standard-camera-settings",
+                        "Standard camera settings for player.") );
+
+    PARAM_PREFIX FloatUserConfigParam         m_standard_camera_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(1.0, "distance",
+            &m_standard_camera_settings,
+            "Distance between kart and camera"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_standard_camera_forward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(0, "forward-up-angle",
+            &m_standard_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing forward"));
+
+    PARAM_PREFIX BoolUserConfigParam         m_standard_camera_forward_smoothing
+            PARAM_DEFAULT(  BoolUserConfigParam(true, "forward-smoothing",
+            &m_standard_camera_settings,
+            "if true, use smoothing (forward-up-angle become relative to speed) when pointing forward"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_standard_camera_backward_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(2.0, "backward-distance",
+            &m_standard_camera_settings,
+            "Distance between kart and camera (reverse)"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_standard_camera_backward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(5, "backward-up-angle",
+            &m_standard_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing backwards. This is usually larger than the forward-up-angle, since the kart itself otherwise obstricts too much of the view"));
+
+    PARAM_PREFIX IntUserConfigParam         m_standard_camera_fov
+            PARAM_DEFAULT(  IntUserConfigParam(80, "fov",
+            &m_standard_camera_settings,
+            "Focal distance (single player)"));
+
+    PARAM_PREFIX BoolUserConfigParam         m_standard_reverse_look_use_soccer_cam
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "reverse-look-use-soccer-cam",
+            &m_standard_camera_settings,
+            "Use ball camera in soccer mode, instead of reverse"));
+
+    // ---- Drone chase camera settings
+    PARAM_PREFIX GroupUserConfigParam        m_drone_camera_settings
+            PARAM_DEFAULT( GroupUserConfigParam(
+                        "drone-camera-settings",
+                        "Drone chase camera settings for player.") );
+
+    PARAM_PREFIX FloatUserConfigParam         m_drone_camera_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(2.6, "distance",
+            &m_drone_camera_settings,
+            "Distance between kart and camera"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_drone_camera_forward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(33, "forward-up-angle",
+            &m_drone_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing forward"));
+
+    PARAM_PREFIX BoolUserConfigParam         m_drone_camera_forward_smoothing
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "forward-smoothing",
+            &m_drone_camera_settings,
+            "if true, use smoothing (forward-up-angle become relative to speed) when pointing forward"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_drone_camera_backward_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(2.0, "backward-distance",
+            &m_drone_camera_settings,
+            "Distance between kart and camera (reverse)"));
+
+    PARAM_PREFIX FloatUserConfigParam         m_drone_camera_backward_up_angle
+            PARAM_DEFAULT(  FloatUserConfigParam(10, "backward-up-angle",
+            &m_drone_camera_settings,
+            "Angle between camera and plane of kart (pitch) when the camera is pointing backwards. This is usually larger than the forward-up-angle, since the kart itself otherwise obstricts too much of the view"));
+
+    PARAM_PREFIX IntUserConfigParam         m_drone_camera_fov
+            PARAM_DEFAULT(  IntUserConfigParam(100, "fov",
+            &m_drone_camera_settings,
+            "Focal distance (single player)"));
+
+    PARAM_PREFIX BoolUserConfigParam         m_drone_reverse_look_use_soccer_cam
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "reverse-look-use-soccer-cam",
+            &m_drone_camera_settings,
+            "Use ball camera in soccer mode, instead of reverse"));
+
+    // ---- Custom camera settings
     PARAM_PREFIX GroupUserConfigParam        m_saved_camera_settings
             PARAM_DEFAULT( GroupUserConfigParam(
                         "saved-camera-settings",
@@ -989,6 +1106,11 @@ namespace UserConfigParams
             &m_saved_camera_settings,
             "if true, use smoothing (forward-up-angle become relative to speed) when pointing forward"));
 
+    PARAM_PREFIX FloatUserConfigParam         m_saved_camera_backward_distance
+            PARAM_DEFAULT(  FloatUserConfigParam(2.0, "backward-distance",
+            &m_saved_camera_settings,
+            "Distance between kart and camera (reverse)"));
+
     PARAM_PREFIX FloatUserConfigParam         m_saved_camera_backward_up_angle
             PARAM_DEFAULT(  FloatUserConfigParam(5, "backward-up-angle",
             &m_saved_camera_settings,
@@ -999,6 +1121,10 @@ namespace UserConfigParams
             &m_saved_camera_settings,
             "Focal distance (single player)"));
 
+    PARAM_PREFIX BoolUserConfigParam         m_saved_reverse_look_use_soccer_cam
+            PARAM_DEFAULT(  BoolUserConfigParam(false, "reverse-look-use-soccer-cam",
+            &m_saved_camera_settings,
+            "Use ball camera in soccer mode, instead of reverse"));
 
     // camera in artist mode
     PARAM_PREFIX GroupUserConfigParam        m_camera
@@ -1043,6 +1169,14 @@ namespace UserConfigParams
             PARAM_DEFAULT( StringUserConfigParam("all", "last_track_group",
                            "Last selected track group") );
 
+    PARAM_PREFIX StringUserConfigParam m_discord_client_id
+            PARAM_DEFAULT( StringUserConfigParam("817760324983324753", "discord_client_id",
+                           "Discord Client ID (Set to -1 to disable)") );
+
+    PARAM_PREFIX BoolUserConfigParam m_rich_presence_debug
+            PARAM_DEFAULT( BoolUserConfigParam(false, "rich_presence_debug",
+                           "If debug logging should be enabled for rich presence") );
+
     PARAM_PREFIX StringUserConfigParam      m_skin_file
             PARAM_DEFAULT(  StringUserConfigParam("peach", "skin_name",
                                                   "Name of the skin to use") );
@@ -1062,11 +1196,6 @@ namespace UserConfigParams
     PARAM_PREFIX FloatUserConfigParam        m_spectator_camera_angle
             PARAM_DEFAULT(  FloatUserConfigParam(40.0, "camera-angle", &m_spectator,
                                                   "Angle between ground, kart and camera.") );
-
-    // ---- Special settings for soccer mode
-    PARAM_PREFIX BoolUserConfigParam       m_reverse_look_use_soccer_cam
-            PARAM_DEFAULT(  BoolUserConfigParam(false, "reverse-look-use-soccer-cam",
-                            "Use ball camera in soccer mode, instead of reverse") );
 
     // ---- Handicap
     PARAM_PREFIX GroupUserConfigParam       m_handicap

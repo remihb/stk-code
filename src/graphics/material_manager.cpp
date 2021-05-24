@@ -142,6 +142,7 @@ Material* MaterialManager::getMaterialSPM(std::string lay_one_tex_lc,
             }
         }   // for i
     }
+    Log::debug("MaterialManager", "Couldn't find cached SP material! Opening default %s!", original_layer_one.c_str());
     return getDefaultSPMaterial(def_shader_name,
         is_full_path ?
         original_layer_one : StringUtils::getBasename(original_layer_one),
@@ -361,7 +362,8 @@ Material *MaterialManager::getMaterial(const std::string& fname,
                                        bool is_full_path,
                                        bool make_permanent,
                                        bool complain_if_not_found,
-                                       bool strip_path, bool install)
+                                       bool strip_path, bool install,
+                                       bool create_if_not_found)
 {
     if(fname=="")
     {
@@ -391,6 +393,8 @@ Material *MaterialManager::getMaterial(const std::string& fname,
             return m_materials[i];
     }
 
+    if (!create_if_not_found)
+        return NULL;
     // Add the new material
     Material* m = new Material(fname, is_full_path, complain_if_not_found, install);
     m_materials.push_back(m);

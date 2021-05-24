@@ -683,7 +683,7 @@ namespace GUIEngine
 #include "modes/demo_world.hpp"
 #include "modes/cutscene_world.hpp"
 #include "modes/world.hpp"
-#include "states_screens/race_gui_base.hpp"
+#include "states_screens/race_gui_overworld.hpp"
 #include "tips/tips_manager.hpp"
 #include "utils/debug.hpp"
 #include "utils/string_utils.hpp"
@@ -1335,6 +1335,13 @@ namespace GUIEngine
             if (rg != NULL) rg->renderGlobal(elapsed_time);
         }
 
+        if (gamestate == GAME && ModalDialog::isADialogActive() && World::getWorld())
+        {
+            // Show trophy points when paused
+            RaceGUIOverworld* rgo = dynamic_cast<RaceGUIOverworld*>(World::getWorld()->getRaceGUI());
+            if (rgo && rgo->getMultitouchGUI())
+                rgo->drawTrophyPoints();
+        }
         if (gamestate != GAME || is_loading)
         {
             Screen* screen = getCurrentScreen();
@@ -1425,7 +1432,7 @@ namespace GUIEngine
     void renderLoading(bool clearIcons, bool launching, bool update_tips)
     {
 #ifndef SERVER_ONLY
-        if (update_tips)
+        if (!TipsManager::get()->isEmpty() && update_tips)
         {
             core::stringw tip = TipsManager::get()->getTip("general");
             //I18N: Tip shown in gui for giving player hints

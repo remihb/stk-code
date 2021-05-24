@@ -24,7 +24,10 @@
 #include "graphics/glwrap.hpp"
 #include "graphics/graphics_restrictions.hpp"
 #include "guiengine/engine.hpp"
+#include <ge_main.hpp>
+#include <ge_gl_utils.hpp>
 
+using namespace GE;
 bool CentralVideoSettings::m_supports_sp = true;
 
 CentralVideoSettings *CVS = new CentralVideoSettings();
@@ -34,6 +37,7 @@ void CentralVideoSettings::init()
     m_gl_major_version = 2;
     m_gl_minor_version = 1;
     m_gl_mem = 0;
+    m_glsl = false;
 
     // Parse extensions
     hasBufferStorage = false;
@@ -63,6 +67,16 @@ void CentralVideoSettings::init()
     // Call to glGetIntegerv should not be made if --no-graphics is used
     if (!GUIEngine::isNoGraphics())
     {
+        if (GE::getDriver()->getDriverType() != video::EDT_OPENGL &&
+            GE::getDriver()->getDriverType() != video::EDT_OGLES2)
+        {
+            GraphicsRestrictions::init("", "", GE::getDriver()->getVendorInfo().c_str());
+            GE::getGEConfig()->m_disable_npot_texture =
+                GraphicsRestrictions::isDisabled(
+                GraphicsRestrictions::GR_NPOT_TEXTURES);
+            return;
+        }
+
         glGetIntegerv(GL_MAJOR_VERSION, &m_gl_major_version);
         glGetIntegerv(GL_MINOR_VERSION, &m_gl_minor_version);
         const char *vendor = (const char *)glGetString(GL_VENDOR);
@@ -94,6 +108,9 @@ void CentralVideoSettings::init()
         std::string card((char*)(glGetString(GL_RENDERER)));
         std::string vendor((char*)(glGetString(GL_VENDOR)));
         GraphicsRestrictions::init(driver, card, vendor);
+        GE::getGEConfig()->m_disable_npot_texture =
+            GraphicsRestrictions::isDisabled(
+            GraphicsRestrictions::GR_NPOT_TEXTURES);
 
         if (GraphicsRestrictions::isDisabled(GraphicsRestrictions::GR_FORCE_LEGACY_DEVICE))
         {

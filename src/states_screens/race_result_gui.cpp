@@ -24,6 +24,7 @@
 #include "challenges/story_mode_timer.hpp"
 #include "challenges/unlock_manager.hpp"
 #include "config/player_manager.hpp"
+#include "config/stk_config.hpp"
 #include "config/user_config.hpp"
 #include "graphics/2dutils.hpp"
 #include "graphics/material.hpp"
@@ -95,29 +96,72 @@ void RaceResultGUI::init()
     music_manager->stopMusic();
 
     bool human_win = true;
+    bool has_human_players = false;
+    bool in_first_place = false;
     unsigned int num_karts = RaceManager::get()->getNumberOfKarts();
     for (unsigned int kart_id = 0; kart_id < num_karts; kart_id++)
     {
         const AbstractKart *kart = World::getWorld()->getKart(kart_id);
         if (kart->getController()->isLocalPlayerController())
+        {
+            has_human_players = true;
             human_win = human_win && kart->getRaceResult();
+
+            if (RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_FOLLOW_LEADER)
+            {
+                // It's possible the winning kart can get ahead of the leader.
+                in_first_place = kart->getPosition() <= 2;
+            }
+            else
+            {
+                in_first_place = kart->getPosition() == 1;
+            }
+        }
     }
 
     m_finish_sound = SFXManager::get()->quickSound(
         human_win ? "race_finish_victory" : "race_finish");
 
-    //std::string path = (human_win ? Different result music too later
-    //    file_manager->getAsset(FileManager::MUSIC, "race_summary.music") :
-    //    file_manager->getAsset(FileManager::MUSIC, "race_summary.music"));
-    std::string path = file_manager->getAsset(FileManager::MUSIC, "race_summary.music");
-    m_race_over_music = music_manager->getMusicInformation(path);
+    // Play different result music based on player kart positions.
+    if (has_human_players)
+    {
+        if (human_win)
+        {
+            if (in_first_place)
+            {
+                // At least one player kart is in 1st place.
+                m_race_over_music = stk_config->m_race_win_music;
+            }
+            else
+            {
+                // All player karts finished in winning positions, but none in 1st place.
+                m_race_over_music = stk_config->m_race_neutral_music;
+            }
+        }
+        else
+        {
+            // No player karts finished in winning positions.
+            m_race_over_music = stk_config->m_race_lose_music;
+        }
+    }
+    else
+    {
+        // For races with only AI karts and no human players.
+        m_race_over_music = stk_config->m_race_neutral_music;
+    }
 
     if (!m_finish_sound)
     {
         // If there is no finish sound (because sfx are disabled), start
         // the race over music here (since the race over music is only started
         // when the finish sound has been played).
-        music_manager->startMusic(m_race_over_music);
+        try
+        {music_manager->startMusic(m_race_over_music);}
+        catch (std::exception& e)
+        {
+            Log::error("RaceResultGUI", "Exception caught when "
+                "trying to load music: %s", e.what());
+        }
     }
 
     // Calculate how many track screenshots can fit into the "result-table" widget
@@ -145,7 +189,8 @@ void RaceResultGUI::init()
     }
 
 #ifndef SERVER_ONLY
-    if (!human_win && !NetworkConfig::get()->isNetworking())
+    if (!human_win && !NetworkConfig::get()->isNetworking() &&
+        !TipsManager::get()->isEmpty())
     {
         std::string tipset = "race";
         if (RaceManager::get()->isSoccerMode())
@@ -231,7 +276,7 @@ void RaceResultGUI::enableAllButtons()
         left->setImage("gui/icons/green_check.png");
         left->setVisible(true);
 
-        if (RaceManager::get()->getTrackNumber() + 1 < RaceManager::get()->getNumOfTracks()) 
+        if (RaceManager::get()->getTrackNumber() + 1 < RaceManager::get()->getNumOfTracks())
         {
             right->setLabel(_("Abort Grand Prix"));
             right->setImage("gui/icons/race_giveup.png");
@@ -288,21 +333,25 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
     const std::string& name, const int playerID)
 {
     int n_tracks = RaceManager::get()->getGrandPrix().getNumberOfTracks();
-    if (name == "up_button" && n_tracks > m_max_tracks && m_start_track > 0)
+    if (name == "up_button")
     {
-        m_start_track--;
-        m_end_track--;
-        displayScreenShots();
+        if (n_tracks > m_max_tracks && m_start_track > 0)
+        {
+            m_start_track--;
+            m_end_track--;
+            displayScreenShots();
+        }
     }
-    else if (name == "down_button" && n_tracks > m_max_tracks &&
-        m_start_track < (n_tracks - m_max_tracks))
+    else if (name == "down_button")
     {
-        m_start_track++;
-        m_end_track++;
-        displayScreenShots();
+        if (n_tracks > m_max_tracks && m_start_track < (n_tracks - m_max_tracks))
+        {
+            m_start_track++;
+            m_end_track++;
+            displayScreenShots();
+        }
     }
-    
-    if(name == "operations")
+    else if (name == "operations")
     {
         const std::string& action =
             getWidget<GUIEngine::RibbonWidget>("operations")->getSelectionIDString(PLAYER_ID_GAME_MASTER);
@@ -391,7 +440,7 @@ void RaceResultGUI::eventCallback(GUIEngine::Widget* widget,
                     std::vector<std::string> parts;
                     parts.push_back("endcutscene");
                     ((CutsceneWorld*)World::getWorld())->setParts(parts);
-                    
+
                     CutSceneGeneral* scene = CutSceneGeneral::getInstance();
                     scene->push();
                 }
@@ -527,6 +576,7 @@ void RaceResultGUI::displayCTFResults()
     video::SColor color = video::SColor(255, 255, 255, 255);
     video::SColor red_color = video::SColor(255, 255, 0, 0);
     gui::IGUIFont* font = GUIEngine::getTitleFont();
+    int team_icon_height = font->getDimension(L"A").Height;
     int current_x = UserConfigParams::m_width / 2;
     RowInfo *ri = &(m_all_row_infos[0]);
     int current_y = (int)ri->m_y_pos;
@@ -557,27 +607,29 @@ void RaceResultGUI::displayCTFResults()
     irr::video::ITexture* blue_icon = irr_driver->getTexture(FileManager::GUI_ICON,
         "blue_flag.png");
 
+    int team_icon_width = team_icon_height * (red_icon->getSize().Width / red_icon->getSize().Height);
     core::recti source_rect(core::vector2di(0, 0), red_icon->getSize());
+    current_x -= team_icon_width/2;
     core::recti dest_rect(current_x, current_y,
-        current_x + red_icon->getSize().Width / 2,
-        current_y + red_icon->getSize().Height / 2);
+        current_x + team_icon_width,
+        current_y + team_icon_height);
     draw2DImage(red_icon, dest_rect, source_rect,
         NULL, NULL, true);
-    current_x += UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
+    current_x += UserConfigParams::m_width / 2;
     dest_rect = core::recti(current_x, current_y,
-        current_x + red_icon->getSize().Width / 2,
-        current_y + red_icon->getSize().Height / 2);
+        current_x + team_icon_width,
+        current_y + team_icon_height);
     draw2DImage(blue_icon, dest_rect, source_rect,
         NULL, NULL, true);
 
     result_text = StringUtils::toWString(blue_score);
     rect = font->getDimension(result_text.c_str());
-    current_x += red_icon->getSize().Width / 4;
-    current_y += red_icon->getSize().Height / 2 + rect.Height / 4;
+    current_x += team_icon_width / 2;
+    current_y += team_icon_height + rect.Height / 4;
     pos = core::rect<s32>(current_x, current_y, current_x, current_y);
     font->draw(result_text.c_str(), pos, color, true, false);
 
-    current_x -= UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
+    current_x -= UserConfigParams::m_width / 2;
     result_text = StringUtils::toWString(red_score);
     pos = core::rect<s32>(current_x, current_y, current_x, current_y);
     font->draw(result_text.c_str(), pos, color, true, false);
@@ -633,14 +685,14 @@ void RaceResultGUI::displayCTFResults()
         source_rect = core::recti(core::vector2di(0, 0), kart_icon->getSize());
         irr::u32 offset_x =
             (irr::u32)(font->getDimension(result_text.c_str()).Width / 1.5f);
-        dest_rect = core::recti(current_x - offset_x - 30, current_y,
-            current_x - offset_x, current_y + 30);
+        dest_rect = core::recti(current_x - offset_x - m_width_icon, current_y,
+            current_x - offset_x, current_y + m_width_icon);
         draw2DImage(kart_icon, dest_rect, source_rect, NULL, NULL, true);
     }
 
     // The blue team player scores:
     current_y = prev_y;
-    current_x += UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
+    current_x += UserConfigParams::m_width / 2;
     for (unsigned int i = 0; i < num_karts; i++)
     {
         AbstractKart* kart = ctf->getKartAtPosition(i + 1);
@@ -681,8 +733,8 @@ void RaceResultGUI::displayCTFResults()
         source_rect = core::recti(core::vector2di(0, 0), kart_icon->getSize());
         irr::u32 offset_x = (irr::u32)
             (font->getDimension(result_text.c_str()).Width / 1.5f);
-        dest_rect = core::recti(current_x - offset_x - 30, current_y,
-            current_x - offset_x, current_y + 30);
+        dest_rect = core::recti(current_x - offset_x - m_width_icon, current_y,
+            current_x - offset_x, current_y + m_width_icon);
         draw2DImage(kart_icon, dest_rect, source_rect, NULL, NULL, true);
     }
 #endif
@@ -956,7 +1008,7 @@ void RaceResultGUI::displayCTFResults()
             }
         }
     }   // onUpdate
-    
+
     //-----------------------------------------------------------------------------
     /** Called once a frame, this now triggers the rendering of the actual
      *  race result gui.
@@ -1335,6 +1387,7 @@ void RaceResultGUI::displayCTFResults()
         core::stringw result_text;
         static video::SColor color = video::SColor(255, 255, 255, 255);
         gui::IGUIFont* font = GUIEngine::getTitleFont();
+        int team_icon_height = font->getDimension(L"A").Height * 1.5f; // the size of team icon
         int current_x = UserConfigParams::m_width / 2;
         RowInfo *ri = &(m_all_row_infos[0]);
         int current_y = (int)ri->m_y_pos;
@@ -1371,25 +1424,27 @@ void RaceResultGUI::displayCTFResults()
         irr::video::ITexture* blue_icon = irr_driver->getTexture(FileManager::GUI_ICON,
             "soccer_ball_blue.png");
 
+        int team_icon_width = team_icon_height * (red_icon->getSize().Width / red_icon->getSize().Height);
         core::recti source_rect(core::vector2di(0, 0), red_icon->getSize());
-        core::recti dest_rect(current_x, current_y, current_x + red_icon->getSize().Width / 2,
-            current_y + red_icon->getSize().Height / 2);
+        current_x -= team_icon_width/2;
+        core::recti dest_rect(current_x, current_y, current_x + team_icon_width,
+            current_y + team_icon_height);
         draw2DImage(red_icon, dest_rect, source_rect,
             NULL, NULL, true);
-        current_x += UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
-        dest_rect = core::recti(current_x, current_y, current_x + red_icon->getSize().Width / 2,
-            current_y + red_icon->getSize().Height / 2);
+        current_x += UserConfigParams::m_width / 2;
+        dest_rect = core::recti(current_x, current_y, current_x + team_icon_width,
+            current_y + team_icon_height);
         draw2DImage(blue_icon, dest_rect, source_rect,
             NULL, NULL, true);
 
         result_text = StringUtils::toWString(blue_score);
         rect = font->getDimension(result_text.c_str());
-        current_x += red_icon->getSize().Width / 4;
-        current_y += red_icon->getSize().Height / 2 + rect.Height / 4;
+        current_x += team_icon_height / 2;
+        current_y += team_icon_height + rect.Height / 4;
         pos = core::rect<s32>(current_x, current_y, current_x, current_y);
         font->draw(result_text.c_str(), pos, color, true, false);
 
-        current_x -= UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
+        current_x -= UserConfigParams::m_width / 2;
         result_text = StringUtils::toWString(red_score);
         pos = core::rect<s32>(current_x, current_y, current_x, current_y);
         font->draw(result_text.c_str(), pos, color, true, false);
@@ -1457,7 +1512,8 @@ void RaceResultGUI::displayCTFResults()
             {
                 source_rect = core::recti(core::vector2di(0, 0), scorer_icon->getSize());
                 irr::u32 offset_x = (irr::u32)(font->getDimension(result_text.c_str()).Width / 1.5f);
-                core::recti r = core::recti(current_x - offset_x - 30, current_y, current_x - offset_x, current_y + 30);
+                core::recti r = core::recti(current_x - offset_x - m_width_icon, current_y,
+                    current_x - offset_x, current_y + m_width_icon);
                 draw2DImage(scorer_icon, r, source_rect,
                     NULL, NULL, true);
             }
@@ -1465,7 +1521,7 @@ void RaceResultGUI::displayCTFResults()
 
         //The blue scorers:
         current_y = prev_y;
-        current_x += UserConfigParams::m_width / 2 - red_icon->getSize().Width / 2;
+        current_x += UserConfigParams::m_width / 2;
         scorers = sw->getScorers(KART_TEAM_BLUE);
 
         while (scorers.size() > 10)
@@ -1518,7 +1574,8 @@ void RaceResultGUI::displayCTFResults()
             {
                 source_rect = core::recti(core::vector2di(0, 0), scorer_icon->getSize());
                 irr::u32 offset_x = (irr::u32)(font->getDimension(result_text.c_str()).Width / 1.5f);
-                core::recti r = core::recti(current_x - offset_x - 30, current_y, current_x - offset_x, current_y + 30);
+                core::recti r = core::recti(current_x - offset_x - m_width_icon, current_y,
+                    current_x - offset_x, current_y + m_width_icon);
                 draw2DImage(scorer_icon, r, source_rect,
                     NULL, NULL, true);
             }

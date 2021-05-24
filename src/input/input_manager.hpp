@@ -54,8 +54,7 @@ public:
     };
 
     // to put a delay before a new gamepad axis move is considered in menu
-    bool m_timer_in_use;
-    float m_timer;
+    std::map<int, float> m_gamepads_timer;
 
 private:
 
@@ -121,6 +120,8 @@ public:
     const irr::SEvent& getEventForGamePad(unsigned i) const;
 
     void   handleJoystick(SDL_Event& event);
+
+    SDLController* getSDLController(unsigned i);
 #endif
 
     void   dispatchInput(Input::InputType, int deviceID, int btnID,

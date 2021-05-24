@@ -63,6 +63,7 @@ GamepadConfig::GamepadConfig( const std::string &name,
     m_hat_count    = 0;
     m_deadzone     = 4096;
     m_desensitize  = false;
+    m_use_force_feedback = true;
     setDefaultBinds();
 }   // GamepadConfig
 
@@ -75,6 +76,7 @@ GamepadConfig::GamepadConfig() : DeviceConfig()
     m_hat_count    = 0;
     m_deadzone     = 4096;
     m_desensitize  = false;
+    m_use_force_feedback = true;
     setDefaultBinds();
 }   // GamepadConfig
 
@@ -87,6 +89,7 @@ bool GamepadConfig::load(const XMLNode *config)
 {
     config->get("deadzone",     &m_deadzone    );
     config->get("desensitize",  &m_desensitize );
+    config->get("force-feedback", &m_use_force_feedback);
     bool ok = DeviceConfig::load(config);
 
     if(getName()=="")
@@ -107,7 +110,8 @@ void GamepadConfig::save (std::ofstream& stream)
 {
     stream << "<gamepad name =\"" << getName()
            << "\" deadzone=\""    << m_deadzone
-           << "\" desensitize=\"" << m_desensitize << "\" ";
+           << "\" desensitize=\"" << m_desensitize
+           << "\" force-feedback=\"" << m_use_force_feedback << "\" ";
     DeviceConfig::save(stream);
     stream << "</gamepad>\n\n";
 }   // save
@@ -522,13 +526,22 @@ void GamepadConfig::initSDLMapping()
     if (actions_map.find(SDL_CONTROLLER_BUTTON_LEFTSHOULDER) != actions_map.end() &&
         actions_map.find(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) != actions_map.end())
     {
+#ifdef __SWITCH__
+        setBindingFromTuple(PA_ACCEL, actions_map.at(SDL_CONTROLLER_BUTTON_A));
+        setBindingFromTuple(PA_BRAKE, actions_map.at(SDL_CONTROLLER_BUTTON_B));
+        setBindingFromTuple(PA_FIRE, actions_map.at(SDL_CONTROLLER_BUTTON_X));
+        setBindingFromTuple(PA_LOOK_BACK, actions_map.at(SDL_CONTROLLER_BUTTON_Y));
+        // Split joycons will only have one minus button (left joycon)
+        setBindingFromTuple(PA_RESCUE, actions_map.at(SDL_CONTROLLER_BUTTON_LEFTSTICK));
+#else
         setBindingFromTuple(PA_ACCEL, actions_map.at(SDL_CONTROLLER_BUTTON_Y));
         setBindingFromTuple(PA_BRAKE, actions_map.at(SDL_CONTROLLER_BUTTON_X));
         setBindingFromTuple(PA_FIRE, actions_map.at(SDL_CONTROLLER_BUTTON_B));
-        setBindingFromTuple(PA_NITRO, actions_map.at(SDL_CONTROLLER_BUTTON_LEFTSHOULDER));
-        setBindingFromTuple(PA_DRIFT, actions_map.at(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));
         setBindingFromTuple(PA_LOOK_BACK, actions_map.at(SDL_CONTROLLER_BUTTON_A));
         setBindingFromTuple(PA_RESCUE, actions_map.at(SDL_CONTROLLER_BUTTON_BACK));
+#endif
+        setBindingFromTuple(PA_NITRO, actions_map.at(SDL_CONTROLLER_BUTTON_LEFTSHOULDER));
+        setBindingFromTuple(PA_DRIFT, actions_map.at(SDL_CONTROLLER_BUTTON_RIGHTSHOULDER));
         setBindingFromTuple(PA_PAUSE_RACE, actions_map.at(SDL_CONTROLLER_BUTTON_START));
         setBindingFromTuple(PA_MENU_SELECT, actions_map.at(SDL_CONTROLLER_BUTTON_A));
         setBindingFromTuple(PA_MENU_CANCEL, actions_map.at(SDL_CONTROLLER_BUTTON_B));

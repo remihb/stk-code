@@ -55,16 +55,16 @@ void override_default_params_for_mobile()
     UserConfigParams::m_max_texture_size = 256;
     UserConfigParams::m_high_definition_textures = false;
     
-    // Disable advanced lighting by default to make the game playable
-    UserConfigParams::m_dynamic_lights = false;
+    // Enable advanced lighting only for android >= 8
+#ifdef ANDROID
+    UserConfigParams::m_dynamic_lights = (SDL_GetAndroidSDKVersion() >= 26);
+#endif
+
+    // Disable light scattering for better performance
+    UserConfigParams::m_light_scatter = false;
 
     // Enable multitouch race GUI
     UserConfigParams::m_multitouch_draw_gui = true;
-
-#ifdef IOS_STK
-    // Default 30 fps for battery saving
-    UserConfigParams::m_swap_interval = 2;
-#endif
 
 #ifdef ANDROID
     // For usage in StringUtils::getUserAgentString
@@ -80,12 +80,13 @@ void override_default_params_for_mobile()
     else
         g_android_main_user_agent = " (Android)";
 
-    // Set multitouch device scale depending on actual screen size
+    // Get some info about display
     const int SCREENLAYOUT_SIZE_SMALL = 1;
     const int SCREENLAYOUT_SIZE_NORMAL = 2;
     const int SCREENLAYOUT_SIZE_LARGE = 3;
     const int SCREENLAYOUT_SIZE_XLARGE = 4;
     int32_t screen_size = 0;
+    int ddpi = 0;
     JNIEnv* env = (JNIEnv*)SDL_AndroidGetJNIEnv();
     assert(env);
     jobject activity = (jobject)SDL_AndroidGetActivity();
@@ -98,11 +99,30 @@ void override_default_params_for_mobile()
                 "()I");
             if (method_id != NULL)
                 screen_size = env->CallIntMethod(activity, method_id);
+                
+            jmethodID display_dpi_id = env->GetStaticMethodID(clazz, 
+                "getDisplayDPI", "()Landroid/util/DisplayMetrics;");
+                
+            if (display_dpi_id != NULL)
+            {
+                jobject display_dpi_obj = env->CallStaticObjectMethod(clazz, 
+                                                                display_dpi_id);
+                jclass display_dpi_class = env->GetObjectClass(display_dpi_obj);
+            
+                jfieldID ddpi_field = env->GetFieldID(display_dpi_class, 
+                                                      "densityDpi", "I");
+                ddpi = env->GetIntField(display_dpi_obj, ddpi_field);
+            
+                env->DeleteLocalRef(display_dpi_obj);
+                env->DeleteLocalRef(display_dpi_class);
+            }
+            
+            env->DeleteLocalRef(activity);
             env->DeleteLocalRef(clazz);
         }
-        env->DeleteLocalRef(activity);
     }
 
+    // Set multitouch device scale depending on actual screen size
     switch (screen_size)
     {
     case SCREENLAYOUT_SIZE_SMALL:
@@ -123,6 +143,30 @@ void override_default_params_for_mobile()
         break;
     default:
         break;
+    }
+    
+    // Update rtts scale based on display DPI
+    if (ddpi < 1)
+    {
+        Log::warn("MainAndroid", "Failed to get display DPI.");
+        UserConfigParams::m_scale_rtts_factor = 0.7f;
+    }
+    else
+    {
+        if (ddpi > 400)
+            UserConfigParams::m_scale_rtts_factor = 0.6f;
+        else if (ddpi > 300)
+            UserConfigParams::m_scale_rtts_factor = 0.65f;
+        else if (ddpi > 200)
+            UserConfigParams::m_scale_rtts_factor = 0.7f;
+        else if (ddpi > 150)
+            UserConfigParams::m_scale_rtts_factor = 0.75f;
+        else
+            UserConfigParams::m_scale_rtts_factor = 0.8f;
+
+        Log::info("MainAndroid", "Display DPI: %i", ddpi);
+        Log::info("MainAndroid", "Render scale: %f", 
+                  (float)UserConfigParams::m_scale_rtts_factor);
     }
 #endif
 

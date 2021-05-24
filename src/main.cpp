@@ -166,6 +166,27 @@
 #include <jni.h>
 #endif
 
+#ifdef __SWITCH__
+extern "C" {
+  #include <sys/iosupport.h>
+  #include <switch/kernel/svc.h>
+  #include <switch/runtime/nxlink.h>
+  #include <switch/runtime/diag.h>
+  #include <switch/services/ssl.h>
+#define Event libnx_Event
+  #include <switch/services/set.h>
+  #include <switch/services/applet.h>
+  #include <switch/services/nifm.h>
+  #include <switch/runtime/pad.h>
+#undef Event
+  #include <switch/runtime/devices/socket.h>
+}
+
+#include <dirent.h>
+#include <errno.h>
+#include <sys/types.h>
+#endif
+
 #include <stdexcept>
 #include <cstdio>
 #include <string>
@@ -269,6 +290,7 @@
 #include "utils/stk_process.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/translation.hpp"
+#include "io/rich_presence.hpp"
 
 static void cleanSuperTuxKart();
 static void cleanUserConfig();
@@ -545,7 +567,7 @@ void cmdLineHelp()
     "       --aiNP=a,b,...     Use the karts a, b, ... for the AI, no additional player kart.\n"
     "       --laps=N           Define number of laps to N.\n"
     "       --mode=N           N=0 Normal, N=1 Time trial, N=2 Battle, N=3 Soccer,\n"
-    "                          N=4 Follow The Leader. In configure server use --battle-mode=n\n"
+    "                          N=4 Follow The Leader, N=5 Capture The Flag. In configure server use --battle-mode=n\n"
     "                          for battle server and --soccer-timed / goals for soccer server\n"
     "                          to control verbosely, see below:\n"
     "       --difficulty=N     N=0 Beginner, N=1 Intermediate, N=2 Expert, N=3 SuperTux.\n"
@@ -553,6 +575,8 @@ void cmdLineHelp()
     "                          1 is Capture The Flag.\n"
     "       --soccer-timed     Use time limit mode in network soccer game.\n"
     "       --soccer-goals     Use goals limit mode in network soccer game.\n"
+    "       --capture-limit    Specify capture limit for CTF.\n"
+    "       --time-limit       Specify time limit for current game mode.\n"
     "       --reverse          Play track in reverse (if allowed)\n"
     "  -f,  --fullscreen       Use fullscreen display.\n"
     "  -w,  --windowed         Use windowed display (default).\n"
@@ -567,6 +591,10 @@ void cmdLineHelp()
                               "seconds.\n"
     "       --unlock-all       Permanently unlock all karts and tracks for testing.\n"
     "       --no-unlock-all    Disable unlock-all (i.e. base unlocking on player achievement).\n"
+    "       --xmas=n           Toggle Xmas/Christmas mode. n=0 Use current date, n=1, Always enable,\n"
+    "                          n=2, Always disable.\n"
+    "       --easter=n         Toggle Easter ears mode. n=0 Use current date, n=1, Always enable,\n"
+    "                          n=2, Always disable.\n"
     "       --no-graphics      Do not display the actual race.\n"
     "       --sp-shader-debug  Enables debug in sp shader, it will print all unavailable uniforms.\n"
     "       --demo-mode=t      Enables demo mode after t seconds of idle time in "
@@ -575,13 +603,7 @@ void cmdLineHelp()
     "                          spaces are allowed in the track names.\n"
     "       --demo-laps=n      Number of laps to use in a demo.\n"
     "       --demo-karts=n     Number of karts to use in a demo.\n"
-    // "       --history          Replay history file 'history.dat'.\n"
-    // "       --test-ai=n        Use the test-ai for every n-th AI kart.\n"
-    // "                          (so n=1 means all Ais will be the test ai)\n"
-    // "
-    // "    --disable-item-collection Disable item collection. Useful for\n"
-    // "                          debugging client/server item management.\n"
-    // "    --network-item-debugging Print item handling debug information.\n"
+    "       --history          Replay history file 'history.dat'.\n"
     "       --server-config=file Specify the server_config.xml for server hosting, it will create\n"
     "                            one if not found.\n"
     "       --network-console  Enable network console.\n"
@@ -623,6 +645,7 @@ void cmdLineHelp()
     "       --no-console-log   Does not write messages in the console but to\n"
     "                          stdout.log.\n"
     "  -h,  --help             Show this help.\n"
+    "       --help-debug       Show help for debugging options.\n"
     "       --log=N            Set the verbosity to a value between\n"
     "                          0 (Debug) and 5 (Only Fatal messages)\n"
     "       --logbuffer=N      Buffers up to N lines log lines before writing.\n"
@@ -661,9 +684,13 @@ void cmdLineHelp()
     "                           Takes precedence over trilinear or bilinear\n"
     "                           texture filtering.\n"
     "       --shadows=n         Set resolution of shadows (0 to disable).\n"
+    "       --render-driver=n   Render driver to use (gl or directx9).\n"
     "       --apitrace          This will disable buffer storage and\n"
     "                           writing gpu query strings to opengl, which\n"
     "                           can be seen later in apitrace.\n"
+#ifdef ENABLE_WIIUSE
+    "       --wii               Enable usage of Wii Remotes.\n"
+#endif
 #if defined(__linux__) || defined(__FreeBSD__)
     "\n"
     "Environment variables:\n"
@@ -679,6 +706,51 @@ void cmdLineHelp()
     );
 }   // cmdLineHelp
 
+void cmdDebugHelp()
+{
+    fprintf(stdout,
+    "Usage: %s [OPTIONS]\n\n"
+    "Run SuperTuxKart, a go-kart racing game that features "
+    "Tux and friends.\n\n"
+    "Debug options (some work only if artist debug mode is enabled):\n"
+    "       --debug=s                   s=all Log everything, s=addons Log addons management,\n"
+    "                                   s=gui Log GUI events, s=flyable Log flyables,\n"
+    "                                   s=memory Log memory usage, s=misc Log other events.\n"
+    "       --gamepad-visuals           Debug gamepads by visualising their values.\n"
+    "       --no-high-scores            Disable writing high scores.\n"
+    "       --unit-testing              Run unit tests and exit.\n"
+    "       --gamepad-debug             Enable verbose logging of gamepad button presses.\n"
+    "       --keyboard-debug            Enable verbose logging of keyboard key presses.\n"
+    "       --wiimote-debug             Enable verbose logging of Wii Remote button presses.\n"
+    "       --tutorial-debug            Enable verbose logging of the tutorial mode.\n"
+    "       --track-debug               Enable displaying the driveline in tracks.\n"
+    "       --check-debug               Enable displaying the checklines in tracks.\n"
+    "       --kartsize-debug            Enable verbose logging of kart dimensions\n"
+    "                                   and mesh buffer counts.\n"
+    "       --physics-debug             Enable verbose logging of the physics system.\n"
+    "       --material-debug            Enable verbose logging of terrain specific slowdowns.\n"
+    "       --ftl-debug                 Enable verbose logging in follow-the-leader mode.\n"
+    "       --slipstream-debug          Enable displaying of slipstreams more prominently.\n"
+    "       --rendering-debug           Enable displaying of ambient/diffuse/specularity\n"
+    "                                   in RGB & all anisotropic.\n"
+    "       --ai-debug                  Enable displaying of AI controllers as on-screen text.\n"
+    "                                   Makes it easier to distingush between different AI controllers.\n"
+    "       --fps-debug                 Enable verbose logging of the FPS counter on every frame.\n"
+    "       --rewind                    Enable the rewind manager.\n"
+    "       --battle-ai-stats           Enable verbose logging of AI karts in battle modes.\n"
+    "       --soccer-ai-stats           Enable verbose logging of AI karts in soccer mode.\n"
+    "       --test-ai=n                 Use the test-ai for every n-th AI kart.\n"
+    "                                   (so n=1 means all Ais will be the test ai)\n"
+    "       --disable-item-collection   Disable item collection. Useful for\n"
+    "                                   debugging client/server item management.\n"
+    "       --network-item-debugging    Print item handling debug information.\n"
+    "\n"
+    "You can visit SuperTuxKart's homepage at "
+    "https://supertuxkart.net\n\n",
+    CommandLine::getExecName().c_str()
+    );
+}   // cmdDebugHelp
+
 //=============================================================================
 /** For base options that modify the output (loglevel/color) or exit right
  * after being processed (version/help).
@@ -689,6 +761,13 @@ int handleCmdLineOutputModifier()
         CommandLine::has("-h"))
     {
         cmdLineHelp();
+        cleanUserConfig();
+        exit(0);
+    }
+
+    if (CommandLine::has("--help-debug"))
+    {
+        cmdDebugHelp();
         cleanUserConfig();
         exit(0);
     }
@@ -729,8 +808,7 @@ int handleCmdLineOutputModifier()
  */
 int handleCmdLinePreliminary()
 {
-   if(CommandLine::has("--gamepad-visualisation") ||   // only BE
-       CommandLine::has("--gamepad-visualization")    ) // both AE and BE
+    if(CommandLine::has("--gamepad-visuals"))
         UserConfigParams::m_gamepad_visualisation=true;
     if(CommandLine::has("--debug=memory"))
         UserConfigParams::m_verbosity |= UserConfigParams::LOG_MEMORY;
@@ -759,6 +837,8 @@ int handleCmdLinePreliminary()
         stk_config->load(file_manager->getAsset(s));
         Log::info("main", "STK config will be read from %s.",s.c_str());
     }
+    if(CommandLine::has("--render-driver", &s))
+        UserConfigParams::m_render_driver = s;
     if(CommandLine::has("--trackdir", &s))
         TrackManager::addTrackSearchDir(s);
     if(CommandLine::has("--kartdir", &s))
@@ -933,6 +1013,8 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
 
     irr::core::stringw login, password;
 
+    if (CommandLine::has("--no-high-scores"))
+        UserConfigParams::m_no_high_scores=true;
     if (CommandLine::has("--unit-testing"))
         UserConfigParams::m_unit_testing = true;
     if (CommandLine::has("--gamepad-debug"))
@@ -1002,21 +1084,6 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
 
     if (UserConfigParams::m_artist_debug_mode)
     {
-        if (CommandLine::has("--camera-wheel-debug"))
-        {
-            Camera::setDefaultCameraType(Camera::CM_TYPE_DEBUG);
-            CameraDebug::setDebugType(CameraDebug::CM_DEBUG_GROUND);
-        }
-        if(CommandLine::has("--camera-debug"))
-        {
-            Camera::setDefaultCameraType(Camera::CM_TYPE_DEBUG);
-            CameraDebug::setDebugType(CameraDebug::CM_DEBUG_TOP_OF_KART);
-        }
-        if(CommandLine::has("--camera-kart-debug"))
-        {
-            Camera::setDefaultCameraType(Camera::CM_TYPE_DEBUG);
-            CameraDebug::setDebugType(CameraDebug::CM_DEBUG_BEHIND_KART);
-        }
         if(CommandLine::has("--physics-debug"))
             UserConfigParams::m_physics_debug=1;
         if(CommandLine::has("--check-debug"))
@@ -1134,6 +1201,12 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         case 4:
         {
             RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_FOLLOW_LEADER);
+            break;
+        }
+        case 5:
+        {
+            ServerConfig::m_server_mode = 8;
+            RaceManager::get()->setMinorMode(RaceManager::MINOR_MODE_CAPTURE_THE_FLAG);
             break;
         }
         default:
@@ -1428,6 +1501,16 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         NetworkConfig::get()->setAutoConnect(true);
     }
 
+    if (CommandLine::has("--capture-limit", &n))
+    {
+        RaceManager::get()->setHitCaptureTime(n, 0.0f);
+    }
+
+    if (CommandLine::has("--time-limit", &n))
+    {
+        RaceManager::get()->setTimeTarget(n);
+    }
+
     // Race parameters
     if(CommandLine::has("--kartsize-debug"))
     {
@@ -1487,6 +1570,11 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         RaceManager::get()->setNumKarts((int)l.size());
     }   // --aiNP
 
+    if(CommandLine::has("--reverse"))
+    {
+        RaceManager::get()->setReverseTrack(true);
+    }
+
     if(CommandLine::has("--track", &s) || CommandLine::has("-t", &s))
     {
         RaceManager::get()->setTrack(s);
@@ -1497,6 +1585,14 @@ int handleCmdLine(bool has_server_config, bool has_parent_process)
         if (!t)
         {
             Log::warn("main", "Can't find track named '%s'.", s.c_str());
+        }
+        else if (RaceManager::get()->getMinorMode() == RaceManager::MINOR_MODE_CAPTURE_THE_FLAG)
+        {
+            // CTF has no ai support atm
+            const std::vector<std::string> l;
+            RaceManager::get()->setDefaultAIKartList(l);
+            // Add 1 for the player kart
+            RaceManager::get()->setNumKarts(1);
         }
         else if (t->isArena())
         {
@@ -1760,6 +1856,9 @@ void initRest()
     GUIEngine::setSkin(NULL);
 
     input_manager = new InputManager();
+#ifdef __SWITCH__
+    input_manager->addJoystick();
+#endif
     // Get into menu mode initially.
     input_manager->setMode(InputManager::MENU);
     // Input manager set first so it recieves SDL joystick event
@@ -1952,6 +2051,33 @@ void main_abort()
 }
 #endif
 
+#ifdef __SWITCH__
+ssize_t dotab_stdout_fn(struct _reent *r,void *fd,const char *ptr, size_t len)
+{
+    svcOutputDebugString(ptr, len);
+    return len;
+}
+
+void debugLoop()
+{
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+
+    PadState pad;
+    padInitializeDefault(&pad);
+
+    while(1)
+    {
+        padUpdate(&pad);
+        uint64_t down = padGetButtons(&pad);
+        if(down & HidNpadButton_Up)
+        {
+            diagAbortWithResult(0);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+}
+#endif
+
 // ----------------------------------------------------------------------------
 #if defined(ANDROID)
 int android_main(int argc, char *argv[])
@@ -1961,6 +2087,48 @@ int ios_main(int argc, char *argv[])
 int main(int argc, char *argv[])
 #endif
 {
+#ifdef __SWITCH__
+    constexpr devoptab_t dotab_stdout = {
+        .name    = "con",
+        .write_r = dotab_stdout_fn,
+    };
+
+    devoptab_list[STD_OUT] = &dotab_stdout;
+    devoptab_list[STD_ERR] = &dotab_stdout;
+
+    // Up number of maximum concurrent sockets, otherwise we can fail while loading with nxlink
+    const SocketInitConfig socketConfig = {
+        .bsdsockets_version = 1,
+        .tcp_tx_buf_size        = 0x8000,
+        .tcp_rx_buf_size        = 0x10000,
+        .tcp_tx_buf_max_size    = 0x40000,
+        .tcp_rx_buf_max_size    = 0x40000,
+
+        .udp_tx_buf_size = 0x2400,
+        .udp_rx_buf_size = 0xA500,
+
+        .sb_efficiency = 4,
+        .num_bsd_sessions = 16,
+        .bsd_service_type = BsdServiceType_User,
+    };
+
+    // Initialize socket, needed for networking and nxlink stdio
+    socketInitialize(&socketConfig);
+    // Initialize settings, needed to grab language
+    setInitialize();
+    // Needed to get ip address
+    nifmInitialize(NifmServiceType_User);
+
+    // Boost CPU while loading:
+    appletSetCpuBoostMode(ApmCpuBoostMode_FastLoad);
+
+    // Crashes on Reujinx
+#ifdef DEBUG_NXLINK
+    nxlinkStdio();
+    std::thread debugThread = std::thread(debugLoop);
+#endif
+#endif
+  
     clearGlobalVariables();
     CommandLine::init(argc, argv);
 
@@ -2213,7 +2381,7 @@ int main(int argc, char *argv[])
                 if (!android_tv && irr_driver->getDevice()->supportsTouchDevice())
                 {
                     InitAndroidDialog* init_android = new InitAndroidDialog(
-                                                                    0.6f, 0.6f);
+                                                                    0.8f, 0.8f);
                     GUIEngine::DialogQueue::get()->pushDialog(init_android);
                 }
             }
@@ -2371,6 +2539,11 @@ int main(int argc, char *argv[])
             RaceManager::get()->startNew(false);
         }
 
+#ifdef __SWITCH__
+        // Game loaded, bring CPU / GPU clock back to normal
+        appletSetCpuBoostMode(ApmCpuBoostMode_Normal);
+#endif
+
         main_loop->run();
 
     }  // try
@@ -2404,6 +2577,8 @@ int main(int argc, char *argv[])
     cleanSuperTuxKart();
     NetworkConfig::destroy();
 
+    RichPresenceNS::RichPresence::destroy();
+
 #ifdef DEBUG
     MemoryLeaks::checkForLeaks();
 #endif
@@ -2424,6 +2599,13 @@ int main(int argc, char *argv[])
 #endif
 
     delete file_manager;
+
+#ifdef __SWITCH__
+    // De-initialize stuff!
+    setExit();
+    socketExit();
+    nifmExit();
+#endif
 
 #ifdef IOS_STK
     // App store may not like this, but this can happen if player uses keyboard to quit stk

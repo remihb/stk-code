@@ -90,6 +90,9 @@ namespace irr
 		//! Get current window position.
 		virtual bool getWindowPosition(int* x, int* y);
 
+		//! Get DPI of current display.
+		virtual bool getDisplayDPI(float* ddpi, float* hdpi, float* vdpi);
+
 		//! Activate any joysticks, and generate events for them.
 		virtual bool activateJoysticks(core::array<SJoystickInfo> & joystickInfo);
 
@@ -113,25 +116,13 @@ namespace irr
 
 		const SDL_SysWMinfo& getWMInfo() const { return Info; }
 
-		virtual s32 getTopPadding()
-		{
-			return TopPadding * getNativeScaleY();
-		}
+		virtual s32 getTopPadding();
 
-		virtual s32 getBottomPadding()
-		{
-			return BottomPadding * getNativeScaleY();
-		}
+		virtual s32 getBottomPadding();
 
-		virtual s32 getLeftPadding()
-		{
-			return LeftPadding * getNativeScaleX();
-		}
+		virtual s32 getLeftPadding();
 
-		virtual s32 getRightPadding()
-		{
-			return RightPadding * getNativeScaleX();
-		}
+		virtual s32 getRightPadding();
 
 		virtual f32 getNativeScaleX() const;
 		virtual f32 getNativeScaleY() const;
@@ -300,6 +291,7 @@ namespace irr
 		f32 BottomPadding;
 		f32 LeftPadding;
 		f32 RightPadding;
+		int InitialOrientation;
 
 		bool WindowHasFocus;
 		bool WindowMinimized;

@@ -26,7 +26,6 @@
 #include "graphics/2dutils.hpp"
 #include "graphics/central_settings.hpp"
 #include "graphics/irr_driver.hpp"
-#include "graphics/stk_texture.hpp"
 #include "graphics/stk_tex_manager.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/skin.hpp"
@@ -35,6 +34,9 @@
 
 #include "GlyphLayout.h"
 #include <array>
+#ifndef SERVER_ONLY
+#include <ge_texture.hpp>
+#endif
 
 #include "../lib/irrlicht/source/Irrlicht/CGUISpriteBank.h"
 
@@ -70,7 +72,7 @@ FontWithFace::~FontWithFace()
     for (unsigned int i = 0; i < m_spritebank->getTextureCount(); i++)
     {
         STKTexManager::getInstance()->removeTexture(
-            static_cast<STKTexture*>(m_spritebank->getTexture(i)));
+            m_spritebank->getTexture(i));
     }
     m_spritebank->drop();
 
@@ -124,7 +126,7 @@ void FontWithFace::reset()
     for (unsigned int i = 0; i < m_spritebank->getTextureCount(); i++)
     {
         STKTexManager::getInstance()->removeTexture(
-            static_cast<STKTexture*>(m_spritebank->getTexture(i)));
+            m_spritebank->getTexture(i));
     }
     m_spritebank->clear();
     m_face_ttf->reset();
@@ -159,25 +161,15 @@ void FontWithFace::createNewGlyphPage()
 #ifndef SERVER_ONLY
     if (GUIEngine::isNoGraphics())
         return;
-
-    uint8_t* data = new uint8_t[getGlyphPageSize() * getGlyphPageSize() *
-    (CVS->isARBTextureSwizzleUsable() && !useColorGlyphPage() ? 1 : 4)]();
-#else
-    uint8_t* data = NULL;
-#endif
     m_current_height = 0;
     m_used_width = 0;
     m_used_height = 0;
-    STKTexture* stkt = new STKTexture(data, typeid(*this).name() +
+    video::ITexture* font_texture = GE::createFontTexture(typeid(*this).name() +
         StringUtils::toString(m_spritebank->getTextureCount()),
-        getGlyphPageSize(),
-#ifndef SERVER_ONLY
-        CVS->isARBTextureSwizzleUsable() && !useColorGlyphPage()
-#else
-        false
+        getGlyphPageSize(), !useColorGlyphPage());
+    m_spritebank->addTexture(STKTexManager::getInstance()->addTexture(
+        font_texture));
 #endif
-        );
-    m_spritebank->addTexture(STKTexManager::getInstance()->addTexture(stkt));
 }   // createNewGlyphPage
 
 // ----------------------------------------------------------------------------
@@ -254,27 +246,10 @@ void FontWithFace::insertGlyph(unsigned font_number, unsigned glyph_index)
     if (bits->buffer != NULL && !GUIEngine::isNoGraphics())
     {
         video::ITexture* tex = m_spritebank->getTexture(cur_tex);
-        glBindTexture(GL_TEXTURE_2D, tex->getOpenGLTextureName());
         if (bits->pixel_mode == FT_PIXEL_MODE_GRAY)
         {
-            if (CVS->isARBTextureSwizzleUsable() && !useColorGlyphPage())
-            {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, m_used_width, m_used_height,
-                    bits->width, bits->rows, GL_RED, GL_UNSIGNED_BYTE,
-                    bits->buffer);
-            }
-            else
-            {
-                const unsigned int size = bits->width * bits->rows;
-                uint8_t* image_data = new uint8_t[size * 4];
-                memset(image_data, 255, size * 4);
-                for (unsigned int i = 0; i < size; i++)
-                    image_data[4 * i + 3] = bits->buffer[i];
-                glTexSubImage2D(GL_TEXTURE_2D, 0, m_used_width, m_used_height,
-                    bits->width, bits->rows, GL_RGBA, GL_UNSIGNED_BYTE,
-                    image_data);
-                delete[] image_data;
-            }
+            tex->updateTexture(bits->buffer, video::ECF_R8, bits->width,
+                bits->rows, m_used_width, m_used_height);
         }
         else if (bits->pixel_mode == FT_PIXEL_MODE_BGRA)
         {
@@ -316,16 +291,9 @@ void FontWithFace::insertGlyph(unsigned font_number, unsigned glyph_index)
                 }
             }
             uint8_t* scaled_data = (uint8_t*)scaled->lock();
-            for (unsigned int i = 0; i < cur_glyph_width * cur_glyph_height;
-                 i++)
-            {
-                uint8_t tmp_val = scaled_data[i * 4];
-                scaled_data[i * 4] = scaled_data[i * 4 + 2];
-                scaled_data[i * 4 + 2] = tmp_val;
-            }
-            glTexSubImage2D(GL_TEXTURE_2D, 0, m_used_width, m_used_height,
-                cur_glyph_width, cur_glyph_height, GL_RGBA, GL_UNSIGNED_BYTE,
-                scaled_data);
+            tex->updateTexture(scaled_data, video::ECF_A8R8G8B8,
+                cur_glyph_width, cur_glyph_height, m_used_width,
+                m_used_height);
             unscaled->drop();
             scaled->drop();
         }
@@ -333,9 +301,6 @@ void FontWithFace::insertGlyph(unsigned font_number, unsigned glyph_index)
         {
             assert(false && "Invalid pixel mode");
         }
-        if (tex->hasMipMaps())
-            glGenerateMipmap(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     // Store the rectangle of current glyph
@@ -405,14 +370,16 @@ void FontWithFace::dumpGlyphPage(const std::string& name)
         video::ITexture* tex = m_spritebank->getTexture(i);
         core::dimension2d<u32> size = tex->getSize();
         video::ECOLOR_FORMAT col_format = tex->getColorFormat();
-        void* data = tex->lock();
+        void* data = tex->lock(video::ETLM_READ_ONLY);
+        if (!data)
+            continue;
         video::IImage* image = irr_driver->getVideoDriver()
             ->createImageFromData(col_format, size, data,
-            true/*ownForeignMemory*/);
-        tex->unlock();
+            false/*ownForeignMemory*/);
         irr_driver->getVideoDriver()->writeImageToFile(image, std::string
             (name + "_" + StringUtils::toString(i) + ".png").c_str());
         image->drop();
+        tex->unlock();
     }
 #endif
 }   // dumpGlyphPage

@@ -141,6 +141,7 @@ public:
 
 
 private:
+    int                   m_screen_orientation;
     std::vector<VideoMode> m_modes;
 
     void                  setupViewports();
@@ -217,14 +218,8 @@ public:
     void                  setAmbientLight(const video::SColorf &light,
                                           bool force_SH_computation = true);
     video::ITexture      *getTexture(FileManager::AssetType type,
-                                     const std::string &filename,
-                                     bool is_premul=false,
-                                     bool is_prediv=false,
-                                     bool complain_if_not_found=true);
-    video::ITexture      *getTexture(const std::string &filename,
-                                     bool is_premul=false,
-                                     bool is_prediv=false,
-                                     bool complain_if_not_found=true);
+                                     const std::string &filename);
+    video::ITexture      *getTexture(const std::string &filename);
     void                  grabAllTextures(const scene::IMesh *mesh);
     void                  dropAllTextures(const scene::IMesh *mesh);
     scene::IMesh         *createQuadMesh(const video::SMaterial *material=NULL,
@@ -249,9 +244,6 @@ public:
                                        scene::ISceneNode* parent=NULL);
     scene::IParticleSystemSceneNode
                          *addParticleNode(bool default_emitter=true);
-    scene::ISceneNode    *addSkyDome(video::ITexture *texture, int hori_res,
-                                     int vert_res, float texture_percent,
-                                     float sphere_percent);
     scene::ISceneNode    *addSkyBox(const std::vector<video::ITexture*> &texture_names,
                                     const std::vector<video::ITexture*> &spherical_harmonics_textures);
     void suppressSkyBox();

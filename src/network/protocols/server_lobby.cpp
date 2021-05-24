@@ -917,10 +917,13 @@ void ServerLobby::handleChat(Event* event)
                 important_players.insert(s);
         }
         chat->addUInt8(LE_CHAT).encodeString16(message);
+        core::stringw sender_name =
+            event->getPeer()->getPlayerProfiles()[0]->getName();
+
         STKHost::get()->sendPacketToAllPeersWith(
             [game_started, sender_in_game, target_team, can_receive,
                 sender, team_speak, teams, tournament_limit,
-                important_players](STKPeer* p)
+                important_players, sender_name, this](STKPeer* p)
             {
                 if (sender == p)
                     return true;
@@ -956,6 +959,15 @@ void ServerLobby::handleChat(Event* event)
                                 return true;
                         }
                         return false;
+                    }
+                }
+                for (auto& peer : m_peers_muted_players)
+                {
+                    if (auto peer_sp = peer.first.lock())
+                    {
+                        if (peer_sp.get() == p &&
+                            peer.second.find(sender_name) != peer.second.end())
+                            return false;
                     }
                 }
                 if (team_speak)
@@ -1590,6 +1602,15 @@ void ServerLobby::asynchronousUpdate()
         m_rs_state.store(RS_NONE);
     }
 
+    for (auto it = m_peers_muted_players.begin();
+        it != m_peers_muted_players.end();)
+    {
+        if (it->first.expired())
+            it = m_peers_muted_players.erase(it);
+        else
+            it++;
+    }
+
 #ifdef ENABLE_SQLITE3
     pollDatabase();
 #endif
@@ -1618,7 +1639,7 @@ void ServerLobby::asynchronousUpdate()
         Log::warn("ServerLobby", "Trying auto server recovery.");
         // For auto server recovery wait 3 seconds for next try
         m_last_unsuccess_poll_time = StkTime::getMonoTimeMs() + 3000;
-        registerServer();
+        registerServer(false/*first_time*/);
     }
 
     switch (m_state.load())
@@ -1667,7 +1688,7 @@ void ServerLobby::asynchronousUpdate()
         // this thread, because there is no need for the protocol manager
         // to react to any requests before the server is registered.
         if (m_server_registering.expired() && m_server_id_online.load() == 0)
-            registerServer();
+            registerServer(true/*first_time*/);
 
         if (m_server_registering.expired())
         {
@@ -1679,11 +1700,6 @@ void ServerLobby::asynchronousUpdate()
                 if (allowJoinedPlayersWaiting())
                     m_registered_for_once_only = true;
                 m_state = WAITING_FOR_START_GAME;
-            }
-            else
-            {
-                // Exit now if failed to register to stk addons
-                m_state = ERROR_LEAVE;
             }
         }
         break;
@@ -2524,13 +2540,14 @@ void ServerLobby::update(int ticks)
  *  ProtocolManager thread). The information about this client is added
  *  to the table 'server'.
  */
-void ServerLobby::registerServer()
+void ServerLobby::registerServer(bool first_time)
 {
     // ========================================================================
     class RegisterServerRequest : public Online::XMLRequest
     {
     private:
         std::weak_ptr<ServerLobby> m_server_lobby;
+        bool m_first_time;
     protected:
         virtual void afterOperation()
         {
@@ -2566,15 +2583,18 @@ void ServerLobby::registerServer()
             }
             Log::error("ServerLobby", "%s",
                 StringUtils::wideToUtf8(getInfo()).c_str());
+            // Exit now if failed to register to stk addons for first time
+            if (m_first_time)
+                sl->m_state.store(ERROR_LEAVE);
         }
     public:
-        RegisterServerRequest(std::shared_ptr<ServerLobby> sl)
+        RegisterServerRequest(std::shared_ptr<ServerLobby> sl, bool first_time)
         : XMLRequest(Online::RequestManager::HTTP_MAX_PRIORITY),
-        m_server_lobby(sl) {}
+        m_server_lobby(sl), m_first_time(first_time) {}
     };   // RegisterServerRequest
 
     auto request = std::make_shared<RegisterServerRequest>(
-        std::dynamic_pointer_cast<ServerLobby>(shared_from_this()));
+        std::dynamic_pointer_cast<ServerLobby>(shared_from_this()), first_time);
     NetworkConfig::get()->setServerDetails(request, "create");
     const SocketAddress& addr = STKHost::get()->getPublicAddress();
     request->addParameter("address",      addr.getIP()        );
@@ -7003,6 +7023,109 @@ void ServerLobby::handleServerCommand(Event* event,
                 chat->encodeString16(StringUtils::utf8ToWide(std::string
                     ("Server has no addon ") + argv[1]));
             }
+        }
+        peer->sendPacket(chat, true/*reliable*/);
+        delete chat;
+    }
+    else if (argv[0] == "mute")
+    {
+        std::shared_ptr<STKPeer> player_peer;
+        std::string result_msg;
+        core::stringw player_name;
+        NetworkString* result = NULL;
+
+        if (argv.size() != 2 || argv[1].empty())
+            goto mute_error;
+
+        player_name = StringUtils::utf8ToWide(argv[1]);
+        player_peer = STKHost::get()->findPeerByName(player_name);
+
+        if (!player_peer || player_peer == peer)
+            goto mute_error;
+
+        m_peers_muted_players[peer].insert(player_name);
+        result = getNetworkString();
+        result->addUInt8(LE_CHAT);
+        result->setSynchronous(true);
+        result_msg = "Muted player ";
+        result_msg += argv[1];
+        result->encodeString16(StringUtils::utf8ToWide(result_msg));
+        peer->sendPacket(result, true/*reliable*/);
+        delete result;
+        return;
+
+mute_error:
+        NetworkString* error = getNetworkString();
+        error->addUInt8(LE_CHAT);
+        error->setSynchronous(true);
+        std::string msg = "Usage: /mute player_name (not including yourself)";
+        error->encodeString16(StringUtils::utf8ToWide(msg));
+        peer->sendPacket(error, true/*reliable*/);
+        delete error;
+    }
+    else if (argv[0] == "unmute")
+    {
+        std::shared_ptr<STKPeer> player_peer;
+        std::string result_msg;
+        core::stringw player_name;
+        NetworkString* result = NULL;
+
+        if (argv.size() != 2 || argv[1].empty())
+            goto unmute_error;
+
+        player_name = StringUtils::utf8ToWide(argv[1]);
+        for (auto it = m_peers_muted_players[peer].begin();
+            it != m_peers_muted_players[peer].end();)
+        {
+            if (*it == player_name)
+            {
+                it = m_peers_muted_players[peer].erase(it);
+                goto unmute_found;
+            }
+            else
+            {
+                it++;
+            }
+        }
+        goto unmute_error;
+
+unmute_found:
+        result = getNetworkString();
+        result->addUInt8(LE_CHAT);
+        result->setSynchronous(true);
+        result_msg = "Unmuted player ";
+        result_msg += argv[1];
+        result->encodeString16(StringUtils::utf8ToWide(result_msg));
+        peer->sendPacket(result, true/*reliable*/);
+        delete result;
+        return;
+
+unmute_error:
+        NetworkString* error = getNetworkString();
+        error->addUInt8(LE_CHAT);
+        error->setSynchronous(true);
+        std::string msg = "Usage: /unmute player_name";
+        error->encodeString16(StringUtils::utf8ToWide(msg));
+        peer->sendPacket(error, true/*reliable*/);
+        delete error;
+    }
+    else if (argv[0] == "listmute")
+    {
+        NetworkString* chat = getNetworkString();
+        chat->addUInt8(LE_CHAT);
+        chat->setSynchronous(true);
+        core::stringw total;
+        for (auto& name : m_peers_muted_players[peer])
+        {
+            total += name;
+            total += " ";
+        }
+        if (total.empty())
+            chat->encodeString16("No player has been muted by you");
+        else
+        {
+            total += "muted";
+            chat->encodeString16(total);
         }
         peer->sendPacket(chat, true/*reliable*/);
         delete chat;

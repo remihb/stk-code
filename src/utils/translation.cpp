@@ -49,6 +49,20 @@
 #include "SDL_locale.h"
 #endif
 
+#ifdef __SWITCH__
+extern "C" {
+  #define u64 uint64_t
+  #define u32 uint32_t
+  #define s64 int64_t
+  #define s32 int32_t
+  #include <switch/services/set.h>
+  #undef u64
+  #undef u32
+  #undef s64
+  #undef s32
+}
+#endif
+
 // set to 1 to debug i18n
 #define TRANSLATE_VERBOSE 0
 // Define TEST_BIDI to force right-to-left style for all languages
@@ -353,7 +367,14 @@ Translations::Translations() //: m_dictionary_manager("UTF-16")
             language = p_lang;
         else
         {
-#ifdef MOBILE_STK
+#ifdef __SWITCH__
+            uint64_t languageStr = 0;
+            if(!setGetLanguageCode(&languageStr))
+            {
+                language = (char*)&languageStr;
+                language = StringUtils::findAndReplace(language, "-", "_");
+            }
+#elif defined(MOBILE_STK)
             SDL_Locale* locale = SDL_GetPreferredLocales();
             if (locale)
             {
@@ -548,6 +569,38 @@ irr::core::stringw Translations::w_gettext(const char* original, const char* con
 
 // ----------------------------------------------------------------------------
 /**
+ * \param original Message to translate
+ * \param context  Optional, can be set to differentiate 2 strings that are identical
+ *                 in English but could be different in other languages
+ */
+std::string Translations::gettext(const char* original, const char* context)
+{
+
+#ifdef SERVER_ONLY
+    return "";
+#else
+
+    if (original[0] == '\0') return "";
+
+#if TRANSLATE_VERBOSE
+    Log::info("Translations", "Translating %s", original);
+#endif
+
+    const std::string& original_t = (context == NULL ?
+                                     m_dictionary->translate(original) :
+                                     m_dictionary->translate_ctxt(context, original));
+
+#if TRANSLATE_VERBOSE
+    std::cout << "  translation : " << original_t << std::endl;
+#endif
+
+    return original_t;
+#endif
+
+}   // gettext
+
+// ----------------------------------------------------------------------------
+/**
  * \param singular Message to translate in singular form
  * \param plural   Message to translate in plural form (can be the same as the singular form)
  * \param num      Count used to obtain the correct plural form.
@@ -592,6 +645,34 @@ irr::core::stringw Translations::w_ngettext(const char* singular, const char* pl
 #endif
 
 }   // w_ngettext
+
+// ----------------------------------------------------------------------------
+/**
+ * \param singular Message to translate in singular form
+ * \param plural   Message to translate in plural form (can be the same as the singular form)
+ * \param num      Count used to obtain the correct plural form.
+ * \param context  Optional, can be set to differentiate 2 strings that are identical
+ *                 in English but could be different in other languages
+ */
+std::string Translations::ngettext(const char* singular, const char* plural, int num, const char* context)
+{
+#ifdef SERVER_ONLY
+    return "";
+
+#else
+
+    const std::string& res = (context == NULL ?
+                              m_dictionary->translate_plural(singular, plural, num) :
+                              m_dictionary->translate_ctxt_plural(context, singular, plural, num));
+
+#if TRANSLATE_VERBOSE
+    std::cout << "  translation: " << res << std::endl;
+#endif
+
+    return res;
+#endif
+
+}   // ngettext
 
 // ----------------------------------------------------------------------------
 #ifndef SERVER_ONLY

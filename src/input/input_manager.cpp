@@ -69,6 +69,22 @@
 #include <SDL.h>
 #endif
 
+#ifdef __SWITCH__
+extern "C" {
+#define Event libnx_Event
+#define u64 libnx_u64
+#define u32 libnx_u32
+#define s64 libnx_s64
+#define s32 libnx_s32
+#include <switch/runtime/pad.h>
+#undef u64
+#undef u32
+#undef s64
+#undef s32
+#undef Event
+}
+#endif
+
 InputManager *input_manager;
 
 using GUIEngine::EventPropagation;
@@ -83,19 +99,34 @@ using GUIEngine::EVENT_BLOCK;
 InputManager::InputManager() : m_mode(BOOTSTRAP),
                                m_mouse_val_x(-1), m_mouse_val_y(-1)
 {
+    Log::debug("InputManager", "Initialising InputManager!");
     m_device_manager = new DeviceManager();
     m_device_manager->initialize();
 
-    m_timer_in_use = false;
     m_master_player_only = false;
-    m_timer = 0;
 #ifndef SERVER_ONLY
+#ifdef __SWITCH__
+    padConfigureInput(8, HidNpadStyleSet_NpadStandard);
+    // Otherwise we report 'B' as 'A' (like Xbox controller)
+    SDL_SetHint(
+        SDL_HINT_GAMECONTROLLERCONFIG,
+        "53776974636820436F6E74726F6C6C65,Switch Controller,a:b0,b:b1,back:b11,dpdown:b15,dpleft:b12,dpright:b14,dpup:b13,leftshoulder:b6,leftstick:b4,lefttrigger:b8,leftx:a0,lefty:a1,rightshoulder:b7,rightstick:b5,righttrigger:b9,rightx:a2,righty:a3,start:b10,x:b2,y:b3,\n"
+    );
+#endif // __SWITCH__
     if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
     {
         Log::error("InputManager", "Failed to init SDL game controller: %s",
             SDL_GetError());
     }
+
+#if SDL_VERSION_ATLEAST(1,3,0)
+    if (SDL_InitSubSystem(SDL_INIT_HAPTIC) != 0)
+    {
+        Log::error("InputManager", "Failed to init SDL haptics: %s",
+            SDL_GetError());
+    }
 #endif
+#endif // SERVER_ONLY
 }
 
 // -----------------------------------------------------------------------------
@@ -121,7 +152,7 @@ void InputManager::addJoystick()
         }
         catch (std::exception& e)
         {
-            Log::error("SDLController", "%s", e.what());
+            Log::error("SDLController", "Error in addJoystick %s", e.what());
         }
     }
 #endif
@@ -153,6 +184,8 @@ void InputManager::handleJoystick(SDL_Event& event)
         }
         case SDL_JOYDEVICEREMOVED:
         {
+            m_gamepads_timer.erase(
+                m_sdl_controller.at(event.jdevice.which)->getInstanceID());
             m_sdl_controller.erase(event.jdevice.which);
             break;
         }
@@ -189,9 +222,17 @@ void InputManager::handleJoystick(SDL_Event& event)
     }
     catch (std::exception& e)
     {
-        Log::error("SDLController", "%s", e.what());
+        Log::error("SDLController", "Error in handleJoystick() %s", e.what());
     }
 }   // handleJoystick
+
+SDLController* InputManager::getSDLController(unsigned i) {
+    assert(i < m_sdl_controller.size());
+    auto it = m_sdl_controller.begin();
+    for(unsigned j = 0; j < i; ++j)
+            it++;
+    return it->second.get();
+}
 #endif
 
 // -----------------------------------------------------------------------------
@@ -201,12 +242,23 @@ void InputManager::update(float dt)
     if (wiimote_manager)
         wiimote_manager->update();
 #endif
+#ifdef __SWITCH__
+    hidSetNpadJoyHoldType(HidNpadJoyHoldType_Horizontal);
+#endif
 
-    if(m_timer_in_use)
+    for (auto it = m_gamepads_timer.begin(); it != m_gamepads_timer.end();)
     {
-        m_timer -= dt;
-        if(m_timer < 0) m_timer_in_use = false;
+        it->second -= dt;
+        if (it->second < 0)
+            it = m_gamepads_timer.erase(it);
+        else
+            it++;
     }
+
+#ifndef SERVER_ONLY
+    for (auto& controller : m_sdl_controller)
+        controller.second->checkPowerLevel();
+#endif
 }
 
 //-----------------------------------------------------------------------------
@@ -240,21 +292,17 @@ void InputManager::handleStaticAction(int key, int value)
     // When no players... a cutscene
     if (RaceManager::get() &&
         RaceManager::get()->getNumPlayers() == 0 && world != NULL && value > 0 &&
-        (key == IRR_KEY_SPACE || key == IRR_KEY_RETURN || 
+        (key == IRR_KEY_SPACE || key == IRR_KEY_RETURN ||
         key == IRR_KEY_BUTTON_A))
     {
         world->onFirePressed(NULL);
     }
 
-
-    if (world != NULL && UserConfigParams::m_artist_debug_mode &&
-        control_is_pressed && value > 0)
+    if (world != NULL && UserConfigParams::m_artist_debug_mode)
     {
-        if (Debug::handleStaticAction(key))
-            return;
+        Debug::handleStaticAction(key, value, control_is_pressed, shift_is_pressed);
     }
 
-    // TODO: move debug shortcuts to Debug::handleStaticAction
     switch (key)
     {
 #ifdef DEBUG
@@ -272,137 +320,31 @@ void InputManager::handleStaticAction(int key, int value)
         {
             if(!ProfileWorld::isProfileMode() || !world) break;
             int kart_id = key - IRR_KEY_1;
-            if(kart_id<0 || kart_id>=(int)world->getNumKarts()) break;
+            if(kart_id < 0 || kart_id >= (int)world->getNumKarts()) break;
             Camera::getCamera(0)->setKart(world->getKart(kart_id));
             break;
         }
 #endif
-
         case IRR_KEY_CONTROL:
         case IRR_KEY_RCONTROL:
         case IRR_KEY_LCONTROL:
         case IRR_KEY_RMENU:
         case IRR_KEY_LMENU:
         case IRR_KEY_LWIN:
-            control_is_pressed = value!=0;
+        {
+            control_is_pressed = value != 0;
             break;
+        }
         case IRR_KEY_LSHIFT:
         case IRR_KEY_RSHIFT:
         case IRR_KEY_SHIFT:
-            shift_is_pressed = value!=0; break;
-
-        // Flying up and down
-        case IRR_KEY_I:
         {
-            if (!world || !UserConfigParams::m_artist_debug_mode) break;
-
-            AbstractKart* kart = world->getLocalPlayerKart(0);
-            if (kart == NULL) break;
-
-            kart->flyUp();
+            shift_is_pressed = value != 0;
             break;
         }
-        case IRR_KEY_K:
-        {
-            if (!world || !UserConfigParams::m_artist_debug_mode) break;
-
-            AbstractKart* kart = world->getLocalPlayerKart(0);
-            if (kart == NULL) break;
-
-            kart->flyDown();
-            break;
-        }
-        // Moving the first person camera
-        case IRR_KEY_W:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam  )
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.Z = value ? cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        case IRR_KEY_S:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam)
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.Z = value ? -cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        case IRR_KEY_D:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && !UserConfigParams::m_artist_debug_mode && cam)
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.X = value ? -cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        case IRR_KEY_A:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam)
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.X = value ? cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        case IRR_KEY_R:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam)
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.Y = value ? cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        case IRR_KEY_F:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam)
-            {
-                core::vector3df vel(cam->getLinearVelocity());
-                vel.Y = value ? -cam->getMaximumVelocity() : 0;
-                cam->setLinearVelocity(vel);
-            }
-            break;
-        }
-        // Rotating the first person camera
-        case IRR_KEY_Q:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam )
-            {
-                cam->setAngularVelocity(value ?
-                    UserConfigParams::m_fpscam_max_angular_velocity : 0.0f);
-            }
-            break;
-        }
-        case IRR_KEY_E:
-        {
-            CameraFPS *cam = dynamic_cast<CameraFPS*>(Camera::getActiveCamera());
-            if (world && UserConfigParams::m_artist_debug_mode && cam)
-            {
-                cam->setAngularVelocity(value ?
-                    -UserConfigParams::m_fpscam_max_angular_velocity : 0);
-            }
-            break;
-        }
-
         case IRR_KEY_SNAPSHOT:
         case IRR_KEY_PRINT:
+        {
             // on windows we don't get a press event, only release.  So
             // save on release only (to avoid saving twice on other platforms)
             if (value == 0)
@@ -418,139 +360,56 @@ void InputManager::handleStaticAction(int key, int value)
                 }
             }
             break;
+        }
         case IRR_KEY_F11:
-            if(value && shift_is_pressed)
-            {
-#ifndef SERVER_ONLY
-                ShaderBasedRenderer* sbr = SP::getRenderer();
-                if (sbr)
-                    sbr->dumpRTT();
-#endif
-            }
-            break;
-
-            /*
-            else if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-
-                if (control_is_pressed)
-                    kart->setPowerup(PowerupManager::POWERUP_SWATTER, 10000);
-                else
-                    kart->setPowerup(PowerupManager::POWERUP_RUBBERBALL, 10000);
-
-#ifdef FORCE_RESCUE_ON_FIRST_KART
-                // Can be useful for debugging places where the AI gets into
-                // a rescue loop: rescue, drive, crash, rescue to same place
-                world->getKart(0)->forceRescue();
-#endif
-            }
-            break;
-        case IRR_KEY_F2:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-
-                kart->setPowerup(PowerupManager::POWERUP_PLUNGER, 10000);
-            }
-            break;
-        case IRR_KEY_F3:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                kart->setPowerup(PowerupManager::POWERUP_CAKE, 10000);
-            }
-            break;
-        case IRR_KEY_F4:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                kart->setPowerup(PowerupManager::POWERUP_SWITCH, 10000);
-            }
-            break;
-        case IRR_KEY_F5:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                kart->setPowerup(PowerupManager::POWERUP_BOWLING, 10000);
-            }
-            break;
-        case IRR_KEY_F6:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                kart->setPowerup(PowerupManager::POWERUP_BUBBLEGUM, 10000);
-            }
-            break;
-        case IRR_KEY_F7:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                kart->setPowerup(PowerupManager::POWERUP_ZIPPER, 10000);
-            }
-            break;
-        case IRR_KEY_F8:
-            if (UserConfigParams::m_artist_debug_mode && value && world)
+        {
+            if (value && world)
             {
                 if (control_is_pressed)
                 {
-                    RaceGUIBase* gui = world->getRaceGUI();
-                    if (gui != NULL) gui->m_enabled = !gui->m_enabled;
-
-                    const int count = World::getWorld()->getNumKarts();
-                    for (int n=0; n<count; n++)
-                    {
-                        if(World::getWorld()->getKart(n)->getController()->isPlayerController())
-                            World::getWorld()->getKart(n)->getNode()
-                                ->setVisible(gui->m_enabled);
-                    }
-                }
-                else
-                {
-                    AbstractKart* kart = world->getLocalPlayerKart(0);
-                    kart->setEnergy(100.0f);
-                }
-            }
-            break;
-        case IRR_KEY_F9:
-            if (UserConfigParams::m_artist_debug_mode && world)
-            {
-                AbstractKart* kart = world->getLocalPlayerKart(0);
-                if(control_is_pressed && RaceManager::get()->getMinorMode()!=
-                                          RaceManager::MINOR_MODE_3_STRIKES)
-                    kart->setPowerup(PowerupManager::POWERUP_RUBBERBALL,
-                                     10000);
-                else
-                    kart->setPowerup(PowerupManager::POWERUP_SWATTER, 10000);
-            }
-            break;
-            */
-        case IRR_KEY_F10:
-            if(world && value)
-            {
-                if(control_is_pressed)
-                    ReplayRecorder::get()->save();
-                else
                     history->Save();
+                }
+                else if (shift_is_pressed)
+                {
+#ifndef SERVER_ONLY
+                    ShaderBasedRenderer* sbr = SP::getRenderer();
+                    if (sbr)
+                    {
+                        sbr->dumpRTT();
+                    }
+#endif
+                }
+                else
+                {
+                    ReplayRecorder::get()->save();
+                }
             }
             break;
-            /*
-        case IRR_KEY_F11:
-            if (UserConfigParams::m_artist_debug_mode && value &&
-                control_is_pressed && world)
-            {
-                world->getPhysics()->nextDebugMode();
-            }
-            break;
-            */
+        }
         case IRR_KEY_F12:
-            if(value)
-                UserConfigParams::m_display_fps =
+        {
+            if (value)
+            {
+                if (control_is_pressed)
+                {
+                    UserConfigParams::m_karts_powerup_gui =
+                    !UserConfigParams::m_karts_powerup_gui;
+                }
+                else if (shift_is_pressed)
+                {
+                    UserConfigParams::m_soccer_player_list =
+                    !UserConfigParams::m_soccer_player_list;
+                }
+                else
+                {
+                    UserConfigParams::m_display_fps =
                     !UserConfigParams::m_display_fps;
+                }
+            }
             break;
-        default:
-            break;
-    } // switch
+        }
+        default : break;
+    }
 }   // handleStaticAction
 
 //-----------------------------------------------------------------------------
@@ -727,15 +586,15 @@ int InputManager::getPlayerKeyboardID() const
 }
 //-----------------------------------------------------------------------------
 /** Handles the conversion from some input to a GameAction and its distribution
- * to the currently active menu.
- * It also handles whether the game is currently sensing input. It does so by
- * suppressing the distribution of the input as a GameAction. Instead the
- * input is stored in 'm_sensed_input' and GA_SENSE_COMPLETE is distributed. If
- * however the input in question has resolved to GA_LEAVE this is treated as
- * an attempt of the user to cancel the sensing. In that case GA_SENSE_CANCEL
- * is distributed.
+ *  to the currently active menu.
+ *  It also handles whether the game is currently sensing input. It does so by
+ *  suppressing the distribution of the input as a GameAction. Instead the
+ *  input is stored in 'm_sensed_input' and GA_SENSE_COMPLETE is distributed. If
+ *  however the input in question has resolved to GA_LEAVE this is treated as
+ *  an attempt of the user to cancel the sensing. In that case GA_SENSE_CANCEL
+ *  is distributed.
  *
- * Note: It is the obligation of the called menu to switch of the sense mode.
+ *  Note: It is the obligation of the called menu to switch of the sense mode.
  *
  */
 void InputManager::dispatchInput(Input::InputType type, int deviceID,
@@ -767,8 +626,10 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
         return;
     }
 
-    // Abort demo mode if a key is pressed during the race in demo mode
-    if(dynamic_cast<DemoWorld*>(World::getWorld()))
+    // Abort demo mode if a key is pressed during the race in demo mode,
+    // if a dialog is not active
+    if(dynamic_cast<DemoWorld*>(World::getWorld()) &&
+       !GUIEngine::ModalDialog::isADialogActive() && value)
     {
         RaceManager::get()->exitRace();
         StateManager::get()->resetAndGoToScreen(MainMenuScreen::getInstance());
@@ -783,7 +644,7 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
                                                          &player, &action);
 
     // in menus, some keyboard keys are standard (before each player selected
-    // his device). So if a key could not be mapped to any known binding,
+    // their device). So if a key could not be mapped to any known binding,
     // fall back to check the defaults.
     if (!action_found &&
             StateManager::get()->getGameState() != GUIEngine::GAME &&
@@ -953,7 +814,8 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
             if (controller != NULL) controller->action(action, abs(value));
         }
         else if (RaceManager::get() &&
-            RaceManager::get()->isWatchingReplay() && !GUIEngine::ModalDialog::isADialogActive())
+            RaceManager::get()->isWatchingReplay() && !GUIEngine::ModalDialog::isADialogActive() &&
+            StateManager::get()->getGameState() == GUIEngine::GAME)
         {
             // Get the first ghost kart
             World::getWorld()->getKart(0)
@@ -964,10 +826,7 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
         {
             // reset timer when released
             if (abs(value) == 0 && type == Input::IT_STICKMOTION)
-            {
-                m_timer_in_use = false;
-                m_timer = 0;
-            }
+                m_gamepads_timer.erase(deviceID);
 
             // When in master-only mode, we can safely assume that players
             // are set up, contrarly to early menus where we accept every
@@ -994,13 +853,12 @@ void InputManager::dispatchInput(Input::InputType type, int deviceID,
             }
 
             // menu input
-            if (!m_timer_in_use)
+            if (m_gamepads_timer.find(deviceID) == m_gamepads_timer.end())
             {
                 if (type == Input::IT_STICKMOTION &&
                     abs(value) > Input::MAX_VALUE * 2 / 3)
                 {
-                    m_timer_in_use = true;
-                    m_timer = 0.25;
+                    m_gamepads_timer[deviceID] = 0.25f;
                 }
 
                 if (is_nw_spectator)
@@ -1156,7 +1014,7 @@ EventPropagation InputManager::input(const SEvent& event)
             // single letter). Same for spacebar. Same for letters.
             if (GUIEngine::isWithinATextBox())
             {
-                if (key == IRR_KEY_BACK || key == IRR_KEY_SPACE || 
+                if (key == IRR_KEY_BACK || key == IRR_KEY_SPACE ||
                     key == IRR_KEY_SHIFT)
                 {
                     return EVENT_LET;
@@ -1189,7 +1047,7 @@ EventPropagation InputManager::input(const SEvent& event)
             // single letter). Same for spacebar. Same for letters.
             if (GUIEngine::isWithinATextBox())
             {
-                if (key == IRR_KEY_BACK || key == IRR_KEY_SPACE || 
+                if (key == IRR_KEY_BACK || key == IRR_KEY_SPACE ||
                     key == IRR_KEY_SHIFT)
                 {
                     return EVENT_LET;
@@ -1312,18 +1170,18 @@ EventPropagation InputManager::input(const SEvent& event)
         }
 
         // Simulate touch events if there is no real device
-        if (UserConfigParams::m_multitouch_active > 1 && 
+        if (UserConfigParams::m_multitouch_active > 1 &&
             !irr_driver->getDevice()->supportsTouchDevice())
         {
             MultitouchDevice* device = m_device_manager->getMultitouchDevice();
-    
+
             if (device != NULL && (type == EMIE_LMOUSE_PRESSED_DOWN ||
                 type == EMIE_LMOUSE_LEFT_UP || type == EMIE_MOUSE_MOVED))
             {
                 device->m_events[0].id = 0;
                 device->m_events[0].x = event.MouseInput.X;
                 device->m_events[0].y = event.MouseInput.Y;
-    
+
                 if (type == EMIE_LMOUSE_PRESSED_DOWN)
                 {
                     device->m_events[0].touched = true;
@@ -1332,7 +1190,7 @@ EventPropagation InputManager::input(const SEvent& event)
                 {
                     device->m_events[0].touched = false;
                 }
-    
+
                 m_device_manager->updateMultitouchDevice();
                 device->updateDeviceState(0);
             }
@@ -1358,7 +1216,7 @@ EventPropagation InputManager::input(const SEvent& event)
         if (device && device->isAccelerometerActive())
         {
             m_device_manager->updateMultitouchDevice();
-            
+
             float factor = UserConfigParams::m_multitouch_tilt_factor;
             factor = std::max(factor, 0.1f);
             if (UserConfigParams::m_multitouch_controls == MULTITOUCH_CONTROLS_GYROSCOPE)

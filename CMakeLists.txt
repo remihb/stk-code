@@ -4,12 +4,6 @@ cmake_minimum_required(VERSION 2.8.4)
 project(SuperTuxKart)
 set(PROJECT_VERSION "git")
 
-if (MINGW AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-  set(LLVM_MINGW TRUE)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gcodeview")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gcodeview")
-endif()
-
 add_definitions( -DSUPERTUXKART_VERSION="${PROJECT_VERSION}" )
 
 if(NOT (CMAKE_MAJOR_VERSION VERSION_LESS 3))
@@ -25,29 +19,57 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "STKRelease")
 endif()
 
+option(USE_SWITCH "Build targeting switch" OFF)
+
+if(NINTENDO_SWITCH)
+  set(USE_SWITCH ON)
+endif()
+
+if(WIN32)
+option(USE_DIRECTX "Build DirectX 9 driver (requires DirectX SDK)" OFF)
+endif()
+
 option(SERVER_ONLY "Create a server only (i.e. no graphics or sound)" OFF)
 option(CHECK_ASSETS "Check if assets are installed in ../stk-assets" ON)
 option(USE_SYSTEM_ANGELSCRIPT "Use system angelscript instead of built-in angelscript. If you enable this option, make sure to use a compatible version." OFF)
 option(USE_SYSTEM_ENET "Use system ENet instead of the built-in version, when available." ON)
-option(USE_IPV6 "Allow create or connect to game server with IPv6 address, system enet will not be used." ON)
+CMAKE_DEPENDENT_OPTION(USE_IPV6 "Allow create or connect to game server with IPv6 address, system enet will not be used." ON
+  "NOT USE_SWITCH" OFF)
 option(USE_SYSTEM_WIIUSE "Use system WiiUse instead of the built-in version, when available." OFF)
 option(USE_SQLITE3 "Use sqlite to manage server stats and ban list." ON)
 
-option(USE_CRYPTO_OPENSSL "Use OpenSSL instead of Nettle for cryptography in STK." ON)
 option(WEB_SUPPORT "Website integration tools" OFF)
+CMAKE_DEPENDENT_OPTION(USE_CRYPTO_OPENSSL "Use OpenSSL instead of MbedTLS for cryptography in STK." ON
+    "NOT USE_SWITCH;NOT WIN32" OFF)
 CMAKE_DEPENDENT_OPTION(BUILD_RECORDER "Build opengl recorder" ON
-    "NOT SERVER_ONLY;NOT APPLE" OFF)
+    "NOT SERVER_ONLY;NOT APPLE;NOT USE_SWITCH" OFF)
 CMAKE_DEPENDENT_OPTION(USE_SYSTEM_SQUISH "Use system Squish library instead of the built-in version, when available." ON
     "NOT SERVER_ONLY" OFF)
 CMAKE_DEPENDENT_OPTION(USE_WIIUSE "Support for wiimote input devices" ON
-    "NOT SERVER_ONLY;NOT CYGWIN" OFF)
+    "NOT SERVER_ONLY;NOT CYGWIN;NOT USE_SWITCH;NOT MSVC" OFF)
+CMAKE_DEPENDENT_OPTION(USE_DNS_C "Build bundled dns resolver" OFF "NOT CYGWIN;NOT USE_SWITCH" ON)
+CMAKE_DEPENDENT_OPTION(USE_MOJOAL "Use bundled MojoAL instead of system OpenAL" OFF "NOT APPLE" ON)
+
+if((UNIX AND NOT APPLE) OR NINTENDO_SWITCH)
+    include(FindPkgConfig)
+endif()
 
 if(APPLE AND NOT IOS)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt)
-    include_directories(/usr/local/opt/openssl@1.1/include/)
-    include_directories(/usr/local/opt/openssl@1.1/include/openssl/)
-    include_directories(/usr/local/opt/freetype/include/freetype2/)
-    include_directories(/usr/local/opt/harfbuzz/include/harfbuzz/)
+    if(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm")
+	set(ARCHFLAGS "arm64")
+	list(APPEND CMAKE_PREFIX_PATH /opt/homebrew/opt)
+	include_directories(/opt/homebrew/opt/openssl@1.1/include/)
+	include_directories(/opt/homebrew/opt/openssl@1.1/include/openssl/)
+	include_directories(/opt/homebrew/opt/freetype/include/freetype2/)
+	include_directories(/opt/homebrew/opt/harfbuzz/include/harfbuzz/)
+    else()
+	set(ARCHFLAGS "${CMAKE_SYSTEM_PROCESSOR}")
+	list(APPEND CMAKE_PREFIX_PATH /usr/local/opt)
+	include_directories(/usr/local/opt/openssl@1.1/include/)
+	include_directories(/usr/local/opt/openssl@1.1/include/openssl/)
+	include_directories(/usr/local/opt/freetype/include/freetype2/)
+	include_directories(/usr/local/opt/harfbuzz/include/harfbuzz/)
+    endif()
 endif()
 
 if (IOS)
@@ -107,30 +129,24 @@ set(STK_INSTALL_DATA_DIR "share/supertuxkart" CACHE
     STRING "Install data folder to this directory, absolute or relative to CMAKE_INSTALL_PREFIX")
 
 # Define dependencies path
-if (MSVC OR LLVM_MINGW)
-    set(DEPENDENCIES "dependencies-vs")
-elseif(MINGW)
-    set(DEPENDENCIES "dependencies-mingw")
-else()
-    set(DEPENDENCIES "dependencies")
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" arch_lower)
+set(BUILD_ARCH "unknown")
+if (CMAKE_GENERATOR_PLATFORM)
+    set(BUILD_ARCH "${CMAKE_GENERATOR_PLATFORM}")
 endif()
-
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(DEPENDENCIES "${DEPENDENCIES}-64bit")
+if(arch_lower MATCHES "arm64" OR arch_lower MATCHES "aarch64" OR ${CMAKE_GENERATOR} MATCHES "(ARM64)" OR ${BUILD_ARCH} MATCHES "(ARM64)")
+    set(DEPENDENCIES "dependencies-win-aarch64")
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(DEPENDENCIES "dependencies-win-x86_64")
+else()
+    set(DEPENDENCIES "dependencies-win-i686")
 endif()
 
 if(WIN32)
     ADD_DEFINITIONS(-DUNICODE)
     ADD_DEFINITIONS(-D_UNICODE)
     if(NOT IS_DIRECTORY "${PROJECT_SOURCE_DIR}/${DEPENDENCIES}")
-        set(DEPENDENCIES "dependencies")
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            set(DEPENDENCIES "${DEPENDENCIES}-64bit")
-        endif()
-    endif()
-
-    if(NOT IS_DIRECTORY "${PROJECT_SOURCE_DIR}/${DEPENDENCIES}")
-        message(FATAL_ERROR "Dependencies directory not found.")
+        message(FATAL_ERROR "Dependencies directory not found, make sure dependencies-win-(arch) exists inside stk-code directory.")
     endif()
 endif()
 
@@ -142,6 +158,10 @@ if(WIN32)
     add_definitions(-D_IRR_STATIC_LIB_)
     add_definitions(-DNO_IRR_COMPILE_WITH_X11_)
     include_directories(${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/include)
+endif()
+
+if(WIN32 AND NOT USE_DIRECTX)
+    add_definitions(-DNO_IRR_COMPILE_WITH_DIRECT3D_9_)
 endif()
 
 if(USE_GLES2)
@@ -176,12 +196,19 @@ endif()
 add_subdirectory("${PROJECT_SOURCE_DIR}/lib/bullet")
 include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/bullet/src")
 
-if(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "BSD" OR CMAKE_SYSTEM_NAME MATCHES "DragonFly")
-    set(LIBRESOLV_LIBRARY)
-elseif (HAIKU)
-    find_library(LIBRESOLV_LIBRARY NAMES network socket)
+# Build the DNS C library
+if(USE_DNS_C)
+    add_definitions(-DDNS_C)
+    add_subdirectory("${PROJECT_SOURCE_DIR}/lib/dnsc")
+    include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/dnsc")
 else()
-    find_library(LIBRESOLV_LIBRARY NAMES resolv libresolv)
+    if(WIN32 OR CMAKE_SYSTEM_NAME MATCHES "BSD" OR CMAKE_SYSTEM_NAME MATCHES "DragonFly" OR USE_SWITCH)
+        set(LIBRESOLV_LIBRARY)
+    elseif (HAIKU)
+        find_library(LIBRESOLV_LIBRARY NAMES network socket)
+    else()
+        find_library(LIBRESOLV_LIBRARY NAMES resolv libresolv)
+    endif()
 endif()
 
 # Find system ENet library or build it if missing
@@ -318,8 +345,8 @@ endif()
 include_directories(${STK_SOURCE_DIR})
 
 if(APPLE AND NOT IOS)
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch x86_64")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -arch x86_64 -F/Library/Frameworks")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -arch ${ARCHFLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -arch ${ARCHFLAGS} -F/Library/Frameworks")
 elseif(MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MP")   # Enable multi-processor compilation (faster)
 endif()
@@ -343,8 +370,23 @@ endif()
 
 if(NOT SERVER_ONLY)
     # OpenAL
-    find_package(OpenAL REQUIRED)
-    include_directories(${OPENAL_INCLUDE_DIR})
+    if (USE_MOJOAL)
+        find_library(LIBSAMPLERATE_LIBRARY NAMES samplerate libsamplerate)
+        find_path(LIBSAMPLERATE_INCLUDEDIR NAMES samplerate.h PATHS)
+        if (NOT LIBSAMPLERATE_LIBRARY OR NOT LIBSAMPLERATE_INCLUDEDIR)
+            message(FATAL_ERROR "libsamplerate not found. "
+                "libsamplerate is required to handle pitch for MojoAL.")
+        else()
+            include_directories("${LIBSAMPLERATE_INCLUDEDIR}")
+            MESSAGE(STATUS "Use system libsamplerate: ${LIBSAMPLERATE_LIBRARY}")
+        endif()
+        add_definitions(-DAL_LIBTYPE_STATIC)
+        add_subdirectory("${PROJECT_SOURCE_DIR}/lib/mojoal")
+        include_directories(BEFORE "${PROJECT_SOURCE_DIR}/lib/mojoal")
+    else()
+        find_package(OpenAL REQUIRED)
+        include_directories(${OPENAL_INCLUDE_DIR})
+    endif()
 
     # OggVorbis
     find_package(OggVorbis REQUIRED)
@@ -422,10 +464,6 @@ endif()
 
 if(MINGW AND CMAKE_BUILD_TYPE MATCHES Release)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--subsystem,windows")
-endif()
-
-if (LLVM_MINGW)
-    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-pdb=supertuxkart.pdb")
 endif()
 
 if(WIN32)
@@ -547,45 +585,36 @@ if (NOT NO_LIBATOMIC_NEEDED)
     target_link_libraries(supertuxkart atomic)
 endif()
 
-# CURL and OpenSSL or Nettle
+# CURL and OpenSSL or MbedTLS
 # 1.0.1d for compatible AES GCM handling
 SET(OPENSSL_MINIMUM_VERSION "1.0.1d")
-if (MSVC OR LLVM_MINGW)
+
+find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIRS})
+
+find_path(MBEDTLS_INCLUDE_DIRS mbedtls/version.h)
+find_library(MBEDCRYPTO_LIBRARY NAMES mbedcrypto libmbedcrypto)
+
+if (NOT MBEDCRYPTO_LIBRARY OR NOT MBEDTLS_INCLUDE_DIRS OR USE_CRYPTO_OPENSSL)
     set(USE_CRYPTO_OPENSSL ON)
-    target_link_libraries(supertuxkart ${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/lib/libcurl.lib)
-    target_link_libraries(supertuxkart ${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/lib/libeay32.lib)
-elseif(MINGW)
-    set(USE_CRYPTO_OPENSSL ON)
-    target_link_libraries(supertuxkart ${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/lib/libcurl.dll)
-    target_link_libraries(supertuxkart ${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/lib/libeay32.dll)
-else()
-    find_package(CURL REQUIRED)
-    include_directories(${CURL_INCLUDE_DIRS})
+    find_package(OpenSSL REQUIRED)
 
-    find_path(NETTLE_INCLUDE_DIRS nettle/version.h)
-    find_library(NETTLE_LIBRARY NAMES nettle libnettle)
-
-    if (NOT NETTLE_INCLUDE_DIRS OR NOT NETTLE_LIBRARY OR USE_CRYPTO_OPENSSL)
-        set(USE_CRYPTO_OPENSSL ON)
-        find_package(OpenSSL REQUIRED)
-
-        if(${OPENSSL_VERSION} VERSION_LESS ${OPENSSL_MINIMUM_VERSION} OR
-            (${OPENSSL_VERSION} VERSION_EQUAL ${OPENSSL_MINIMUM_VERSION} AND ${OPENSSL_VERSION} STRLESS ${OPENSSL_MINIMUM_VERSION}))
-            message(FATAL_ERROR "OpenSSL version found (${OPENSSL_VERSION}) is less then the minimum required (${OPENSSL_MINIMUM_VERSION}), aborting.")
-        endif()
-        include_directories(${OpenSSL_INCLUDE_DIRS})
-    else()
-        set(USE_CRYPTO_OPENSSL OFF)
-        include_directories(${NETTLE_INCLUDE_DIRS})
+    if(${OPENSSL_VERSION} VERSION_LESS ${OPENSSL_MINIMUM_VERSION} OR
+        (${OPENSSL_VERSION} VERSION_EQUAL ${OPENSSL_MINIMUM_VERSION} AND ${OPENSSL_VERSION} STRLESS ${OPENSSL_MINIMUM_VERSION}))
+        message(FATAL_ERROR "OpenSSL version found (${OPENSSL_VERSION}) is less then the minimum required (${OPENSSL_MINIMUM_VERSION}), aborting.")
     endif()
+    include_directories(${OpenSSL_INCLUDE_DIRS})
+else()
+    set(USE_CRYPTO_OPENSSL OFF)
+    include_directories(${MBEDTLS_INCLUDE_DIRS})
 endif()
 
 if (USE_CRYPTO_OPENSSL)
     message(STATUS "OpenSSL will be used for cryptography in STK.")
     add_definitions(-DENABLE_CRYPTO_OPENSSL)
 else()
-    message(STATUS "Nettle will be used for cryptography in STK.")
-    add_definitions(-DENABLE_CRYPTO_NETTLE)
+    message(STATUS "MbedTLS will be used for cryptography in STK.")
+    add_definitions(-DENABLE_CRYPTO_MBEDTLS)
 endif()
 
 # Common library dependencies
@@ -597,9 +626,48 @@ target_link_libraries(supertuxkart
     stkirrlicht
     ${Angelscript_LIBRARIES}
     ${CURL_LIBRARIES}
-    ${LIBRESOLV_LIBRARY}
     ${MCPP_LIBRARY}
     )
+
+if (USE_SWITCH)
+  include(cmake/FindEGL.cmake)
+  find_library(NX_LIBRARY NAMES nx libnx REQUIRED)
+  find_library(DRM_LIBRARY NAMES drm_nouveau libdrm_nouveau REQUIRED)
+  find_library(GLAPI_LIBRARY NAMES glapi libglapi REQUIRED)
+  find_library(ZLIB_LIBRARY NAMES z libz REQUIRED)
+  find_library(PNG_LIBRARY NAMES png libpng REQUIRED)
+  find_library(BZ2_LIBRARY NAMES bz2 libbz2 REQUIRED)
+  target_link_libraries(supertuxkart
+    ${NX_LIBRARY}
+    ${ZLIB_LIBRARY}
+    ${FREETYPE_LIBRARIES}
+    -logg
+    -lvorbis
+    ${SDL2_LIBRARY}
+    ${PNG_LIBRARY}
+    ${BZ2_LIBRARY}
+    ${HARFBUZZ_LIBRARY}
+    ${OPENAL_LIBRARY}
+    ${EGL_LIBRARY}
+    ${DRM_LIBRARY}
+    ${GLAPI_LIBRARY}
+    ${NX_LIBRARY}
+  )
+endif()
+
+if(NOT SERVER_ONLY)
+    if (USE_MOJOAL)
+        target_link_libraries(supertuxkart mojoal ${LIBSAMPLERATE_LIBRARY})
+    else()
+        target_link_libraries(supertuxkart ${OPENAL_LIBRARY})
+    endif()
+endif()
+
+if (USE_DNS_C)
+    target_link_libraries(supertuxkart dnsc)
+else()
+    target_link_libraries(supertuxkart ${LIBRESOLV_LIBRARY})
+endif()
 
 if (USE_SQLITE3)
     target_link_libraries(supertuxkart ${SQLITE3_LIBRARY})
@@ -608,19 +676,27 @@ endif()
 if (USE_CRYPTO_OPENSSL)
     target_link_libraries(supertuxkart ${OPENSSL_CRYPTO_LIBRARY})
 else()
-    target_link_libraries(supertuxkart ${NETTLE_LIBRARY})
+    target_link_libraries(supertuxkart ${MBEDCRYPTO_LIBRARY})
 endif()
 
 if(NOT SERVER_ONLY)
     if (IOS)
-        target_link_libraries(supertuxkart "-framework QuartzCore -framework CoreGraphics -framework AVFoundation -framework AudioToolbox -framework Metal -framework GameController -framework OpenGLES -framework UIKit -framework CoreAudio -framework CoreMotion -framework Foundation -framework GLKit")
+        target_link_libraries(supertuxkart "-weak_framework CoreHaptics -framework QuartzCore -framework CoreGraphics -framework AVFoundation -framework AudioToolbox -framework Metal -framework GameController -framework OpenGLES -framework UIKit -framework CoreAudio -framework Foundation -framework GLKit")
+        # tvOS doesn't have CoreMotion framwork
+        include(CheckCSourceCompiles)
+        set(prev_req_lib ${CMAKE_REQUIRED_LIBRARIES})
+        set(CMAKE_REQUIRED_LIBRARIES "-framework CoreMotion")
+        check_c_source_compiles("int main() { return 0; }" COREMOTION_EXISTS)
+        set(CMAKE_REQUIRED_LIBRARIES ${prev_req_lib})
+        if (COREMOTION_EXISTS)
+            target_link_libraries(supertuxkart "-framework CoreMotion")
+        endif()
     endif()
 
     target_link_libraries(supertuxkart
         ${SQUISH_LIBRARY}
         ${JPEG_LIBRARIES}
         ${OGGVORBIS_LIBRARIES}
-        ${OPENAL_LIBRARY}
         ${FREETYPE_LIBRARIES}
         ${HARFBUZZ_LIBRARY}
         ${SDL2_LIBRARY}
@@ -678,7 +754,7 @@ if(MSVC OR MINGW)
   target_link_libraries(supertuxkart iphlpapi.lib)
   add_custom_command(TARGET supertuxkart POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/dll"
+        "${PROJECT_SOURCE_DIR}/${DEPENDENCIES}/bin"
         $<TARGET_FILE_DIR:supertuxkart>)
   add_custom_target(stkshaders SOURCES ${STK_SHADERS})
 endif()
@@ -688,28 +764,17 @@ if(MINGW)
     if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
         target_link_libraries(supertuxkart -mwindows)
     endif()
-    if (LLVM_MINGW)
-        find_library(LIBCPP NAMES "libc++.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
-        if (LIBCPP)
-            file(COPY ${LIBCPP} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
-        endif()
-        find_library(LIBUNWIND NAMES "libunwind.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
-        if (LIBUNWIND)
-            file(COPY ${LIBUNWIND} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
-        endif()
-    else()
-        find_library(LIBGCC NAMES "libgcc_s_dw2-1.dll" "libgcc_s_sjlj-1.dll" "libgcc_s_seh-1.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
-        if (LIBGCC)
-            file(COPY ${LIBGCC} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
-        endif()
-        find_library(LIBSTDCPP NAMES "libstdc++-6.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
-        if (LIBSTDCPP)
-            file(COPY ${LIBSTDCPP} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
-        endif()
-        find_library(LIBPTHREAD NAMES "winpthread-1.dll" "libwinpthread-1.dll" "pthreadGC2.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
-        if(LIBPTHREAD)
-            file(COPY ${LIBPTHREAD} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
-        endif()
+    find_library(LIBGCC NAMES "libgcc_s_dw2-1.dll" "libgcc_s_sjlj-1.dll" "libgcc_s_seh-1.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
+    if (LIBGCC)
+        file(COPY ${LIBGCC} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
+    endif()
+    find_library(LIBSTDCPP NAMES "libstdc++-6.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
+    if (LIBSTDCPP)
+        file(COPY ${LIBSTDCPP} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
+    endif()
+    find_library(LIBPTHREAD NAMES "winpthread-1.dll" "libwinpthread-1.dll" "pthreadGC2.dll" PATHS ${CMAKE_FIND_ROOT_PATH})
+    if(LIBPTHREAD)
+        file(COPY ${LIBPTHREAD} DESTINATION ${CMAKE_BINARY_DIR}/bin/)
     endif()
 endif()
 
@@ -771,15 +836,9 @@ install(FILES data/supertuxkart_128.png DESTINATION share/icons/hicolor/128x128/
 install(FILES data/supertuxkart_256.png DESTINATION share/icons/hicolor/256x256/apps RENAME supertuxkart.png)
 install(FILES data/supertuxkart_512.png DESTINATION share/icons/hicolor/512x512/apps RENAME supertuxkart.png)
 install(FILES data/supertuxkart_1024.png DESTINATION share/icons/hicolor/1024x1024/apps RENAME supertuxkart.png)
-install(FILES data/supertuxkart_512.png DESTINATION share/pixmaps RENAME supertuxkart.png)
 install(FILES data/supertuxkart.appdata.xml DESTINATION share/metainfo)
 
 if(MINGW)
     install(DIRECTORY ${CMAKE_BINARY_DIR}/bin/ DESTINATION ${STK_INSTALL_BINARY_DIR}
             FILES_MATCHING PATTERN "*.dll")
-endif()
-
-if (LLVM_MINGW)
-    set(COPY_PDB_CMD cp ${CMAKE_BINARY_DIR}/supertuxkart.pdb ${CMAKE_BINARY_DIR}/bin)
-    add_custom_command(TARGET supertuxkart POST_BUILD COMMAND ${COPY_PDB_CMD})
 endif()

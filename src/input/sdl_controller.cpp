@@ -18,12 +18,17 @@
 #ifndef SERVER_ONLY
 
 #include "input/sdl_controller.hpp"
+#include "guiengine/message_queue.hpp"
 #include "input/device_config.hpp"
 #include "input/device_manager.hpp"
 #include "input/gamepad_device.hpp"
 #include "input/input_manager.hpp"
 #include "utils/log.hpp"
+#include "utils/time.hpp"
+#include "utils/string_utils.hpp"
+#include "utils/translation.hpp"
 
+#include <SDL_version.h>
 #include <stdexcept>
 #include <string>
 
@@ -31,12 +36,14 @@
 SDLController::SDLController(int device_id)
              : m_gamepad(NULL)
 {
+    m_last_power_level_time = StkTime::getMonoTimeMs();
     m_irr_event = {};
     m_irr_event.EventType = irr::EET_JOYSTICK_INPUT_EVENT;
     memset(m_prev_axes, 0,
         irr::SEvent::SJoystickEvent::NUMBER_OF_AXES * sizeof(int16_t));
     m_game_controller = NULL;
     m_joystick = NULL;
+    m_haptic = NULL;
     m_id = -1;
 
     if (SDL_IsGameController(device_id))
@@ -171,6 +178,13 @@ SDLController::SDLController(int device_id)
     if (created)
         cfg->initSDLMapping();
     cfg->setPlugged();
+
+#if SDL_VERSION_ATLEAST(1,3,0)
+    m_haptic = SDL_HapticOpenFromJoystick(m_joystick);
+    if (m_haptic)
+        SDL_HapticRumbleInit(m_haptic);
+#endif
+
     for (int i = 0; i < dm->getGamePadAmount(); i++)
     {
         GamePadDevice* d = dm->getGamePad(i);
@@ -200,6 +214,10 @@ SDLController::~SDLController()
         SDL_GameControllerClose(m_game_controller);
     else
         SDL_JoystickClose(m_joystick);
+#if SDL_VERSION_ATLEAST(1,3,0)
+    if (m_haptic)
+        SDL_HapticClose(m_haptic);
+#endif
     m_gamepad->getConfiguration()->unPlugged();
     m_gamepad->setIrrIndex(-1);
     m_gamepad->setConnected(false);
@@ -219,6 +237,43 @@ void SDLController::handleAxisInputSense(const SDL_Event& event)
         m_irr_event.JoystickEvent.Joystick, axis_idx, Input::AD_NEUTRAL,
         m_prev_axes[axis_idx]);
 }   // handleAxisInputSense
+
+// ----------------------------------------------------------------------------
+void SDLController::checkPowerLevel()
+{
+#if SDL_VERSION_ATLEAST(2, 0, 4)
+    const uint64_t time_now = StkTime::getMonoTimeMs();
+    if (time_now > m_last_power_level_time + 60000)
+    {
+        m_last_power_level_time = time_now;
+        SDL_JoystickPowerLevel pl = SDL_JoystickCurrentPowerLevel(m_joystick);
+        if (pl == SDL_JOYSTICK_POWER_EMPTY || pl == SDL_JOYSTICK_POWER_LOW)
+        {
+            core::stringw msg =
+                _("%s has low battery level.", SDL_JoystickName(m_joystick));
+            MessageQueue::add(MessageQueue::MT_ERROR, msg);
+            // Check 5 min later
+            m_last_power_level_time += 240000;
+        }
+    }
+#endif
+}   // checkPowerLevel
+
+void SDLController::doRumble(float strength_low, float strength_high, uint32_t duration_ms)
+{
+#if SDL_VERSION_ATLEAST(1,3,0)
+    if (m_haptic)
+    {
+        SDL_HapticRumblePlay(m_haptic, (strength_low + strength_high) / 2, duration_ms);
+    }
+    else
+#endif
+    {
+        uint16_t scaled_low = strength_low * pow(2, 16);
+        uint16_t scaled_high = strength_high * pow(2, 16);
+        SDL_GameControllerRumble(m_game_controller, scaled_low, scaled_high, duration_ms);
+    }
+}
 
 // ----------------------------------------------------------------------------
 #ifdef ANDROID

@@ -52,7 +52,6 @@
 #include "graphics/sp/sp_texture_manager.hpp"
 #include "graphics/stk_text_billboard.hpp"
 #include "graphics/stk_tex_manager.hpp"
-#include "graphics/stk_texture.hpp"
 #include "graphics/sun.hpp"
 #include "guiengine/engine.hpp"
 #include "guiengine/message_queue.hpp"
@@ -87,6 +86,17 @@
 #include "utils/vs.hpp"
 
 #include <irrlicht.h>
+
+#if !defined(SERVER_ONLY) && defined(ANDROID)
+#include <SDL.h>
+#if SDL_VERSION_ATLEAST(2, 0, 9)
+#define ENABLE_SCREEN_ORIENTATION_HANDLING 1
+#endif
+#endif
+
+#ifndef SERVER_ONLY
+#include <ge_main.hpp>
+#endif
 
 #ifdef ENABLE_RECORDER
 #include <chrono>
@@ -157,13 +167,25 @@ const bool ALLOW_1280_X_720    = true;
  */
 IrrDriver::IrrDriver()
 {
+    m_screen_orientation = -1;
     m_render_nw_debug = false;
     m_resolution_changing = RES_CHANGE_NONE;
 
     struct irr::SIrrlichtCreationParameters p;
+#ifdef __SWITCH__
+    // Switch doesn't like multiple window create/closes, so we hardcode it
+    // Aforementioned chicken and egg problem isn't an issue because switch's SDL only supports two resolutions
+    p.DriverType    = video::EDT_OPENGL;
+    p.Bits          = 24U;
+    p.WindowSize    = core::dimension2d<u32>(1280,720);
+#ifdef FORCE_LEGACY
+    p.ForceLegacyDevice = true;
+#endif
+#else
     p.DriverType    = video::EDT_NULL;
-    p.WindowSize    = core::dimension2d<u32>(640,480);
     p.Bits          = 16U;
+    p.WindowSize    = core::dimension2d<u32>(640,480);
+#endif
     p.Fullscreen    = false;
     p.SwapInterval  = 0;
     p.EventReceiver = NULL;
@@ -366,6 +388,32 @@ void IrrDriver::initDevice()
 {
     SIrrlichtCreationParameters params;
 
+    video::E_DRIVER_TYPE driver_created = video::EDT_NULL;
+    if (std::string(UserConfigParams::m_render_driver) == "gl")
+    {
+#if defined(USE_GLES2)
+        driver_created = video::EDT_OGLES2;
+#else
+        driver_created = video::EDT_OPENGL;
+#endif
+    }
+    else if (std::string(UserConfigParams::m_render_driver) == "directx9")
+    {
+        driver_created = video::EDT_DIRECT3D9;
+    }
+    else
+    {
+        Log::warn("IrrDriver", "Unknown driver %s, revert to gl",
+            UserConfigParams::m_render_driver.c_str());
+        UserConfigParams::m_render_driver.revertToDefaults();
+#if defined(USE_GLES2)
+        driver_created = video::EDT_OGLES2;
+#else
+        driver_created = video::EDT_OPENGL;
+#endif
+    }
+
+#ifndef __SWITCH__
     // If --no-graphics option was used, the null device can still be used.
     if (!GUIEngine::isNoGraphics())
     {
@@ -458,11 +506,7 @@ void IrrDriver::initDevice()
                 Log::verbose("irr_driver", "Trying to create device with "
                              "%i bits\n", bits);
 
-#if defined(USE_GLES2)
-            params.DriverType    = video::EDT_OGLES2;
-#else
-            params.DriverType    = video::EDT_OPENGL;
-#endif
+            params.DriverType    = driver_created;
             params.PrivateData   = NULL;
             params.Stencilbuffer = false;
             params.Bits          = bits;
@@ -520,11 +564,7 @@ void IrrDriver::initDevice()
         {
             UserConfigParams::m_width  = MIN_SUPPORTED_WIDTH;
             UserConfigParams::m_height = MIN_SUPPORTED_HEIGHT;
-#if defined(USE_GLES2)
-            m_device = createDevice(video::EDT_OGLES2,
-#else
-            m_device = createDevice(video::EDT_OPENGL,
-#endif
+            m_device = createDevice(driver_created,
                         core::dimension2du(UserConfigParams::m_width,
                                            UserConfigParams::m_height ),
                                     32, //bits per pixel
@@ -541,6 +581,7 @@ void IrrDriver::initDevice()
             }
         }
     }
+#endif // __SWITCH__
 
     if(!m_device)
     {
@@ -548,6 +589,7 @@ void IrrDriver::initDevice()
     }
 #ifndef SERVER_ONLY 
 
+    GE::init(m_device->getVideoDriver());
     // Assume sp is supported
     CentralVideoSettings::m_supports_sp = true;
     CVS->init();
@@ -570,7 +612,8 @@ void IrrDriver::initDevice()
     }
 #endif
 
-#ifndef SERVER_ONLY
+    // Don't recreate on switch!
+#if !defined(SERVER_ONLY) && !defined(__SWITCH__)
     if (!GUIEngine::isNoGraphics() && recreate_device)
     {
         m_device->closeDevice();
@@ -585,6 +628,7 @@ void IrrDriver::initDevice()
             Log::fatal("irr_driver", "Couldn't initialise irrlicht device. Quitting.\n");
         }
 
+        GE::init(m_device->getVideoDriver());
         CVS->init();
     }
 #endif
@@ -751,7 +795,9 @@ void IrrDriver::initDevice()
         m_device->getCursorControl()->setVisible(true);
 #endif
     m_pointer_shown = true;
-
+#ifdef ENABLE_SCREEN_ORIENTATION_HANDLING
+    m_screen_orientation = (int)SDL_GetDisplayOrientation(0);
+#endif
     if (GUIEngine::isNoGraphics())
         return;
 }   // initDevice
@@ -1496,12 +1542,8 @@ void IrrDriver::removeMeshFromCache(scene::IMesh *mesh)
  */
 void IrrDriver::removeTexture(video::ITexture *t)
 {
-    STKTexture* stkt = dynamic_cast<STKTexture*>(t);
-    if (stkt)
-    {
-        STKTexManager::getInstance()->removeTexture(stkt);
+    if (STKTexManager::getInstance()->removeTexture(t))
         return;
-    }
     m_video_driver->removeTexture(t);
 }   // removeTexture
 
@@ -1543,30 +1585,6 @@ scene::IAnimatedMeshSceneNode *IrrDriver::addAnimatedMesh(scene::IAnimatedMesh *
 }   // addAnimatedMesh
 
 // ----------------------------------------------------------------------------
-/** Adds a sky dome. Documentation from irrlicht:
- *  A skydome is a large (half-) sphere with a panoramic texture on the inside
- *  and is drawn around the camera position.
- *  \param texture: Texture for the dome.
- *  \param horiRes: Number of vertices of a horizontal layer of the sphere.
- *  \param vertRes: Number of vertices of a vertical layer of the sphere.
- *  \param texturePercentage: How much of the height of the texture is used.
- *         Should be between 0 and 1.
- *  \param spherePercentage: How much of the sphere is drawn. Value should be
- *          between 0 and 2, where 1 is an exact half-sphere and 2 is a full
- *          sphere.
- */
-scene::ISceneNode *IrrDriver::addSkyDome(video::ITexture *texture,
-                                         int hori_res, int vert_res,
-                                         float texture_percent,
-                                         float sphere_percent)
-{
-    Log::error("skybox", "Using deprecated SkyDome");
-    return m_scene_manager->addSkyDomeSceneNode(texture, hori_res, vert_res,
-                                                texture_percent,
-                                                sphere_percent);
-}   // addSkyDome
-
-// ----------------------------------------------------------------------------
 /** Adds a skybox using. Irrlicht documentation:
  *  A skybox is a big cube with 6 textures on it and is drawn around the camera
  *  position.
@@ -1580,12 +1598,6 @@ scene::ISceneNode *IrrDriver::addSkyDome(video::ITexture *texture,
 scene::ISceneNode *IrrDriver::addSkyBox(const std::vector<video::ITexture*> &texture,
     const std::vector<video::ITexture*> &spherical_harmonics_textures)
 {
-#ifndef SERVER_ONLY
-    assert(texture.size() == 6);
-
-    m_renderer->addSkyBox(texture, spherical_harmonics_textures);
-
-#endif 
     return m_scene_manager->addSkyBoxSceneNode(texture[0], texture[1],
                                                texture[2], texture[3],
                                                texture[4], texture[5]);
@@ -1628,33 +1640,19 @@ void IrrDriver::removeCameraSceneNode(scene::ICameraSceneNode *camera)
  *  getTexture() function.s
  *  \param type The FileManager::AssetType of the texture.
  *  \param filename File name of the texture to load.
- *  \param is_premul If the alpha values needd to be multiplied for
- *         all pixels.
- *  \param is_prediv If the alpha value needs to be divided into
- *         each pixel.
  */
 video::ITexture *IrrDriver::getTexture(FileManager::AssetType type,
-                                       const std::string &filename,
-                                       bool is_premul,
-                                       bool is_prediv,
-                                       bool complain_if_not_found)
+                                       const std::string &filename)
 {
     const std::string path = file_manager->getAsset(type, filename);
-    return getTexture(path, is_premul, is_prediv, complain_if_not_found);
+    return getTexture(path);
 }   // getTexture
 
 // ----------------------------------------------------------------------------
 /** Loads a texture from a file and returns the texture object.
  *  \param filename File name of the texture to load.
- *  \param is_premul If the alpha values needd to be multiplied for
- *         all pixels.
- *  \param is_prediv If the alpha value needs to be divided into
- *         each pixel.
  */
-video::ITexture *IrrDriver::getTexture(const std::string &filename,
-                                       bool is_premul,
-                                       bool is_prediv,
-                                       bool complain_if_not_found)
+video::ITexture *IrrDriver::getTexture(const std::string &filename)
 {
     return STKTexManager::getInstance()->getTexture(filename);
 }   // getTexture
@@ -1768,14 +1766,18 @@ video::SColorf IrrDriver::getAmbientLight() const
 void IrrDriver::displayFPS()
 {
 #ifndef SERVER_ONLY
-    gui::IGUIFont* font = GUIEngine::getSmallFont();
+    gui::ScalableFont* font = GUIEngine::getSmallFont();
+    font->setScale(0.7f);
     core::rect<s32> position;
 
     const int fheight = font->getHeightPerLine();
+    const int rwidth = irr_driver->getActualScreenSize().Width / 6;
+    const int swidth = irr_driver->getActualScreenSize().Width / 3;
+
     if (UserConfigParams::m_artist_debug_mode)
-        position = core::rect<s32>(51, 0, 30*fheight+51, 2*fheight + fheight / 3);
+        position = core::rect<s32>(rwidth - 20, 0, int(rwidth * 4.25), 2 * fheight + (fheight / 5));
     else
-        position = core::rect<s32>(75, 0, 18*fheight+75 , fheight + fheight / 5);
+        position = core::rect<s32>(swidth, 0, swidth * 2, fheight + (fheight / 5));
     GL32_draw2DRectangle(video::SColor(150, 96, 74, 196), position, NULL);
     // We will let pass some time to let things settle before trusting FPS counter
     // even if we also ignore fps = 1, which tends to happen in first checks
@@ -1805,13 +1807,21 @@ void IrrDriver::displayFPS()
     uint32_t ping = 0;
     if (STKHost::existHost())
         ping = STKHost::get()->getClientPingToServer();
+
+    core::stringw fps_string;
     if (no_trust)
     {
         no_trust--;
 
-        static video::SColor fpsColor = video::SColor(255, 0, 0, 0);
-        font->drawQuick(StringUtils::insertValues (L"FPS: ... Ping: %dms", ping),
-            core::rect< s32 >(100,0,400,50), fpsColor, false);
+        static video::SColor fpsColor = video::SColor(255, 255, 255, 255);
+        fps_string = _("FPS: %d/%d/%d - %d KTris, Ping: %dms", "-", "-",
+            "-", SP::sp_solid_poly_count / 1000, ping);
+
+        font->setBlackBorder(true);
+        font->setThinBorder(true);
+        font->drawQuick(fps_string, position, fpsColor, false);
+        font->setThinBorder(false);
+        font->setBlackBorder(false);
         return;
     }
 
@@ -1826,14 +1836,11 @@ void IrrDriver::displayFPS()
     if (low > kilotris) low = kilotris;
     if (high < kilotris) high = kilotris;
 
-    core::stringw fps_string;
-
     if ((UserConfigParams::m_artist_debug_mode)&&(CVS->isGLSL()))
     {
         fps_string = StringUtils::insertValues
-                    (L"FPS: %d/%d/%d  - PolyCount: %d Solid, "
-                      "%d Shadows - LightDist : %d\nComplexity %d, Total skinning joints: %d, "
-                      "Ping: %dms",
+                    (L"FPS: %d/%d/%d - PolyCount: %d Solid, %d Shadows - LightDist: %d\n"
+                      "Complexity %d, Total skinning joints: %d, Ping: %dms",
                     min, fps, max, SP::sp_solid_poly_count,
                     SP::sp_shadow_poly_count, m_last_light_bucket_distance, irr_driver->getSceneComplexity(),
                     m_skinning_joint, ping);
@@ -1852,9 +1859,14 @@ void IrrDriver::displayFPS()
         }
     }
 
-    static video::SColor fpsColor = video::SColor(255, 0, 0, 0);
+    static video::SColor fpsColor = video::SColor(255, 255, 255, 255);
 
-    font->drawQuick( fps_string.c_str(), position, fpsColor, false );
+    font->setBlackBorder(true);
+    font->setThinBorder(true);
+    font->drawQuick(fps_string.c_str(), position, fpsColor, false);
+    font->setThinBorder(false);
+    font->setBlackBorder(false);
+
 #endif
 }   // updateFPS
 
@@ -1974,13 +1986,21 @@ void IrrDriver::handleWindowResize()
         current_screen_size.Height = screen->getHeight();
     }
 
+    bool screen_orientation_changed = false;
+    int new_orientation = -1;
+#ifdef ENABLE_SCREEN_ORIENTATION_HANDLING
+    new_orientation = (int)SDL_GetDisplayOrientation(0);
+    screen_orientation_changed = m_screen_orientation != new_orientation;
+#endif
     if (m_actual_screen_size != m_video_driver->getCurrentRenderTargetSize() ||
-        current_screen_size != m_video_driver->getCurrentRenderTargetSize())
+        current_screen_size != m_video_driver->getCurrentRenderTargetSize() ||
+        screen_orientation_changed)
     {
         // Don't update when dialog is opened
         if (dialog_exists)
             return;
 
+        m_screen_orientation = new_orientation;
         m_actual_screen_size = m_video_driver->getCurrentRenderTargetSize();
         UserConfigParams::m_width = m_actual_screen_size.Width;
         UserConfigParams::m_height = m_actual_screen_size.Height;

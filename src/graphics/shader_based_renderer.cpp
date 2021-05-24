@@ -625,6 +625,7 @@ void ShaderBasedRenderer::onLoadWorld()
     const core::recti &viewport = Camera::getCamera(0)->getViewport();
     unsigned int width = viewport.LowerRightCorner.X - viewport.UpperLeftCorner.X;
     unsigned int height = viewport.LowerRightCorner.Y - viewport.UpperLeftCorner.Y;
+
     RTT* rtts = new RTT(width, height, CVS->isDeferredEnabled() ?
                         UserConfigParams::m_scale_rtts_factor : 1.0f,
                         !CVS->isDeferredEnabled());
@@ -656,8 +657,8 @@ void ShaderBasedRenderer::giveBoost(unsigned int cam_index)
 }
 
 // ----------------------------------------------------------------------------
-void ShaderBasedRenderer::addSkyBox(const std::vector<video::ITexture*> &texture,
-                                    const std::vector<video::ITexture*> &spherical_harmonics_textures)
+void ShaderBasedRenderer::addSkyBox(const std::vector<video::IImage*> &texture,
+                                    const std::vector<video::IImage*> &spherical_harmonics_textures)
 {
     m_skybox = new Skybox(texture);
     if(spherical_harmonics_textures.size() == 6)

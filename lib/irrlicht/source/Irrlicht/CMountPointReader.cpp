@@ -95,7 +95,13 @@ CMountPointReader::CMountPointReader(IFileSystem * parent, const io::path& basen
 
 	const io::path& work = Parent->getWorkingDirectory();
 
-	Parent->changeWorkingDirectoryTo(basename);
+	if(!Parent->changeWorkingDirectoryTo(basename))
+	{
+#ifdef __SWITCH__
+		printf("Failed changing directory to %s\n", basename.c_str());
+		perror("Why couldn't we change working directory?");
+#endif
+	}
 	buildDirectory();
 	Parent->changeWorkingDirectoryTo(work);
 
@@ -123,6 +129,10 @@ void CMountPointReader::buildDirectory()
 
 		if (full == "")
 			continue;
+#ifdef __SWITCH__
+		if (full.lastChar() == '.')
+			continue;
+#endif
 
 		if (!list->isDirectory(i))
 		{
