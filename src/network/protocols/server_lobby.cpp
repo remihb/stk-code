@@ -4141,6 +4141,9 @@ bool ServerLobby::handleAssets(const NetworkString& ns, STKPeer* peer)
         updateAddons();
         updateTracksForMode();
     }
+
+    if (ServerConfig::m_soccer_tournament)
+        updateTournamentRole(peer);
     return true;
 }   // handleAssets
 
@@ -4389,10 +4392,6 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
 
     auto red_blue = STKHost::get()->getAllPlayersTeamInfo();
     std::string utf8_online_name = StringUtils::wideToUtf8(online_name);
-    bool erased_from_tournament_roles = false;
-    std::vector<std::string> missing_assets;
-    if (ServerConfig::m_soccer_tournament)
-        missing_assets = getMissingTournamentAssets(peer);
     for (unsigned i = 0; i < player_count; i++)
     {
         core::stringw name;
@@ -4429,16 +4428,7 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
         }
         if (ServerConfig::m_soccer_tournament)
         {
-            if (!missing_assets.empty())
-            {
-                erased_from_tournament_roles |= m_tournament_red_players.count(utf8_online_name) > 0;
-                erased_from_tournament_roles |= m_tournament_blue_players.count(utf8_online_name) > 0;
-                erased_from_tournament_roles |= m_tournament_referees.count(utf8_online_name) > 0;
-                m_tournament_red_players.erase(utf8_online_name);
-                m_tournament_blue_players.erase(utf8_online_name);
-                m_tournament_referees.erase(utf8_online_name);
-            }
-            if (m_tournament_red_players.count(utf8_online_name)) 
+            if (m_tournament_red_players.count(utf8_online_name))
                 player->setTeam(KART_TEAM_RED);
             else if (m_tournament_blue_players.count(utf8_online_name))
                 player->setTeam(KART_TEAM_BLUE);
@@ -4661,18 +4651,10 @@ void ServerLobby::handleUnencryptedConnection(std::shared_ptr<STKPeer> peer,
                 "using /replay 0 (to disable) or /replay 1 (to enable). ";
         sendStringToPeer(msg, peer);
     }
-    if (erased_from_tournament_roles)
-    {
-        std::string msg = "You are now spectator because you lack the following assets:";
-        for (unsigned i = 0; i < missing_assets.size(); i++)
-        {
-            if (i)
-                msg.push_back(',');
-            msg += " " + missing_assets[i];
-        }
-        sendStringToPeer(msg, peer);
-    }
     getMessagesFromHost(peer.get(), online_id);
+
+    if (ServerConfig::m_soccer_tournament)
+        updateTournamentRole(peer.get());
 }   // handleUnencryptedConnection
 
 //-----------------------------------------------------------------------------
@@ -6602,8 +6584,9 @@ void ServerLobby::handleServerCommand(Event* event,
             peer->setAlwaysSpectate(ASM_NONE);
         updatePlayerList();
     }
-    else if (argv[0] == "addons")
+    else if (argv[0] == "addons" || argv[0] == "moreaddons")
     {
+        bool more = (argv[0] == "moreaddons");
         if (argv.size() == 1)
         {
             argv.push_back("");
@@ -6630,44 +6613,86 @@ void ServerLobby::handleServerCommand(Event* event,
             (argv[1] == "arena" ? m_addon_arenas :
             /*argv[1] == "soccer" ?*/ m_addon_soccers
         )));
-        std::vector<std::string> result[2];
+        std::vector<std::pair<std::string, std::vector<std::string>>> result;
         for (const std::string& s: from)
-            result[0].push_back(s);
+            result.push_back({s, {}});
 
         auto peers = STKHost::get()->getPeers();
-        bool anyone = false;
+        int num_players = 0;
         for (auto peer : peers)
         {
             if (!peer || !peer->isValidated() || peer->isWaitingForGame() || !canRace(peer))
                 continue;
-            anyone = true;
+            ++num_players;
+            std::string username = StringUtils::wideToUtf8(
+                    peer->getPlayerProfiles()[0]->getName());
             const auto& kt = peer->getClientAssets();
             const auto& container = (argv[1] == "kart" ? kt.first : kt.second);
-            result[1].clear();
-            for (const std::string& s: result[0])
-                if (container.find(s) != container.end())
-                    result[1].push_back(s);
-            std::swap(result[0], result[1]);
+            for (auto& p: result)
+                if (container.find(p.first) == container.end())
+                    p.second.push_back(username);
         }
-        const std::vector<std::string> answer = result[0];
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(result.begin(), result.end(), g);
+        std::stable_sort(result.begin(), result.end(),
+            [](const std::pair<std::string, std::vector<std::string>>& a,
+                const std::pair<std::string, std::vector<std::string>>& b) -> bool {
+                if (a.second.size() != b.second.size())
+                    return a.second.size() > b.second.size();
+                return false;
+            });
         std::string response;
-        if (anyone) {
-            response = "Found " + std::to_string(answer.size()) + " asset(s)";
-            bool nothing = true;
-            for (const std::string& s: answer)
+        const int NEXT_ADDONS = 5;
+        std::vector<std::string> all_have;
+        while (!result.empty() && (int)result.back().second.size() == 0)
+        {
+            all_have.push_back(result.back().first);
+            result.pop_back();
+        }
+        if (num_players > 0) {
+            response = "Found " + std::to_string(all_have.size()) + " asset(s)";
+            std::reverse(result.begin(), result.end());
+            if (result.size() > NEXT_ADDONS)
+                result.resize(NEXT_ADDONS);
+            if (!more)
             {
-                if (s.length() < 6 || s.substr(0, 6) != "addon_")
-                    continue;
-                response.push_back(nothing ? ':' : ',');
-                nothing = false;
-                response.push_back(' ');
-                response += s.substr(6);
+                bool nothing = true;
+                for (const std::string& s: all_have)
+                {
+                    if (s.length() < 6 || s.substr(0, 6) != "addon_")
+                        continue;
+                    response.push_back(nothing ? ':' : ',');
+                    nothing = false;
+                    response.push_back(' ');
+                    response += s.substr(6);
+                }
+                if (response.length() > 100)
+                    response += "\nTotal: " + std::to_string(all_have.size());
             }
-            if (response.length() > 100)
-                response += "\nTotal: " + std::to_string(answer.size());
+            else
+            {
+                if (result.empty())
+                    response += "\nNothing more to install!";
+                else
+                {
+                    response += ". More addons to install:";
+                    for (unsigned i = 0; i < result.size(); ++i)
+                    {
+                        response += "\n" + result[i].first + ", missing for "
+                            + std::to_string(result[i].second.size())
+                            + " player(s):";
+                        std::sort(result[i].second.begin(), result[i].second.end());
+                        for (unsigned j = 0; j < result[i].second.size(); ++j)
+                        {
+                            response += " " + result[i].second[j];
+                        }
+                    }
+                }
+            }
         } else {
             response = "No one in the lobby can play. Found "
-                + std::to_string(answer.size()) + " assets on the server.";
+                + std::to_string(all_have.size()) + " assets on the server.";
         }
         sendStringToPeer(response, peer);
     }
@@ -7635,6 +7660,11 @@ unmute_error:
     else if (argv[0] == "version")
     {
         std::string msg = "1.2-kimden 210524 beta";
+        sendStringToPeer(msg, peer);
+    }
+    else if (argv[0] == "clear")
+    {
+        std::string msg(30, '\n');
         sendStringToPeer(msg, peer);
     }
     else if (argv[0] == "register")
@@ -8694,6 +8724,59 @@ std::vector<std::string> ServerLobby::getMissingTournamentAssets(STKPeer* peer) 
             ans.push_back(required_track);
     return ans;
 }   // getMissingTournamentAssets
+//-----------------------------------------------------------------------------
+void ServerLobby::updateTournamentRole(STKPeer* peer)
+{
+    if (!ServerConfig::m_soccer_tournament)
+        return;
+    if (peer->getPlayerProfiles().empty())
+        return;
+    std::string utf8_online_name = StringUtils::wideToUtf8(
+        peer->getPlayerProfiles()[0]->getName());
+    bool erased_from_tournament_roles = false;
+    std::vector<std::string> missing_assets;
+    missing_assets = getMissingTournamentAssets(peer);
+    if (!missing_assets.empty())
+    {
+        erased_from_tournament_roles |= m_tournament_red_players.count(utf8_online_name) > 0;
+        erased_from_tournament_roles |= m_tournament_blue_players.count(utf8_online_name) > 0;
+        erased_from_tournament_roles |= m_tournament_referees.count(utf8_online_name) > 0;
+        m_tournament_red_players.erase(utf8_online_name);
+        m_tournament_blue_players.erase(utf8_online_name);
+        m_tournament_referees.erase(utf8_online_name);
+    }
+    for (unsigned i = 0; i < peer->getPlayerProfiles().size(); i++)
+    {
+        auto player = peer->getPlayerProfiles()[i];
+        core::stringw name = player->getName();
+        std::string utf8_name = StringUtils::wideToUtf8(name);
+        if (m_tournament_red_players.count(utf8_online_name))
+            player->setTeam(KART_TEAM_RED);
+        else if (m_tournament_blue_players.count(utf8_online_name))
+            player->setTeam(KART_TEAM_BLUE);
+        else
+            player->setTeam(KART_TEAM_NONE);
+        if (tournamentColorsSwapped(m_tournament_game))
+        {
+            if (player->getTeam() == KART_TEAM_BLUE)
+                player->setTeam(KART_TEAM_RED);
+            else if (player->getTeam() == KART_TEAM_RED)
+                player->setTeam(KART_TEAM_BLUE);
+        }
+    }
+    if (erased_from_tournament_roles)
+    {
+        std::string msg = "You are now spectator because you lack the following assets:";
+        for (unsigned i = 0; i < missing_assets.size(); i++)
+        {
+            if (i)
+                msg.push_back(',');
+            msg += " " + missing_assets[i];
+        }
+        sendStringToPeer(msg, peer);
+        updatePlayerList();
+    }
+}   // updateTournamentRole
 //-----------------------------------------------------------------------------
 
 #ifdef ENABLE_WEB_SUPPORT

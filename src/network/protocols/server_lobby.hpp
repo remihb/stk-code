@@ -512,9 +512,6 @@ private:
     void initCategories();
     void initTournamentPlayers();
     void changeColors();
-    void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;
-    void sendStringToPeer(std::string& s, STKPeer* peer) const;
-    void sendStringToAllPeers(std::string& s);
     bool canRace(std::shared_ptr<STKPeer>& peer) const;
     bool canRace(STKPeer* peer) const;
     bool hasHostRights(std::shared_ptr<STKPeer>& peer) const;
@@ -529,6 +526,7 @@ private:
     void changeLimitForTournament(bool goal_target);
     bool tournamentGoalsLimit(int game) const;
     bool tournamentColorsSwapped(int game) const;
+    void updateTournamentRole(STKPeer* peer);
     // bool tournamentHasIcy(int game) const;
 #ifdef ENABLE_WEB_SUPPORT
     void loadAllTokens();
@@ -580,6 +578,9 @@ public:
         const std::string& info);
     // int getTrackMaxPlayers(std::string& name) const;
     void updateGnuElimination();
+    void sendStringToPeer(std::string& s, std::shared_ptr<STKPeer>& peer) const;
+    void sendStringToPeer(std::string& s, STKPeer* peer) const;
+    void sendStringToAllPeers(std::string& s);
 };   // class ServerLobby
 
 #endif // SERVER_LOBBY_HPP
