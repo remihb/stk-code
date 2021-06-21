@@ -327,6 +327,8 @@ private:
     
     std::set<std::string> m_tournament_referees;
 
+    std::set<std::string> m_tournament_mutealls;
+
     std::set<std::string> m_tournament_init_red;
 
     std::set<std::string> m_tournament_init_blue;

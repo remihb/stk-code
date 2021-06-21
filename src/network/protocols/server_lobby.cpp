@@ -942,6 +942,7 @@ void ServerLobby::handleChat(Event* event)
                     tournament_limit = false;
             }
         }
+        // Note that mutealls are still spectators
         if (tournament_limit)
         {
             for (const std::string& s: m_tournament_referees)
@@ -949,6 +950,8 @@ void ServerLobby::handleChat(Event* event)
             for (const std::string& s: m_tournament_red_players)
                 important_players.insert(s);
             for (const std::string& s: m_tournament_blue_players)
+                important_players.insert(s);
+            for (const std::string& s: m_tournament_mutealls)
                 important_players.insert(s);
         }
         chat->addUInt8(LE_CHAT).encodeString16(message);
@@ -7768,6 +7771,34 @@ unmute_error:
     {
         std::string peer_username = StringUtils::wideToUtf8(
             peer->getPlayerProfiles()[0]->getName());
+
+        if (m_tournament_limited_chat && argv[0] == "muteall")
+        {
+            if (argv.size() >= 2 && argv[1] == "0")
+            {
+                m_tournament_mutealls.erase(peer_username);
+            }
+            else if (argv.size() >= 2 && argv[1] == "1")
+            {
+                m_tournament_mutealls.insert(peer_username);
+            }
+            else
+            {
+                if (m_tournament_mutealls.count(peer_username))
+                    m_tournament_mutealls.erase(peer_username);
+                else
+                    m_tournament_mutealls.insert(peer_username);
+            }
+            std::string msg;
+            if (m_tournament_mutealls.count(peer_username))
+                msg = "You are now receiving messages only from players and referees";
+            else
+                msg = "You are now receiving messages from spectators too";
+            sendStringToPeer(msg, peer);
+        }
+
+        // Referee-only commands
+
         if (m_tournament_referees.count(peer_username) == 0)
         {
             std::string msg = "You are not a referee";
