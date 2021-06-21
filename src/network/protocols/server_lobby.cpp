@@ -988,12 +988,14 @@ void ServerLobby::handleChat(Event* event)
                     {
                         if (p->isSpectator())
                             return false;
+                        bool someone_good = false;
                         for (auto& player : p->getPlayerProfiles())
                         {
                             if (player->getTeam() == target_team)
-                                return true;
+                                someone_good = true;
                         }
-                        return false;
+                        if (!someone_good)
+                            return false;
                     }
                 }
                 for (auto& peer : m_peers_muted_players)
@@ -1007,10 +1009,12 @@ void ServerLobby::handleChat(Event* event)
                 }
                 if (team_speak)
                 {
+                    bool someone_good = false;
                     for (auto& profile: p->getPlayerProfiles())
                         if (teams.count(profile->getTeam()) > 0)
-                            return true;
-                    return false;
+                            someone_good = true;
+                    if (!someone_good)
+                        return false;
                 }
                 if (can_receive.empty())
                     return true;
