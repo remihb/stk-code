@@ -7517,7 +7517,26 @@ unmute_error:
             }
             auto it = m_team_name_to_index.find(argv[2]);
             int index = (it == m_team_name_to_index.end() ? 0 : it->second);
-            std::string player = argv[3];
+            std::string player;
+            auto wide_player_name = StringUtils::utf8ToWide(argv[3]);
+            std::shared_ptr<STKPeer> player_peer = STKHost::get()->findPeerByWildcard(
+                wide_player_name, player);
+            // if player not found
+            if (!player_peer)
+            {
+                // don't use if wildcard
+                if (wide_player_name.find("*") != -1 || wide_player_name.find("?") != -1)
+                {
+                    msg = "Player not found or not unique";
+                    sendStringToPeer(msg, peer);
+                    return;
+                }
+                else
+                {
+                    // if no wildcard, reset player name to use for absent players
+                    player = argv[3];
+                }
+            }
             for (const auto& pair: m_team_name_to_index)
             {
                 if (pair.second < 0)
@@ -7536,9 +7555,6 @@ unmute_error:
             }
             index = abs(index);
             m_team_for_player[player] = index;
-            auto wide_player_name = StringUtils::utf8ToWide(player);
-            std::shared_ptr<STKPeer> player_peer = STKHost::get()->findPeerByName(
-                wide_player_name);
             if (player_peer)
             {
                 for (auto& profile : player_peer.get()->getPlayerProfiles())
