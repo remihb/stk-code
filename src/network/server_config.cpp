@@ -52,6 +52,7 @@ namespace ServerConfig
 // ============================================================================
 std::string g_server_config_path[2];
 int m_server_config_level = 0;
+bool m_loaded_from_external_config = false;
 std::string m_server_uid;
 // ============================================================================
 FloatServerConfigParam::FloatServerConfigParam(float default_value,
@@ -457,6 +458,8 @@ void loadServerLobbyFromConfig()
             m_time_limit_ctf.revertToDefaults();
         }
     }
+
+    server_lobby->setSaveServerConfig(m_loaded_from_external_config);
 
     // The extra server info has to be set before the server lobby is started
     if (server_lobby)
