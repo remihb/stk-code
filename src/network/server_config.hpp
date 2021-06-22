@@ -653,10 +653,9 @@ namespace ServerConfig
     // ========================================================================
     static bool m_loaded_from_external_config = false;
     // ========================================================================
-    void loadServerConfig(const std::string& path = "", bool repeated = false);
+    void loadServerConfig(const std::string& path = "");
     // ------------------------------------------------------------------------
-    void loadServerConfigXML(const XMLNode* root, bool default_config = false,
-                                                        bool repeated = false);
+    void loadServerConfigXML(const XMLNode* root, bool default_config = false);
     // ------------------------------------------------------------------------
     std::string getServerConfigXML();
     // ------------------------------------------------------------------------
