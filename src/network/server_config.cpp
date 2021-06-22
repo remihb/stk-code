@@ -171,7 +171,7 @@ void loadServerConfigXML(const XMLNode* root, bool default_config)
         if (child != NULL && child->get("value", &external_config_path))
         {
             m_server_config_level = 1;
-            loadServerConfig(external_config_path, true);
+            loadServerConfig(external_config_path);
             m_server_config_level = 0;
         }
     }
