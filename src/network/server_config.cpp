@@ -52,7 +52,6 @@ namespace ServerConfig
 // ============================================================================
 std::string g_server_config_path[2];
 int m_server_config_level = 0;
-bool m_loaded_from_external_config = false;
 std::string m_server_uid;
 // ============================================================================
 FloatServerConfigParam::FloatServerConfigParam(float default_value,
@@ -117,6 +116,7 @@ MapServerConfigParam<T, U>::MapServerConfigParam(const char* param_name,
 // ============================================================================
 void loadServerConfig(const std::string& path)
 {
+    m_loaded_from_external_config = false;
     bool default_config = false;
     if (path.empty())
     {
@@ -205,6 +205,8 @@ std::string getServerConfigXML()
 // ----------------------------------------------------------------------------
 void writeServerConfigToDisk()
 {
+    if (m_loaded_from_external_config) // Don't overwrite if there were 2 files
+        return;
     const std::string& config_xml = getServerConfigXML();
     try
     {
@@ -458,9 +460,6 @@ void loadServerLobbyFromConfig()
             m_time_limit_ctf.revertToDefaults();
         }
     }
-
-    server_lobby->setSaveServerConfig(m_loaded_from_external_config);
-
     // The extra server info has to be set before the server lobby is started
     if (server_lobby)
         server_lobby->requestStart();

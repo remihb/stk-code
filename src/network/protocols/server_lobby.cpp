@@ -286,8 +286,6 @@ ServerLobby::ServerLobby() : LobbyProtocol()
     setHandleDisconnections(true);
     m_state = SET_PUBLIC_ADDRESS;
     m_save_server_config = true;
-    if (ServerConfig::m_loaded_from_external_config)
-        m_save_server_config = false;
     if (ServerConfig::m_ranked)
     {
         Log::info("ServerLobby", "This server will submit ranking scores to "
