@@ -113,7 +113,7 @@ MapServerConfigParam<T, U>::MapServerConfigParam(const char* param_name,
 }   // MapServerConfigParam
 
 // ============================================================================
-void loadServerConfig(const std::string& path)
+void loadServerConfig(const std::string& path, bool repeated)
 {
     bool default_config = false;
     if (path.empty())
@@ -130,11 +130,12 @@ void loadServerConfig(const std::string& path)
     m_server_uid = StringUtils::removeExtension(
         StringUtils::getBasename(g_server_config_path));
     const XMLNode* root = file_manager->createXMLTree(g_server_config_path);
-    loadServerConfigXML(root, default_config);
+    loadServerConfigXML(root, default_config, repeated);
 }   // loadServerConfig
 
 // ----------------------------------------------------------------------------
-void loadServerConfigXML(const XMLNode* root, bool default_config)
+void loadServerConfigXML(const XMLNode* root, bool default_config,
+    bool repeated)
 {
     if (!root || root->getName() != "server-config")
     {
@@ -157,6 +158,17 @@ void loadServerConfigXML(const XMLNode* root, bool default_config)
         delete root;
         writeServerConfigToDisk();
         return;
+    }
+
+    std::string external_config_path;
+    if (!repeated)
+    {
+        if (root->get("external-config", &external_config_path))
+            loadServerConfig(external_config_path, true);
+    }
+    else
+    {
+        m_loaded_from_external_config = true;
     }
 
     for (unsigned i = 0; i < g_server_params.size(); i++)

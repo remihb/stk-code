@@ -651,9 +651,12 @@ namespace ServerConfig
     /** Server uid, extracted from server_config.xml file with .xml removed. */
     extern std::string m_server_uid;
     // ========================================================================
-    void loadServerConfig(const std::string& path = "");
+    static bool m_loaded_from_external_config = false;
+    // ========================================================================
+    void loadServerConfig(const std::string& path = "", bool repeated = false);
     // ------------------------------------------------------------------------
-    void loadServerConfigXML(const XMLNode* root, bool default_config = false);
+    void loadServerConfigXML(const XMLNode* root, bool default_config = false,
+                                                        bool repeated = false);
     // ------------------------------------------------------------------------
     std::string getServerConfigXML();
     // ------------------------------------------------------------------------
