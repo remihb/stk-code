@@ -163,6 +163,7 @@ public:
 
                   PowerupManager  ();
                  ~PowerupManager  ();
+    void          loadPowerupsModels ();
     void          loadPowerupsModels (std::string filename);
     void          loadWeights(const XMLNode *node, const std::string &category);
     void          unloadPowerups  ();

@@ -2304,7 +2304,7 @@ int main(int argc, char *argv[])
         if (CommandLine::has("--powerup-file", &s))
             powerup_manager->loadPowerupsModels(s);
         else
-            powerup_manager->loadPowerupsModels("powerup.xml");
+            powerup_manager->loadPowerupsModels();
 
         ItemManager::loadDefaultItemMeshes();
 
