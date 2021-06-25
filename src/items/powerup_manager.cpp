@@ -125,8 +125,7 @@ PowerupManager::PowerupType
  */
 void PowerupManager::loadPowerupsModels(std::string filename)
 {
-    const std::string load_from = (filename.empty() ? "powerup.xml" : filename);
-    const std::string file_name = file_manager->getAsset(load_from);
+    const std::string file_name = file_manager->getAsset(filename);
     XMLNode *root               = file_manager->createXMLTree(file_name);
     for(unsigned int i=0; i<root->getNumNodes(); i++)
     {
