@@ -2302,9 +2302,8 @@ int main(int argc, char *argv[])
         Referee::init();
 
         if (CommandLine::has("--powerup-file", &s))
-            powerup_manager->loadPowerupsModels(s);
-        else
-            powerup_manager->loadPowerupsModels();
+            powerup_manager->setFileName(s);
+        powerup_manager->loadPowerupsModels();
 
         ItemManager::loadDefaultItemMeshes();
 

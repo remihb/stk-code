@@ -158,13 +158,16 @@ private:
      *  for network games it will use the start time from server. */
     std::atomic<uint64_t> m_random_seed;
 
+    std::string m_config_file;
+
 public:
     static void unitTesting();
 
                   PowerupManager  ();
                  ~PowerupManager  ();
+    void          setFileName(std::string s)              { m_config_file = s; }
+    std::string   getFileName()                        { return m_config_file; }
     void          loadPowerupsModels ();
-    void          loadPowerupsModels (std::string filename);
     void          loadWeights(const XMLNode *node, const std::string &category);
     void          unloadPowerups  ();
     void          computeWeightsForRace(int num_karts);

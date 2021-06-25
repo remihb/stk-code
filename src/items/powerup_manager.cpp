@@ -53,6 +53,7 @@ PowerupManager::PowerupManager()
         m_all_meshes[i] = NULL;
         m_all_icons[i]  = (Material*)NULL;
     }
+    m_config_file = "powerup.xml";
 }   // PowerupManager
 
 //-----------------------------------------------------------------------------
@@ -125,16 +126,7 @@ PowerupManager::PowerupType
  */
 void PowerupManager::loadPowerupsModels()
 {
-    loadPowerupsModels("powerup.xml");
-}  // loadPowerupsModels
-
-//-----------------------------------------------------------------------------
-//-----------------------------------------------------------------------------
-/** Loads powerups models and icons from the powerup.xml file.
- */
-void PowerupManager::loadPowerupsModels(std::string filename)
-{
-    const std::string file_name = file_manager->getAsset(filename);
+    const std::string file_name = file_manager->getAsset(m_config_file);
     XMLNode *root               = file_manager->createXMLTree(file_name);
     for(unsigned int i=0; i<root->getNumNodes(); i++)
     {
