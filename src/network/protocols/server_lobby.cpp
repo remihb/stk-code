@@ -7593,6 +7593,7 @@ unmute_error:
             }
             index = abs(index);
             m_team_for_player[player] = index;
+            wide_player_name = StringUtils::utf8ToWide(player);
             if (player_peer)
             {
                 for (auto& profile : player_peer.get()->getPlayerProfiles())
