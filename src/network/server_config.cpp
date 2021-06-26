@@ -50,7 +50,8 @@ static std::vector<UserConfigParam*> g_server_params;
 namespace ServerConfig
 {
 // ============================================================================
-std::string g_server_config_path;
+std::string g_server_config_path[2];
+int m_server_config_level = 0;
 std::string m_server_uid;
 // ============================================================================
 FloatServerConfigParam::FloatServerConfigParam(float default_value,
@@ -115,21 +116,25 @@ MapServerConfigParam<T, U>::MapServerConfigParam(const char* param_name,
 // ============================================================================
 void loadServerConfig(const std::string& path)
 {
+    m_loaded_from_external_config = false;
     bool default_config = false;
     if (path.empty())
     {
         default_config = true;
-        g_server_config_path =
+        g_server_config_path[m_server_config_level] =
             file_manager->getUserConfigFile("server_config.xml");
     }
     else
     {
-        g_server_config_path = file_manager->getFileSystem()
+        g_server_config_path[m_server_config_level] =
+            file_manager->getFileSystem()
             ->getAbsolutePath(path.c_str()).c_str();
     }
-    m_server_uid = StringUtils::removeExtension(
-        StringUtils::getBasename(g_server_config_path));
-    const XMLNode* root = file_manager->createXMLTree(g_server_config_path);
+    if (m_server_config_level == 0)
+        m_server_uid = StringUtils::removeExtension(StringUtils::getBasename(
+            g_server_config_path[m_server_config_level]));
+    const XMLNode* root = file_manager->createXMLTree(
+        g_server_config_path[m_server_config_level]);
     loadServerConfigXML(root, default_config);
 }   // loadServerConfig
 
@@ -140,7 +145,8 @@ void loadServerConfigXML(const XMLNode* root, bool default_config)
     {
         Log::info("ServerConfig",
             "Could not read server config file '%s'. "
-            "A new file will be created.", g_server_config_path.c_str());
+            "A new file will be created.",
+            g_server_config_path[m_server_config_level].c_str());
         if (root)
             delete root;
         writeServerConfigToDisk();
@@ -157,6 +163,22 @@ void loadServerConfigXML(const XMLNode* root, bool default_config)
         delete root;
         writeServerConfigToDisk();
         return;
+    }
+
+    std::string external_config_path;
+    if (m_server_config_level == 0)
+    {
+        const XMLNode* child = root->getNode("external-config");
+        if (child != NULL && child->get("value", &external_config_path))
+        {
+            m_server_config_level = 1;
+            loadServerConfig(external_config_path);
+            m_server_config_level = 0;
+        }
+    }
+    else
+    {
+        m_loaded_from_external_config = true;
     }
 
     for (unsigned i = 0; i < g_server_params.size(); i++)
@@ -183,18 +205,20 @@ std::string getServerConfigXML()
 // ----------------------------------------------------------------------------
 void writeServerConfigToDisk()
 {
+    if (m_loaded_from_external_config) // Don't overwrite if there were 2 files
+        return;
     const std::string& config_xml = getServerConfigXML();
     try
     {
         std::ofstream configfile(FileUtils::getPortableWritingPath(
-            g_server_config_path), std::ofstream::out);
+            g_server_config_path[0]), std::ofstream::out);
         configfile << config_xml;
         configfile.close();
     }
     catch (std::runtime_error& e)
     {
         Log::error("ServerConfig", "Failed to write server config to %s, "
-            "because %s", g_server_config_path.c_str(), e.what());
+            "because %s", g_server_config_path[0].c_str(), e.what());
     }
 }   // writeServerConfigToDisk
 
@@ -436,7 +460,6 @@ void loadServerLobbyFromConfig()
             m_time_limit_ctf.revertToDefaults();
         }
     }
-
     // The extra server info has to be set before the server lobby is started
     if (server_lobby)
         server_lobby->requestStart();
@@ -445,7 +468,7 @@ void loadServerLobbyFromConfig()
 // ----------------------------------------------------------------------------
 std::string getConfigDirectory()
 {
-    return StringUtils::getPath(g_server_config_path);
+    return StringUtils::getPath(g_server_config_path[0]);
 }   // getConfigDirectory
 
 }

@@ -2300,7 +2300,11 @@ int main(int argc, char *argv[])
             material_manager->addSharedMaterial(materials_file);
         }
         Referee::init();
+
+        if (CommandLine::has("--powerup-file", &s))
+            powerup_manager->setFileName(s);
         powerup_manager->loadPowerupsModels();
+
         ItemManager::loadDefaultItemMeshes();
 
         GUIEngine::addLoadingIcon( irr_driver->getTexture(FileManager::GUI_ICON,
